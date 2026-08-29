@@ -35,10 +35,11 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const handleClose = (confirmed: boolean) => {
-    if (!state.resolve) return
-    const resolve = state.resolve
+    // `showError` não passa `resolve` — só `dialogConfirm` passa. Sair cedo quando ele
+    // falta deixava o diálogo de erro sem nunca fechar: o estado nunca era limpo.
+    const { resolve } = state
     setState({ type: null, title: '', description: '' })
-    resolve(confirmed)
+    resolve?.(confirmed)
   }
 
   return (

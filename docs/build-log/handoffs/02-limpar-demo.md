@@ -80,7 +80,7 @@ que faz o projeto compilar de novo** — até rodar, `src/data/generated/types.t
 exporta `Todo` e os arquivos gerados ainda referenciam a tabela.
 
 ```bash
-bun check
+bun check types
 ```
 → typecheck limpo. Se acusar `Todo` ou `todo`, é sinal de que o `zero:generate` não
 rodou ou falhou.
@@ -96,7 +96,7 @@ amarelo. **Sem erro de `crypto.randomUUID`** — não há mais nenhuma chamada a
 
 - **`bun zero:generate` não foi executado** — regenerar é papel do usuário, conforme o
   contrato do plano. Enquanto não rodar, `src/data/generated/*` fica dessincronizado e o
-  `bun check` acusa erro. É o estado esperado agora.
+  `bun check types` acusa erro. É o estado esperado agora.
 - **A tabela `todo` continua existindo no Postgres.** Ela saiu do schema Drizzle, mas o
   `DROP TABLE` só aparece na migration que a **Fase 3** vai gerar com `bun migrate`.
   Ninguém edita `src/database/migrations/*` à mão: migrations são histórico.

@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    a { color: #e5a33a; text-decoration: none; }
+    a:hover { color: #f0bb63; }
+    .ui { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace; }
+    .ico { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  </style>
+</helmet>
+
+<div class="ui" style="width: 390px; height: 1320px; display: flex; flex-direction: column; background: #141414; color: #ffffff; overflow: hidden;">
+
+  <!-- header -->
+  <div style="height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid #242424;">
+    <div style="width: 32px; height: 32px; margin-left: -6px; display: flex; align-items: center; justify-content: center; color: #cccccc;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M14.5 5.5 8 12l6.5 6.5"></path></svg>
+    </div>
+    <span style="font-size: 16px; font-weight: 600; flex-grow: 1;">Post</span>
+    <div style="color: #cccccc; display: flex;">
+      <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M12 15V4m0 0 3.5 3.5M12 4 8.5 7.5M5 13.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-5.5"></path></svg>
+    </div>
+  </div>
+
+  <!-- post -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding: 18px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 40px; height: 40px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: {{accent}};">RN</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 15px; font-weight: 600; line-height: 18px;">Rafael Nunes</span>
+          <span style="font-size: 11px; line-height: 11px; font-weight: 600; color: {{accent}}; border: 1px solid {{accentBorder}}; border-radius: 50px; padding: 3px 7px;">Criador</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px; color: #858585;">
+          <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M7 10.5V8a5 5 0 0 1 10 0v2.5M5.5 10.5h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"></path></svg>
+          <span style="font-size: 13px; line-height: 16px;">14 de agosto, 09:12 · assinantes</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.5px; text-wrap: pretty;">O funil que levou a Metrix de R$ 8k para R$ 47k/mês em 90 dias</div>
+
+    <div style="position: relative; height: 186px; border-radius: 16px; background: #0a0a0a; border: 1px solid #242424; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 18px;">
+      <svg width="100%" height="118" viewBox="0 0 310 118" aria-hidden="true">
+        <path d="M10 8h290l-38 32H48Z" fill="{{accent}}" opacity="0.9"></path>
+        <path d="M52 46h206l-30 32H82Z" fill="{{accent}}" opacity="0.55"></path>
+        <path d="M86 84h138l-22 30h-94Z" fill="{{accent}}" opacity="0.3"></path>
+        <text x="155" y="29" text-anchor="middle" font-size="12" font-weight="700" fill="{{accentInk}}" font-family="-apple-system, system-ui, sans-serif">12.400 visitas</text>
+        <text x="155" y="67" text-anchor="middle" font-size="12" font-weight="700" fill="{{accentInk}}" font-family="-apple-system, system-ui, sans-serif">840 leads</text>
+        <text x="155" y="104" text-anchor="middle" font-size="12" font-weight="700" fill="{{accentInk}}" font-family="-apple-system, system-ui, sans-serif">63 reuniões</text>
+      </svg>
+      <div class="mono" style="position: absolute; top: 12px; right: 12px; background: rgba(10,10,10,0.8); border: 1px solid #333333; border-radius: 50px; padding: 5px 10px; font-size: 12px; line-height: 12px; color: #cccccc;">1/3</div>
+    </div>
+
+    <div style="font-size: 15px; line-height: 23px; color: #cccccc; text-wrap: pretty;">Não mexi em nada no tráfego. O que mudou foi a ordem das perguntas: em vez de pedir o e-mail antes de provar qualquer coisa, a página passou a entregar o diagnóstico primeiro e cobrar o contato depois.<br><br>Nos 90 dias a taxa de reunião agendada saiu de 2,1% para 7,5%, e o ticket médio subiu junto porque a reunião já começava com o problema nomeado.</div>
+
+    <div style="display: flex; align-items: center; gap: 20px; color: #858585; padding-top: 4px;">
+      <div style="display: flex; align-items: center; gap: 7px; color: {{accent}};">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3C5.2 16.2 3 12.6 3 9.6A4.8 4.8 0 0 1 12 7.6A4.8 4.8 0 0 1 21 9.6C21 12.6 18.8 16.2 12 20.3Z" fill="currentColor"></path></svg>
+        <span style="font-size: 14px; line-height: 14px; font-weight: 600;">341</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M4.5 5.5h15a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-8.6l-4.1 3.2v-3.2H4.5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"></path></svg>
+        <span style="font-size: 14px; line-height: 14px;">57</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1Z"></path></svg>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: #242424;"></div>
+
+  <!-- comentários -->
+  <div style="display: flex; flex-direction: column; gap: 18px; padding: 18px;">
+
+    <span style="font-size: 16px; font-weight: 600;">57 comentários</span>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 34px; height: 34px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #cccccc; flex-shrink: 0;">MC</div>
+      <div style="flex-grow: 1; height: 44px; border-radius: 50px; background: #1a1a1a; border: 1px solid #242424; display: flex; align-items: center; padding: 0 16px;">
+        <span style="font-size: 14px; color: #666666;">Escreva um comentário…</span>
+      </div>
+    </div>
+
+    <!-- comentário 1 + resposta -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 10px;">
+        <div style="width: 34px; height: 34px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #cccccc; flex-shrink: 0;">JS</div>
+        <div style="display: flex; flex-direction: column; gap: 5px; flex-grow: 1;">
+          <div style="display: flex; align-items: baseline; gap: 7px;">
+            <span style="font-size: 14px; font-weight: 600;">Juliana Serra</span>
+            <span style="font-size: 12px; color: #666666;">há 6 h</span>
+          </div>
+          <div style="font-size: 14px; line-height: 21px; color: #cccccc; text-wrap: pretty;">Isso vale pra e-commerce também ou só pra serviço? Aqui o ciclo é curto demais pra pedir diagnóstico antes.</div>
+          <div style="display: flex; align-items: center; gap: 16px; color: #858585; padding-top: 2px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M12 20.3C5.2 16.2 3 12.6 3 9.6A4.8 4.8 0 0 1 12 7.6A4.8 4.8 0 0 1 21 9.6C21 12.6 18.8 16.2 12 20.3Z"></path></svg>
+              <span style="font-size: 12px;">8</span>
+            </div>
+            <span style="font-size: 12px; font-weight: 600;">Responder</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; padding-left: 44px;">
+        <div style="width: 30px; height: 30px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: {{accent}}; flex-shrink: 0;">RN</div>
+        <div style="display: flex; flex-direction: column; gap: 5px; flex-grow: 1;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 14px; font-weight: 600;">Rafael Nunes</span>
+            <span style="font-size: 10px; line-height: 10px; font-weight: 600; color: {{accent}}; border: 1px solid {{accentBorder}}; border-radius: 50px; padding: 3px 6px;">Criador</span>
+            <span style="font-size: 12px; color: #666666;">há 5 h</span>
+          </div>
+          <div style="font-size: 14px; line-height: 21px; color: #cccccc; text-wrap: pretty;">Em e-commerce o diagnóstico vira quiz de produto. Mesma lógica, tempo menor. Tem uma aula sobre isso no módulo 3.</div>
+          <div style="display: flex; align-items: center; gap: 16px; color: #858585; padding-top: 2px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path style="stroke-width: 2;" d="M12 20.3C5.2 16.2 3 12.6 3 9.6A4.8 4.8 0 0 1 12 7.6A4.8 4.8 0 0 1 21 9.6C21 12.6 18.8 16.2 12 20.3Z" fill="{{accent}}"></path></svg>
+              <span style="font-size: 12px; color: {{accent}};">23</span>
+            </div>
+            <span style="font-size: 12px; font-weight: 600;">Responder</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- comentário 2 -->
+    <div style="display: flex; gap: 10px;">
+      <div style="width: 34px; height: 34px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #cccccc; flex-shrink: 0;">TA</div>
+      <div style="display: flex; flex-direction: column; gap: 5px; flex-grow: 1;">
+        <div style="display: flex; align-items: baseline; gap: 7px;">
+          <span style="font-size: 14px; font-weight: 600;">Thiago Alencar</span>
+          <span style="font-size: 12px; color: #666666;">há 9 h</span>
+        </div>
+        <div style="font-size: 14px; line-height: 21px; color: #cccccc; text-wrap: pretty;">Refiz o primeiro parágrafo ontem seguindo esse raciocínio. 14 leads hoje contra 4 na média da semana.</div>
+        <div style="display: flex; align-items: center; gap: 16px; color: #858585; padding-top: 2px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M12 20.3C5.2 16.2 3 12.6 3 9.6A4.8 4.8 0 0 1 12 7.6A4.8 4.8 0 0 1 21 9.6C21 12.6 18.8 16.2 12 20.3Z"></path></svg>
+            <span style="font-size: 12px;">31</span>
+          </div>
+          <span style="font-size: 12px; font-weight: 600;">Responder</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- comentário 3 -->
+    <div style="display: flex; gap: 10px;">
+      <div style="width: 34px; height: 34px; border-radius: 50px; background: #242424; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #cccccc; flex-shrink: 0;">PM</div>
+      <div style="display: flex; flex-direction: column; gap: 5px; flex-grow: 1;">
+        <div style="display: flex; align-items: baseline; gap: 7px;">
+          <span style="font-size: 14px; font-weight: 600;">Paula Micheletti</span>
+          <span style="font-size: 12px; color: #666666;">há 1 dia</span>
+        </div>
+        <div style="font-size: 14px; line-height: 21px; color: #cccccc; text-wrap: pretty;">Tem como soltar o print da página antes e depois? O antes é o que me ajudaria mais.</div>
+        <div style="display: flex; align-items: center; gap: 16px; color: #858585; padding-top: 2px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M12 20.3C5.2 16.2 3 12.6 3 9.6A4.8 4.8 0 0 1 12 7.6A4.8 4.8 0 0 1 21 9.6C21 12.6 18.8 16.2 12 20.3Z"></path></svg>
+            <span style="font-size: 12px;">5</span>
+          </div>
+          <span style="font-size: 12px; font-weight: 600;">Responder</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#e5a33a","options":["#e5a33a","#6aa8ff","#a78bfa","#f472b6"],"section":"Tema"}}'>
+class Component extends DCLogic {
+  parseHex(hex) {
+    const raw = String(hex || '').replace('#', '')
+    const full = raw.length === 3 ? raw.split('').map(function (c) { return c + c }).join('') : raw
+    const n = parseInt(full.slice(0, 6), 16)
+    if (isNaN(n)) return { r: 229, g: 163, b: 58 }
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+  }
+  towardBg(c, amount) {
+    const mix = function (v) { return Math.round(v * amount + 20 * (1 - amount)) }
+    return 'rgb(' + mix(c.r) + ', ' + mix(c.g) + ', ' + mix(c.b) + ')'
+  }
+  renderVals() {
+    const accent = this.props.accent || '#e5a33a'
+    const c = this.parseHex(accent)
+    const luma = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255
+    return {
+      accent: accent,
+      // texto/ícone sobre o acento: preto em acento claro, branco em acento escuro
+      accentInk: luma > 0.55 ? '#141414' : '#ffffff',
+      accentSolid: 'rgba(' + c.r + ', ' + c.g + ', ' + c.b + ', 0.94)',
+      accentBorder: this.towardBg(c, 0.32),
+      accentSoft: this.towardBg(c, 0.16),
+    }
+  }
+}
+</script>
+</body>
+</html>

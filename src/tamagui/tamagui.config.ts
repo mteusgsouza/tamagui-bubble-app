@@ -1,7 +1,8 @@
-import { defaultConfig, themes } from '@tamagui/config/v5'
+import { defaultConfig } from '@tamagui/config/v5'
 import { createTamagui } from 'tamagui'
 
 import { animationsRoot } from './animationsRoot'
+import { themes } from './brandAccent'
 import { fonts } from './fonts'
 
 export const config = createTamagui({

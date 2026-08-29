@@ -1,0 +1,36 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Feed", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "FeedMidia.dc.html", "title": "Feed — vídeo, áudio e post bloqueado", "x": 470, "y": 0, "w": 390, "h": 1180 },
+    { "file": "PostDetalhe.dc.html", "title": "Post + comentários", "x": 940, "y": 0, "w": 390, "h": 1320 },
+    { "file": "Cursos.dc.html", "title": "Cursos", "x": 0, "y": 1460, "w": 390, "h": 844 },
+    { "file": "CursoDetalhe.dc.html", "title": "Curso — módulos e aulas", "x": 470, "y": 1460, "w": 390, "h": 1160 },
+    { "file": "Aula.dc.html", "title": "Aula", "x": 940, "y": 1460, "w": 390, "h": 844 },
+    { "file": "Assinatura.dc.html", "title": "Assinatura", "x": 0, "y": 2740, "w": 390, "h": 900 },
+    { "file": "Admin.dc.html", "title": "Admin — visão geral", "x": 470, "y": 2740, "w": 1200, "h": 860 }
+  ],
+  "annotations": [
+    {
+      "id": "feed-schema",
+      "x": -460,
+      "y": 0,
+      "w": 380,
+      "text": "FEED — o que o schema já cobre\n\npost.kind → os 4 layouts (texto, foto, vídeo, áudio)\npost.visibility + subscription.status → o cadeado\npostMedia.position → a ordem do carrossel (1/3)\nlikeCount / commentCount → os números do rodapé\ncomment.parentId → a resposta aninhada do criador\n\nO QUE NÃO TEM NO SCHEMA HOJE\n\n· legenda por mídia do carrossel — postMedia só tem\n  position, não tem caption\n· post fixado no topo do feed\n· bio do criador — userPublic tem name, username e\n  image, e nada mais. A tela de perfil vai pedir."
+    },
+    {
+      "id": "cursos-schema",
+      "x": -460,
+      "y": 1460,
+      "w": 380,
+      "text": "CURSOS — o que o schema já cobre\n\ncourse.order / courseModule.order / lesson.order →\n  toda a ordenação da tela\nlessonProgress.positionSec → o \"4:12 / 18:30\" e a barra\nlessonProgress.completedAt → o check verde\nlesson.freePreview → o selo \"grátis\"\ncourse.requiredPlanId → \"Incluído no plano Anual\"\n\nO QUE NÃO TEM NO SCHEMA HOJE\n\n· material de apoio da aula. O PDF na tela de Aula está\n  marcado de propósito: lesson.mediaId é UMA mídia só.\n  Se a aula tem vídeo + PDF, precisa de lessonMedia,\n  igual ao postMedia.\n· nº de aulas e duração do curso. Dá pra derivar por\n  query, mas numa lista vira N+1 — pode valer denormalizar,\n  como já é feito com likeCount."
+    },
+    {
+      "id": "billing-schema",
+      "x": -460,
+      "y": 2740,
+      "w": 380,
+      "text": "ASSINATURA E ADMIN — o que o schema já cobre\n\nplan.priceCents / interval / order → os dois cards\nsubscription.status → o chip (ativa, em atraso, cancelada)\nsubscription.currentPeriodEnd → \"Renova em 12 de setembro\"\nsubscription.cancelAtPeriodEnd → \"acaba 28/08\"\npayment (privada) → o painel da direita, fora do Zero\n\nATENÇÃO\n\n· o chip \"cortesia\" NÃO é um status: é provider='manual'.\n  Pra distinguir cortesia de pago na tela, ou entra um\n  valor no enum de status, ou a UI lê provider.\n· \"R$ 46.870 recorrente\" e \"2,4% de cancelamento\" são\n  cálculo, não coluna. Decidir antes da Fase 8 se é query\n  ao vivo ou tabela de métrica.\n· nomes, e-mails, preços e datas são amostra."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

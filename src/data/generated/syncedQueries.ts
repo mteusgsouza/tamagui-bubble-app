@@ -2,22 +2,88 @@
 // server-side query definitions with validators
 import { defineQuery, defineQueries } from '@rocicorp/zero'
 import * as v from 'valibot'
-
 import * as Queries from './groupedQueries'
 
-const todo = {
-  todosByUserId: defineQuery(
+const course = {
+  courseDetail: defineQuery(
+    v.object({
+      courseId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.courseDetail(args),
+  ),
+  courses: defineQuery(
+    v.object({
+      feedOwnerId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.courses(args),
+  ),
+  lessonDetail: defineQuery(
+    v.object({
+      lessonId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.lessonDetail(args),
+  ),
+  lessonsInProgress: defineQuery(
     v.object({
       userId: v.string(),
       limit: v.optional(v.number()),
     }),
-    ({ args }) => Queries.todo.todosByUserId(args),
+    ({ args }) => Queries.course.lessonsInProgress(args),
   ),
-  todoById: defineQuery(
+}
+
+const feed = {
+  feedPosts: defineQuery(
     v.object({
-      todoId: v.string(),
+      feedOwnerId: v.string(),
+      userId: v.string(),
+      limit: v.optional(v.number()),
     }),
-    ({ args }) => Queries.todo.todoById(args),
+    ({ args }) => Queries.feed.feedPosts(args),
+  ),
+  feedPostsPage: defineQuery(
+    v.object({
+      feedOwnerId: v.string(),
+      userId: v.string(),
+      pageSize: v.number(),
+      cursor: v.optional(
+        v.nullable(
+          v.object({
+            id: v.string(),
+            publishedAt: v.number(),
+          }),
+        ),
+      ),
+    }),
+    ({ args }) => Queries.feed.feedPostsPage(args),
+  ),
+  postDetail: defineQuery(
+    v.object({
+      postId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.feed.postDetail(args),
+  ),
+}
+
+const subscription = {
+  activePlans: defineQuery(() => Queries.subscription.activePlans()),
+  activeSubscription: defineQuery(
+    v.object({
+      userId: v.string(),
+      creatorId: v.string(),
+    }),
+    ({ args }) => Queries.subscription.activeSubscription(args),
+  ),
+  mySubscriptions: defineQuery(
+    v.object({
+      userId: v.string(),
+      creatorId: v.string(),
+    }),
+    ({ args }) => Queries.subscription.mySubscriptions(args),
   ),
 }
 
@@ -37,6 +103,8 @@ const user = {
 }
 
 export const queries = defineQueries({
-  todo,
+  course,
+  feed,
+  subscription,
   user,
 })

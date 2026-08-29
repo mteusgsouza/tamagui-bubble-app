@@ -38,14 +38,26 @@ declare module 'one' {
         | `/home/settings/edit-profile`
       DynamicRoutes: 
         | `/(app)/auth/signup/${OneRouter.SingleRoutePart<T>}`
+        | `/(app)/home/(tabs)/feed/${OneRouter.SingleRoutePart<T>}`
+        | `/(app)/home/feed/${OneRouter.SingleRoutePart<T>}`
         | `/auth/signup/${OneRouter.SingleRoutePart<T>}`
+        | `/home/(tabs)/feed/${OneRouter.SingleRoutePart<T>}`
+        | `/home/feed/${OneRouter.SingleRoutePart<T>}`
       DynamicRouteTemplate: 
         | `/(app)/auth/signup/[method]`
+        | `/(app)/home/(tabs)/feed/[postId]`
+        | `/(app)/home/feed/[postId]`
         | `/auth/signup/[method]`
+        | `/home/(tabs)/feed/[postId]`
+        | `/home/feed/[postId]`
       IsTyped: true
       RouteTypes: {
         '/(app)/auth/signup/[method]': RouteInfo<{ method: string }>
+        '/(app)/home/(tabs)/feed/[postId]': RouteInfo<{ postId: string }>
+        '/(app)/home/feed/[postId]': RouteInfo<{ postId: string }>
         '/auth/signup/[method]': RouteInfo<{ method: string }>
+        '/home/(tabs)/feed/[postId]': RouteInfo<{ postId: string }>
+        '/home/feed/[postId]': RouteInfo<{ postId: string }>
       }
     }
   }

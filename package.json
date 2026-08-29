@@ -91,6 +91,7 @@
     "burnt": "^0.12.2",
     "drizzle-orm": "1.0.0-beta.9-e89174b",
     "expo": "~55.0.6",
+    "expo-audio": "~55.0.9",
     "expo-blur": "~55.0.10",
     "expo-build-properties": "~55.0.10",
     "expo-clipboard": "~55.0.9",
@@ -103,6 +104,7 @@
     "expo-linear-gradient": "~55.0.9",
     "expo-splash-screen": "~55.0.12",
     "expo-sqlite": "^55.0.11",
+    "expo-video": "~55.0.11",
     "expo-web-browser": "~55.0.10",
     "motion": "12.36.0",
     "on-zero": "0.2.10",
@@ -175,7 +177,11 @@
     "ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS": "60000",
     "ZERO_MUTATE_FORWARD_COOKIES": "true",
     "ZERO_QUERY_FORWARD_COOKIES": "true",
-    "ZERO_APP_PUBLICATIONS": "zero_takeout"
+    "ZERO_APP_PUBLICATIONS": "zero_takeout",
+    "CLOUDFLARE_R2_ENDPOINT": "",
+    "CLOUDFLARE_R2_BUCKET": "",
+    "CLOUDFLARE_R2_ACCESS_KEY": "",
+    "CLOUDFLARE_R2_SECRET_KEY": ""
   },
   "upgradeSets": {
     "takeout": [

@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    a { color: #e5a33a; text-decoration: none; }
+    a:hover { color: #f0bb63; }
+    .ui { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace; }
+    .ico { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .row { display: flex; align-items: center; gap: 12px; height: 56px; }
+    .lestado { width: 26px; height: 26px; border-radius: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div class="ui" style="width: 390px; height: 1160px; display: flex; flex-direction: column; background: #141414; color: #ffffff; overflow: hidden;">
+
+  <!-- header -->
+  <div style="height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid #242424;">
+    <div style="width: 32px; height: 32px; margin-left: -6px; display: flex; align-items: center; justify-content: center; color: #cccccc;">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M14.5 5.5 8 12l6.5 6.5"></path></svg>
+    </div>
+    <span style="font-size: 16px; font-weight: 600; flex-grow: 1;">Curso</span>
+    <div style="color: #cccccc; display: flex;">
+      <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1Z"></path></svg>
+    </div>
+  </div>
+
+  <!-- capa -->
+  <div style="height: 180px; background: #0a0a0a; position: relative; overflow: hidden;">
+    <svg width="100%" height="180" viewBox="0 0 390 180" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0;">
+      <path d="M0 180 L65 118 L130 138 L195 76 L260 96 L325 38 L390 54 L390 180Z" fill="{{accent}}" opacity="0.16"></path>
+      <path d="M0 180 L65 118 L130 138 L195 76 L260 96 L325 38 L390 54" stroke="{{accent}}" stroke-width="2.5" fill="none" stroke-linejoin="round"></path>
+      <circle cx="325" cy="38" r="5" fill="{{accent}}"></circle>
+    </svg>
+    <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,0) 40%, rgba(20,20,20,0.9) 100%);"></div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 0; padding: 18px;">
+
+    <div style="font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.5px; text-wrap: pretty;">Aquisição sem depender de anúncio</div>
+    <div style="font-size: 13px; line-height: 16px; color: #858585; padding-top: 8px;">6 módulos · 24 aulas · 4 h 12 min</div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding-top: 14px;">
+      <div style="flex-grow: 1; height: 5px; border-radius: 50px; background: #2c2c2c; overflow: hidden;">
+        <div style="width: 33%; height: 5px; border-radius: 50px; background: {{accent}};"></div>
+      </div>
+      <span class="mono" style="font-size: 12px; line-height: 12px; color: #858585;">8/24 · 33%</span>
+    </div>
+
+    <div style="height: 44px; border-radius: 9px; background: {{accent}}; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.8 19 12l-10 6.2Z" fill="{{accentInk}}"></path></svg>
+      <span style="font-size: 15px; font-weight: 600; color: {{accentInk}};">Continuar: aula 9</span>
+    </div>
+
+    <div style="font-size: 15px; line-height: 23px; color: #cccccc; padding-top: 16px; text-wrap: pretty;">Como montar um fluxo de aquisição que sobrevive a um mês sem verba de mídia: diagnóstico, oferta, prova e follow-up. Cada módulo termina com um material que você aplica no mesmo dia.</div>
+
+  </div>
+
+  <div style="height: 1px; background: #242424; margin: 0 18px;"></div>
+
+  <!-- módulo 1 -->
+  <div style="display: flex; flex-direction: column; padding: 18px 18px 0 18px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 6px;">
+      <span style="font-size: 15px; font-weight: 700;">Módulo 1 · Diagnóstico</span>
+      <span style="font-size: 12px; color: #666666;">4 aulas · 48 min</span>
+    </div>
+
+    <div class="row">
+      <div class="lestado" style="background: #1e3a30; color: #45b98a;">
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2.4;" d="M5 12.5 9.5 17 19 7.5"></path></svg>
+      </div>
+      <span style="font-size: 15px; line-height: 20px; color: #858585; flex-grow: 1;">O que sua página deveria perguntar</span>
+      <span class="mono" style="font-size: 12px; color: #666666;">12:04</span>
+    </div>
+    <div style="height: 1px; background: #1f1f1f;"></div>
+
+    <div class="row">
+      <div class="lestado" style="background: #1e3a30; color: #45b98a;">
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2.4;" d="M5 12.5 9.5 17 19 7.5"></path></svg>
+      </div>
+      <span style="font-size: 15px; line-height: 20px; color: #858585; flex-grow: 1;">Mapeando as 3 objeções reais</span>
+      <span class="mono" style="font-size: 12px; color: #666666;">09:30</span>
+    </div>
+    <div style="height: 1px; background: #1f1f1f;"></div>
+
+    <div style="display: flex; align-items: center; gap: 12px; height: 62px;">
+      <div class="lestado" style="background: {{accent}}; color: {{accentInk}};">
+        <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.8 19 12l-10 6.2Z" fill="currentColor"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px; flex-grow: 1;">
+        <span style="font-size: 15px; line-height: 20px; font-weight: 600;">Como qualificar antes de vender</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 110px; height: 3px; border-radius: 50px; background: #2c2c2c; overflow: hidden;">
+            <div style="width: 24%; height: 3px; border-radius: 50px; background: {{accent}};"></div>
+          </div>
+          <span class="mono" style="font-size: 11px; color: #858585;">4:12 / 18:30</span>
+        </div>
+      </div>
+    </div>
+    <div style="height: 1px; background: #1f1f1f;"></div>
+
+    <div class="row">
+      <div class="lestado" style="border: 1px solid #333333;"></div>
+      <span style="font-size: 15px; line-height: 20px; flex-grow: 1;">Script da primeira conversa</span>
+      <span class="mono" style="font-size: 12px; color: #666666;">07:56</span>
+    </div>
+  </div>
+
+  <!-- módulo 2 -->
+  <div style="display: flex; flex-direction: column; padding: 18px 18px 0 18px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 6px;">
+      <span style="font-size: 15px; font-weight: 700;">Módulo 2 · Oferta</span>
+      <span style="font-size: 12px; color: #666666;">5 aulas · 1 h 02 min</span>
+    </div>
+
+    <div class="row">
+      <div class="lestado" style="border: 1px solid #333333;"></div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1;">
+        <span style="font-size: 15px; line-height: 20px;">A oferta que se explica sozinha</span>
+        <span style="font-size: 11px; line-height: 11px; font-weight: 600; color: {{accent}}; border: 1px solid {{accentBorder}}; border-radius: 50px; padding: 3px 7px;">grátis</span>
+      </div>
+      <span class="mono" style="font-size: 12px; color: #666666;">11:20</span>
+    </div>
+    <div style="height: 1px; background: #1f1f1f;"></div>
+
+    <div class="row">
+      <div class="lestado" style="color: #666666;">
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M7 10.5V8a5 5 0 0 1 10 0v2.5M5.5 10.5h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"></path></svg>
+      </div>
+      <span style="font-size: 15px; line-height: 20px; color: #666666; flex-grow: 1;">Ancoragem sem desconto</span>
+      <span class="mono" style="font-size: 12px; color: #4d4d4d;">14:02</span>
+    </div>
+    <div style="height: 1px; background: #1f1f1f;"></div>
+
+    <div class="row">
+      <div class="lestado" style="color: #666666;">
+        <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="ico" style="stroke-width: 2;" d="M7 10.5V8a5 5 0 0 1 10 0v2.5M5.5 10.5h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"></path></svg>
+      </div>
+      <span style="font-size: 15px; line-height: 20px; color: #666666; flex-grow: 1;">Provas que o cliente checa de verdade</span>
+      <span class="mono" style="font-size: 12px; color: #4d4d4d;">16:44</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#e5a33a","options":["#e5a33a","#6aa8ff","#a78bfa","#f472b6"],"section":"Tema"}}'>
+class Component extends DCLogic {
+  parseHex(hex) {
+    const raw = String(hex || '').replace('#', '')
+    const full = raw.length === 3 ? raw.split('').map(function (c) { return c + c }).join('') : raw
+    const n = parseInt(full.slice(0, 6), 16)
+    if (isNaN(n)) return { r: 229, g: 163, b: 58 }
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+  }
+  towardBg(c, amount) {
+    const mix = function (v) { return Math.round(v * amount + 20 * (1 - amount)) }
+    return 'rgb(' + mix(c.r) + ', ' + mix(c.g) + ', ' + mix(c.b) + ')'
+  }
+  renderVals() {
+    const accent = this.props.accent || '#e5a33a'
+    const c = this.parseHex(accent)
+    const luma = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255
+    return {
+      accent: accent,
+      // texto/ícone sobre o acento: preto em acento claro, branco em acento escuro
+      accentInk: luma > 0.55 ? '#141414' : '#ffffff',
+      accentSolid: 'rgba(' + c.r + ', ' + c.g + ', ' + c.b + ', 0.94)',
+      accentBorder: this.towardBg(c, 0.32),
+      accentSoft: this.towardBg(c, 0.16),
+    }
+  }
+}
+</script>
+</body>
+</html>

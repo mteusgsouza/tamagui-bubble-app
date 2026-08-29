@@ -1,4 +1,6 @@
-import { pgTable } from 'drizzle-orm/pg-core'
+import { index, pgTable } from 'drizzle-orm/pg-core'
+
+import { subscription } from './schema-public'
 
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -69,3 +71,35 @@ export const verification = pgTable('verification', (t) => ({
   createdAt: t.timestamp('createdAt', { mode: 'string' }),
   updatedAt: t.timestamp('updatedAt', { mode: 'string' }),
 }))
+
+// --- billing ---
+
+// private on purpose: never replicated to zero, so it stays out of the
+// `zero_takeout` publication (see src/database/migrate.ts). read/write only
+// through server actions.
+export const payment = pgTable(
+  'payment',
+  (t) => ({
+    id: t.text('id').primaryKey(),
+    userId: t
+      .text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    subscriptionId: t
+      .text('subscriptionId')
+      .references(() => subscription.id, { onDelete: 'set null' }),
+    provider: t.text('provider').notNull().default('manual'),
+    providerPaymentId: t.text('providerPaymentId'),
+    amountCents: t.integer('amountCents').notNull().default(0),
+    currency: t.text('currency').notNull().default('BRL'),
+    status: t.text('status').notNull().default('paid'),
+    paidAt: t.timestamp('paidAt', { mode: 'string' }),
+    createdAt: t.timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
+  }),
+  (table) => [
+    index('payment_userId_idx').on(table.userId),
+    index('payment_subscriptionId_idx').on(table.subscriptionId),
+  ],
+)
+
+export type Payment = InferSelectModel<typeof payment>

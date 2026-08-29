@@ -60,6 +60,10 @@ export async function main() {
     cvrDb: stripQueryParams(ZERO_CVR_DB),
     changeDb: stripQueryParams(ZERO_CHANGE_DB),
     gitSha: process.env.GIT_SHA,
+    // O default do runner é 5s. A migration da Fase 3 (12 CREATE TABLE + 25 índices +
+    // 22 FKs numa query só) estoura isso num Postgres recém-inicializado, ainda mais
+    // com o projeto em /mnt/f — disco Windows visto da WSL.
+    defaultTimeout: 30_000,
     onMigrationComplete: async () => {
       await ensureZeroPublication()
     },
