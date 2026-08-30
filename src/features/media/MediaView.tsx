@@ -31,41 +31,35 @@ const FILL: React.CSSProperties = {
   objectFit: 'cover',
 }
 
-export const MediaView = memo(
-  ({ media, aspectRatio, rounded, autoPlay, alt, enabled = true }: MediaViewProps) => {
-    const ratio = aspectRatio ?? defaultAspectRatio(media)
+export const MediaView = memo((props: MediaViewProps) => {
+  const { media, aspectRatio, rounded, alt } = props
+  const ratio = aspectRatio ?? defaultAspectRatio(media)
 
-    if (media.kind === 'photo') {
-      return (
-        <MediaFrame aspectRatio={ratio} rounded={rounded}>
-          <img
-            src={mediaPlaybackUrl(media.id)}
-            alt={alt || ''}
-            loading="lazy"
-            style={FILL}
-          />
-        </MediaFrame>
-      )
-    }
-
+  if (media.kind === 'photo') {
     return (
-      <PlayableMedia
-        media={media}
-        aspectRatio={ratio}
-        rounded={rounded}
-        autoPlay={autoPlay}
-        enabled={enabled}
-      />
+      <MediaFrame aspectRatio={ratio} rounded={rounded}>
+        <img
+          src={mediaPlaybackUrl(media.id)}
+          alt={alt || ''}
+          loading="lazy"
+          style={FILL}
+        />
+      </MediaFrame>
     )
-  },
-)
+  }
+
+  return <PlayableMedia {...props} aspectRatio={ratio} />
+})
 
 const PlayableMedia = ({
   media,
   aspectRatio,
   rounded,
   autoPlay,
-  enabled,
+  enabled = true,
+  onProgress,
+  onEnded,
+  startAtSec,
 }: MediaViewProps & { aspectRatio?: number }) => {
   const { url, loading, error, reload } = useSignedPlayback(
     media.id,
@@ -90,6 +84,18 @@ const PlayableMedia = ({
     )
   }
 
+  // retoma a posição salva assim que os metadados chegam — antes disso `currentTime`
+  // não aceita seek
+  const resume = (element: HTMLMediaElement) => {
+    if (startAtSec && startAtSec > 0 && Number.isFinite(element.duration)) {
+      element.currentTime = Math.min(startAtSec, element.duration - 1)
+    }
+  }
+
+  const report = (element: HTMLMediaElement) => {
+    onProgress?.(element.currentTime, element.duration || 0)
+  }
+
   // `onError` cobre a URL assinada que expirou entre o carregamento e um seek tardio:
   // `reload()` busca outra (com teto, para mídia quebrada não virar laço)
   if (media.kind === 'audio') {
@@ -100,6 +106,9 @@ const PlayableMedia = ({
           controls
           autoPlay={autoPlay}
           onError={reload}
+          onLoadedMetadata={(event) => resume(event.currentTarget)}
+          onTimeUpdate={(event) => report(event.currentTarget)}
+          onEnded={onEnded}
           style={{ width: '100%' }}
         />
       </MediaFrame>
@@ -116,6 +125,9 @@ const PlayableMedia = ({
           autoPlay={autoPlay}
           preload="metadata"
           onError={reload}
+          onLoadedMetadata={(event) => resume(event.currentTarget)}
+          onTimeUpdate={(event) => report(event.currentTarget)}
+          onEnded={onEnded}
           poster={media.posterKey ? mediaPlaybackUrl(media.id, 'poster') : undefined}
           style={{ ...FILL, objectFit: 'contain', backgroundColor: 'black' }}
         />

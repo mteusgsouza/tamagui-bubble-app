@@ -1,6 +1,7 @@
 # Fase 7 — Cursos
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** —
+**Status:** ✅ concluída — ver [`../handoffs/07-cursos.md`](../handoffs/07-cursos.md)
+· **Pré-requisito humano:** —
 
 ## Escopo
 

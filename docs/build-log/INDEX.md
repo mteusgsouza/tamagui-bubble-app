@@ -23,7 +23,7 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ✅ | 4 — Camada Zero | [plano](./plan/04-camada-zero.md) | [handoff](./handoffs/04-camada-zero.md) | — |
 | ✅ | 5 — Mídia R2 | [plano](./plan/05-midia-r2.md) | [handoff](./handoffs/05-midia-r2.md) | ⚠️ conta Cloudflare R2 |
 | ✅ | 6 — Feed UI | [plano](./plan/06-feed.md) | [handoff](./handoffs/06-feed.md) | — |
-| ⬜ | 7 — Cursos UI | [plano](./plan/07-cursos.md) | — | — |
+| ✅ | 7 — Cursos UI | [plano](./plan/07-cursos.md) | [handoff](./handoffs/07-cursos.md) | — |
 | ⬜ | 8 — Admin | [plano](./plan/08-admin.md) | — | — |
 | ⬜ | 9 — Billing | [plano](./plan/09-billing.md) | — | — |
 | ⬜ | 10 — Auth (cadastro + Google OAuth) | [plano](./plan/10-auth.md) | — | ⚠️ credenciais Google Cloud |

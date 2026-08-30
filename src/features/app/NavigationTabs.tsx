@@ -2,6 +2,7 @@ import { Link, usePathname } from 'one'
 import { useMedia, XStack, View } from 'tamagui'
 
 import { Pressable } from '~/interface/buttons/Pressable'
+import { PlayCircleIcon } from '~/interface/icons/PlayCircleIcon'
 import { HouseIcon } from '~/interface/icons/phosphor/HouseIcon'
 import { UserCircleIcon } from '~/interface/icons/phosphor/UserCircleIcon'
 
@@ -15,6 +16,7 @@ type TabRoute = {
 
 const routes: TabRoute[] = [
   { name: 'home', href: '/home/feed', icon: HouseIcon },
+  { name: 'courses', href: '/home/courses', icon: PlayCircleIcon },
   { name: 'profile', href: '/home/settings', icon: UserCircleIcon },
 ]
 

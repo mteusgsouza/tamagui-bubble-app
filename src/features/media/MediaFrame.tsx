@@ -5,6 +5,8 @@
 
 import { SizableText, Spinner, YStack } from 'tamagui'
 
+import { formatDuration } from './formatDuration'
+
 import type { MediaKind } from '~/data/models/media'
 import type { ReactNode } from 'react'
 import type { YStackProps } from 'tamagui'
@@ -29,6 +31,18 @@ export type MediaViewProps = {
   alt?: string
   /** `false` segura a busca da URL assinada — útil em lista virtualizada */
   enabled?: boolean
+
+  // --- reprodução (vídeo e áudio) ---
+  // Existem para a aula de curso gravar `lessonProgress`. Vêm **sem throttle**: na web
+  // o `timeupdate` dispara ~4x por segundo. Quem decide quando gravar é o consumidor
+  // (`useLessonProgress`), não este componente.
+
+  /** posição atual em segundos, durante a reprodução */
+  onProgress?: (positionSec: number, durationSec: number) => void
+  /** retoma daqui, em segundos, assim que a mídia carrega */
+  startAtSec?: number
+  /** chegou ao fim */
+  onEnded?: () => void
 }
 
 /** Áudio é uma faixa baixa; foto e vídeo ocupam a largura toda. */
@@ -38,17 +52,8 @@ export const defaultAspectRatio = (media: MediaViewMedia) => {
   return 16 / 9
 }
 
-export const formatDuration = (sec?: number | null) => {
-  if (!sec || sec < 0) return null
-  const total = Math.round(sec)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
-  return h > 0
-    ? `${h}:${mm}:${String(s).padStart(2, '0')}`
-    : `${mm}:${String(s).padStart(2, '0')}`
-}
+// re-export para quem já importava daqui
+export { formatDuration }
 
 export const MediaFrame = ({
   children,

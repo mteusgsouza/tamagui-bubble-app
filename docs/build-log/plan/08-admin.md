@@ -42,6 +42,21 @@ Contrato completo em [`../handoffs/05-midia-r2.md`](../handoffs/05-midia-r2.md).
    receber o `Blob`, mas ninguém extrai o frame. Web: `<canvas>`. Nativo:
    `expo-video-thumbnails` (`~55.0.11`).
 
+**[Fase 7] Escrever curso é mutation do Zero, sem rota de API:**
+
+```ts
+zero.mutate.course.insert({ id: newId(), feedOwnerId, slug, title, ... })
+zero.mutate.courseModule.insert({ id: newId(), courseId, title, order })
+zero.mutate.lesson.insert({ id: newId(), courseId, moduleId, title, order, published, freePreview })
+```
+
+⚠️ **`lesson.order` é global no curso, não por módulo.** O currículo agrupa por
+`moduleId`, mas a numeração ("AULA 3 DE 24") e a "próxima aula" seguem `order`. Se o
+admin permitir reordenar, tem que preservar isso — `lessonPosition` e `lessonAfter` em
+`~/features/courses/courseStats` dependem dele.
+
+`scripts/seed-courses.ts` é um exemplo executável dessa estrutura.
+
 **Sobre o guard de admin:** `canUploadMedia()` (em `src/server/media/mediaAccess.ts`)
 aceita `admin` **ou** `MASTER_USER_ID`, porque o criador semeado tem `role = 'user'`. Se
 esta fase promover o criador a `role = 'admin'`, a segunda condição pode sair.

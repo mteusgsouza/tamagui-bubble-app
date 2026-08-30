@@ -1,5 +1,5 @@
 import { Redirect, Slot, Stack, usePathname } from 'one'
-import { Configuration } from 'tamagui'
+import { Configuration, isWeb } from 'tamagui'
 
 import { useAuth } from '~/features/auth/client/authClient'
 import { DialogProvider } from '~/interface/dialogs/Dialog'
@@ -33,7 +33,12 @@ export function AppLayout() {
         <ToastProvider>
           <DialogProvider>
             <PlatformSpecificRootProvider>
-              {process.env.VITE_PLATFORM === 'web' ? (
+              {/* `isWeb`, e não `process.env.VITE_PLATFORM`: essa env var nunca é definida —
+                  nem pelo projeto, nem pelo One/vxrn — então a comparação dava `false` na
+                  web e este layout caía no ramo nativo. O Stack do react-navigation
+                  assumia o roteamento e resetava para a tela inicial a cada carregamento
+                  direto de URL: todo deep link terminava em /home/feed. */}
+              {isWeb ? (
                 <Slot />
               ) : (
                 // We need Stack here for transition animation to work on native

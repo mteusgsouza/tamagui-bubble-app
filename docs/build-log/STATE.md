@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 6 — Feed UI** (código pronto; falta o usuário validar) |
-| Próxima fase | **Fase 7 — Cursos UI** |
+| Última fase concluída | **Fase 7 — Cursos UI** (código pronto; falta o usuário validar) |
+| Próxima fase | **Fase 8 — Admin** |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 
 Estado real da Fase 5:
@@ -33,6 +33,20 @@ Estado real da Fase 5:
   `storageKey` a esse usuário; a rota de playback barrou os bytes.
 - ℹ️ **sem migration e sem tabela nova.** O replica do zero-cache **não** precisa ser
   reconstruído nesta fase
+
+Estado real da Fase 7:
+
+- ✅ lista de cursos com filtros, currículo por módulo, player de aula com retomada e
+  conclusão automática, aba nova no tab bar (web + nativo)
+- ✅ o `<MediaView>` passou a expor `onProgress` / `startAtSec` / `onEnded` — a aula usa,
+  o feed não passa nada e não mudou
+- ✅ `scripts/seed-courses.ts` cria 2 planos, 1 curso, 2 módulos e 5 aulas
+  (idempotente) — **resolve em parte a pendência do seed**; posts continuam de fora
+- ✅ typecheck limpo; 22 testes de unidade novos (50 no total)
+- ⏳ **nada rodado em runtime.** Roteiro em [`handoffs/07-cursos.md`](./handoffs/07-cursos.md)
+- ⚠️ **o throttle do progresso não é estético.** `ZERO_PER_USER_MUTATION_LIMIT_MAX` é 30
+  mutations/minuto e a web dispara `timeupdate` ~4x/s: sem throttle, 8 segundos de vídeo
+  estouram a cota. `useLessonProgress` grava no máximo 1x a cada 10 s.
 
 Estado real da Fase 6:
 
@@ -119,6 +133,57 @@ Estado real da Fase 4:
   `localhost:8081`; pelo IP que o `bun dev` imprime como "Network" todo POST de auth
   volta 403 `INVALID_ORIGIN`. No desktop, use `http://localhost:8081`. Para celular
   físico, ver `plan/10-auth.md`.
+- ⚠️ **`bun run:dev` já embute o `bun`** (`"run:dev": "bun env:dev bun"`). Então é
+  `bun run:dev scripts/x.ts`, **sem** um segundo `bun`. Escrever
+  `bun run:dev bun scripts/x.ts` vira `bun bun scripts/x.ts`, que aciona o bundler
+  legado do Bun com target de browser e falha com
+  `Browser build cannot require() Node.js builtin: "tls"`. O erro não tem nada a ver com
+  o script.
+- 🔴 **DEEP LINK NÃO FUNCIONA NA WEB — bug pré-existente, não resolvido.**
+  Carregar direto qualquer URL abaixo do grupo de abas cai em `/home/feed`. Vale para
+  rota do starter também (`/home/settings/edit-profile`), então **não veio das Fases
+  5–7**. Navegação dentro do app funciona normal; só o carregamento direto quebra.
+  Isso também impede compartilhar link de post ou de curso.
+
+  Medido no navegador, com `history.pushState/replaceState` instrumentado:
+
+  | pedido | chega em |
+  |---|---|
+  | `/home/courses/<slug>` | `/home/courses` ou `/home/feed` |
+  | `/home/feed/<postId>` | `/home/feed` |
+  | `/home/settings/edit-profile` | `/home/feed` |
+
+  O passo revelador: o roteador reescreve para `/auth/login?courseSlug=<slug>` —
+  **levando os params da rota original**. Isso é o react-navigation recaindo na primeira
+  rota do grupo `(app)`, que é `auth` (vem antes de `home` na árvore). O gatilho é o
+  `return null` de `app/(app)/_layout.tsx` enquanto `state === 'loading'`: devolver
+  `null` desmonta o navegador filho.
+
+  ⚠️ **Tentei remover esse `return null` e PIOROU** — o comportamento virou
+  intermitente (às vezes chegava na rota certa, às vezes no feed). Revertido ao original.
+  Quem for atacar isso precisa entender o linking do One primeiro; provavelmente a
+  solução real é `defaultRenderMode` diferente de `'spa'` no `vite.config.ts`, ou um
+  gate que não desmonte a árvore.
+
+  Já descartados com evidência: bundle velho no navegador (recarga com cache-bust),
+  registro de rota (a árvore do cliente tem as rotas certas), `index+ssg.tsx` (o módulo
+  nunca é carregado na rede) e corrida do estado de auth (o rastro mostra `loading` nos
+  dois renders, nunca `logged-out`).
+- ✅ **Corrigido no caminho:** `ONE_SUSPEND_ROUTES=1` estava no `.env.development` e o
+  One deixa isso **off por padrão na web** ("suspense causes flickers on web during nav
+  since react navigation doesn't properly respect startTransition"). Com ele ligado, o
+  trajeto ganhava um passo a mais por `/`. Desligado.
+- ✅ **Corrigido no caminho:** `process.env.VITE_PLATFORM` é usada em 4 layouts para
+  escolher `<Slot>` (web) vs `<Stack>` (nativo) e **nunca é definida** — nem pelo
+  projeto, nem pelo One/vxrn. Na web os quatro caíam no ramo nativo. Trocado por `isWeb`
+  do Tamagui. (Bug real e separado; **não** era a causa do deep link.)
+- ⚠️ **Query nova exige `bun zero:generate`.** As synced queries são registradas em
+  `src/data/generated/syncedQueries.ts`; sem regenerar, a query nem existe para o
+  servidor e a tela fica vazia sem erro óbvio. Aconteceu com a `courseBySlug` da Fase 7.
+- ℹ️ **Dá para reiniciar o dev server sem o usuário**, do Windows:
+  `wsl.exe -d Ubuntu-22.04 -- bash -lc "cd /mnt/f/apps/bubble-app/mobile-bubble-app && exec /home/mateus/.bun/bin/bun dev"`
+  em background. O `bun` **não** está no PATH de shell não-interativo — use o caminho
+  completo. Matar: `ss -ltnp | grep :8081` para achar o pid.
 - Typecheck é **`bun check types`**. `bun check` sozinho só lista os sub-scripts do
   `tko` (`lint`, `types`) e não roda nada.
 - ⚠️ **`bun check lint` / `bun lint:fix` quebram** com `panic: unknown rule:
@@ -203,9 +268,9 @@ Estado real da Fase 4:
 - **Contas existentes hoje:** `demo@takeout.tamagui.dev` / `demopassword123`
   (id `demo-user-id`, é o criador) e `teste@bubble.local` / `teste123456`
   (id `test-user-b`, cobaia do teste de paywall, criada à mão no banco).
-- **O seed é manual e não está versionado.** Existem 5 posts, 2 planos e 2 contas no
-  banco, mas nenhum script no repo os recria — quem rodar `bun backend:clean` perde tudo
-  e só as migrations voltam. Um `scripts/seed.ts` continua valendo a pena.
+- **Seed: metade resolvida.** `scripts/seed-courses.ts` (Fase 7) recria planos, curso,
+  módulos e aulas de forma idempotente. **Os 5 posts continuam sem script** — foram
+  criados à mão e somem num `bun backend:clean`.
 - **`exists` dentro de `exists` não foi validado em runtime** (`canAccessLesson`,
   `canAccessComment`). Se o zero-cache reclamar, o plano B é desnormalizar
   `feedOwnerId`/`visibility` na `lesson`.
@@ -240,3 +305,4 @@ Estado real da Fase 4:
 - [`handoffs/04-camada-zero.md`](./handoffs/04-camada-zero.md)
 - [`handoffs/05-midia-r2.md`](./handoffs/05-midia-r2.md)
 - [`handoffs/06-feed.md`](./handoffs/06-feed.md)
+- [`handoffs/07-cursos.md`](./handoffs/07-cursos.md)

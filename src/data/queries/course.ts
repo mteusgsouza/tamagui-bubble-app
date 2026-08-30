@@ -9,8 +9,10 @@ import {
 /**
  * Lista de cursos.
  *
- * Traz as aulas junto de propósito: a tela de lista mostra "24 aulas" e a barra de
- * progresso, e o Zero não expõe agregação — a contagem sai das linhas sincronizadas.
+ * Traz aulas e módulos junto de propósito: a tela de lista mostra
+ * "6 módulos · 24 aulas · 4 h 12 min" e a barra de progresso, e o Zero não expõe
+ * agregação — toda contagem sai das linhas sincronizadas. Módulo é linha pequena e são
+ * poucos por curso; sem eles o resumo do card sai sem a parte de módulos.
  * Efeito colateral bom: ao abrir um curso, o detalhe já está no cache.
  */
 export const courses = (props: { feedOwnerId: string; userId: string }) => {
@@ -21,6 +23,7 @@ export const courses = (props: { feedOwnerId: string; userId: string }) => {
     .orderBy('order', 'asc')
     .related('coverMedia', (q) => q.one())
     .related('requiredPlan', (q) => q.one())
+    .related('modules', (q) => q.orderBy('order', 'asc'))
     .related('lessons', (q) =>
       q
         .where('published', true)
@@ -55,6 +58,33 @@ export const courseDetail = (props: { courseId: string; userId: string }) => {
           .related('progress', (p) => p.where('userId', props.userId)),
       )
   )
+}
+
+/**
+ * Mesmo conteúdo do `courseDetail`, buscado por slug — é o que a rota
+ * `/home/courses/[courseSlug]` recebe. O índice único é `(feedOwnerId, slug)`, por isso
+ * o dono do feed entra na chave.
+ */
+export const courseBySlug = (props: {
+  feedOwnerId: string
+  slug: string
+  userId: string
+}) => {
+  return zql.course
+    .where(canAccessCourse)
+    .where('feedOwnerId', props.feedOwnerId)
+    .where('slug', props.slug)
+    .one()
+    .related('coverMedia', (q) => q.one())
+    .related('requiredPlan', (q) => q.one())
+    .related('modules', (q) => q.orderBy('order', 'asc'))
+    .related('lessons', (q) =>
+      q
+        .where('published', true)
+        .orderBy('order', 'asc')
+        .related('media', (m) => m.one())
+        .related('progress', (p) => p.where('userId', props.userId)),
+    )
 }
 
 /** Player. `canAccessLesson` deixa passar `freePreview` mesmo em curso fechado. */

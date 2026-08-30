@@ -9,6 +9,7 @@ export function TabsLayout() {
       }}
     >
       <Tabs.Screen name="feed" />
+      <Tabs.Screen name="courses" />
     </Tabs>
   )
 }

@@ -2,7 +2,7 @@ import './root.css'
 
 import { Slot, Stack } from 'one'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { YStack } from 'tamagui'
+import { isWeb, YStack } from 'tamagui'
 
 import { PlatformSpecificRootProvider } from '~/interface/platform/PlatformSpecificRootProvider'
 import { TamaguiRootProvider } from '~/tamagui/TamaguiRootProvider'
@@ -22,7 +22,12 @@ export function Layout() {
           name="viewport"
           content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
         />
-        <link rel="icon" href="/favicon.svg" />
+        {/* O `.ico` não é redundante com o `.svg`: em modo SPA o shell inicial não tem
+            este `<head>` (o React só o monta depois de hidratar), então o navegador
+            pede `/favicon.ico` por padrão antes de qualquer JS rodar. Sem o arquivo,
+            isso é um 404 em toda visita. */}
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
 
       <body>
@@ -30,7 +35,7 @@ export function Layout() {
           <PlatformSpecificRootProvider>
             <TamaguiRootProvider>
               <SafeAreaProvider>
-                {process.env.VITE_PLATFORM === 'web' ? (
+                {isWeb ? (
                   <YStack flex={1}>
                     <Slot />
                   </YStack>
