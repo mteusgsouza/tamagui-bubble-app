@@ -38,7 +38,19 @@ handoff anterior ficou incompleto — registre isso no seu.
    contrato imutável. Se você achou arquivos, APIs ou obstáculos que a próxima fase não
    previa, escreva lá antes de parar
 4. Marcar a linha desta tabela como ✅ e linkar o handoff
-5. Parar. Não avançar para a próxima fase
+5. 🔴 **COMITAR A VERSÃO FUNCIONANDO.** Obrigatório, antes de parar.
+   - Pré-condições, todas verdes: `bun check types` limpo, `bun test:unit` passando, e
+     o app subindo (`bun dev`) sem erro novo no console.
+   - Mensagem no formato do commit da Fase 7: o que a fase entregou, as correções que
+     saíram no caminho, e uma seção **"Conhecido e NÃO resolvido"** com o que ficou
+     quebrado. Bug conhecido e escrito é dívida; bug não escrito é armadilha.
+   - Se algo está quebrado e sem conserto à vista, **comite mesmo assim** — o valor é
+     ter um ponto de retorno. Reverta o que piorou antes de comitar (foi o que aconteceu
+     na Fase 7: uma tentativa de corrigir o deep link tornou o comportamento
+     intermitente e foi revertida ao original do starter antes do commit).
+   - *Por que isso virou regra:* as Fases 2 a 6 ficaram **inteiras** sem commit. Um
+     `bun backend:clean` ou um experimento malsucedido teria levado tudo junto.
+6. Parar. Não avançar para a próxima fase
 
 ## Quem roda os comandos
 

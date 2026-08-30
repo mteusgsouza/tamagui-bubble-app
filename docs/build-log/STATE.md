@@ -145,6 +145,44 @@ Estado real da Fase 4:
   5–7**. Navegação dentro do app funciona normal; só o carregamento direto quebra.
   Isso também impede compartilhar link de post ou de curso.
 
+  ### ✅ O linking do One está CERTO — o problema é remontagem
+
+  Pesquisado a fundo. **Não perca tempo com o linking config:**
+
+  - `getReactNavigationConfig` gera os paths corretamente:
+    `[courseSlug]/index` → `:courseSlug`, `[courseSlug]/[lessonId]` →
+    `:courseSlug/:lessonId`, `index` → `''`. Conferido em
+    `node_modules/one/src/getReactNavigationConfig.ts`.
+  - `getInitialURL()` na web devolve `window.location.href` — a URL real, não a raiz
+    (`node_modules/one/src/link/linking.ts`). O comentário sobre "sempre começar na raiz"
+    vale só para o **nativo**.
+  - `metaOnly` em `getLinkingConfig` só controla se o nó `_route` é anexado; não afeta
+    paths.
+
+  **Prova de que o roteador acerta a rota:** neutralizando o guard de
+  `app/(app)/_layout.tsx` (sem `null`, sem redirect) e carregando
+  `/home/courses/<slug>` direto, a rede mostra `[courseSlug]/index.tsx`,
+  `CourseCurriculum.tsx`, `courseStats.ts` e `ProgressBar.tsx` **sendo carregados**. A
+  rota resolve e monta. Só depois a URL volta para `/home/courses`.
+
+  **Onde está errando: a árvore remonta.** No mesmo teste, o console mostra
+  **~15 linhas** de `[zero] enabled {userId: demo-user-id, kvStore: idb}`. Esse
+  `console.info` está num `useEffect` com deps `[disable, userId, kvStore]`, e
+  `kvStore` vem de `useMemo(..., [userId])` — com `userId` **estável** o efeito só
+  poderia disparar de novo se o componente **remontasse**. Cada remontagem do
+  `ProvideZeroImpl` derruba a árvore abaixo e o react-navigation reseta o navegador
+  para a rota inicial do grupo.
+
+  Por isso o sintoma varia conforme o nível: `courses/<slug>` volta para
+  `courses/index`, `feed/<postId>` para `feed/index`, e às vezes cai até em
+  `/home/feed`.
+
+  **Próximo passo para quem pegar:** descobrir o que remonta `ProvideZeroImpl` em laço
+  (`src/zero/client.tsx`) — não mexer no linking. Suspeitos: o `ZeroProvider` do
+  `@rocicorp/zero/react` recriando instância, o `re-parent` de `on-zero`
+  (`createZeroClient.tsx`: `if (disable) return children` — hoje `disable` não é passado,
+  mas confira), ou o layout raiz re-renderizando.
+
   Medido no navegador, com `history.pushState/replaceState` instrumentado:
 
   | pedido | chega em |
