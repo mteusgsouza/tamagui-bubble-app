@@ -115,6 +115,28 @@ Estado real da Fase 4:
   em `/mnt/f/apps/bubble-app/mobile-bubble-app`.
 - Abrir o WSL com `wsl --cd /mnt/f/apps/bubble-app` — lançar da pasta do projeto cai
   no bind mount do Docker (`/mnt/wsl/docker-desktop-bind-mounts/...`).
+- 🔴 **Nunca rode `bun backend` de dentro do bind mount.** O Compose deriva o **nome do
+  projeto do diretório**, então lá ele monta uma stack **paralela** (`6e1d6912...`) com
+  rede e volumes próprios — e morre com:
+
+  ```
+  Bind for 0.0.0.0:5533 failed: port is already allocated
+  ```
+
+  A porta já é da stack de verdade. O erro engana: parece conflito de porta, é diretório
+  errado. Confira com `docker compose ls -a` — se aparecer um projeto com nome de hash,
+  é isso. Limpeza (**só a stack de hash**, os volumes `mobile-bubble-app_*` são os seus):
+
+  ```bash
+  P=<hash>
+  docker rm -f "$P-zero-1" "$P-migrate-1" "$P-pgdb-1"
+  docker volume rm "${P}_pgdb_data" "${P}_zero_data"
+  docker network rm "${P}_default"
+  ```
+
+  Depois suba do lugar certo: `cd /mnt/f/apps/bubble-app/mobile-bubble-app && bun backend`.
+- ℹ️ `docker compose up -d` às vezes deixa o **zero de fora** quando o `migrate` acabou de
+  rodar. Suba explicitamente: `docker compose up -d zero`.
 - Subir o backend: `bun backend` → pgdb **:5533**, zero-cache **:4948**, migrate (sai 0).
   `bun backend` roda `migrate:build` antes, então gera migration nova se o schema mudou.
 - Subir o app: `bun dev` → web em **:8081**.
