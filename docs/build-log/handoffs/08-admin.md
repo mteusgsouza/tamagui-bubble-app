@@ -112,6 +112,31 @@ docker compose exec pgdb psql -U user -d postgres -c "UPDATE \"user\" SET role =
 ⚠️ **Depois disso é preciso sair e entrar de novo** — a claim `role` do JWT tem 3 anos de
 validade e o token atual continua dizendo `user`.
 
+## Revisão do composer (depois do feedback do usuário)
+
+A primeira versão pedia que o criador **escolhesse o tipo do post** num seletor
+"Texto / Foto / Vídeo / Áudio". Isso é coluna do banco vazando para a tela: quem publica
+solta o arquivo e segue. Refeito:
+
+- **A mídia é o primeiro campo**, numa área tracejada grande. Ordem:
+  mídia → título → texto → bloco "Publicação".
+- **O tipo é deduzido** do primeiro arquivo (`deriveKind` em
+  `src/features/admin/postMediaRules.ts`) e gravado **na hora** que a mídia muda — não no
+  "Salvar", senão o card do feed mostraria o rótulo errado nesse meio-tempo.
+- **Fotos: até 9 por post**, escolhidas de uma vez, em grade de 3 colunas com contador
+  "3 de 9". **Vídeo e áudio: 1 só**, e o botão de adicionar some.
+- **Sem mistura de tipos** — decisão do usuário. `post.kind` é um valor único; misturar
+  deixaria o rótulo do card mentindo.
+- **"Exige plano" só aparece com "Assinantes"** selecionado. Plano não faz sentido em
+  post aberto, e o `save` limpa o campo se a visibilidade virar pública.
+
+`MediaPicker.tsx` foi substituído por `PostMediaField.tsx`. As regras ficaram num módulo
+puro para serem testadas (`post-media-rules.test.ts`, 9 testes).
+
+**Validado no navegador:** post novo nasce "Só texto"; anexadas 3 fotos, a tela virou
+"Foto" com grade e "3 de 9" e o banco gravou `kind = photo` sozinho; trocado por 1 vídeo,
+virou "Vídeo", o "+" sumiu e o banco gravou `kind = video`.
+
 ## Não feito
 
 - **Agendamento de post.** O plano citava "upload + agendamento". `publishedAt` aceita

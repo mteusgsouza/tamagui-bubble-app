@@ -13,36 +13,44 @@ const ACCEPT_BY_KIND = {
 export type PickKind = keyof typeof ACCEPT_BY_KIND
 
 /**
- * Abre o seletor do sistema e resolve com o arquivo, ou `null` se o usuário cancelar.
+ * Abre o seletor do sistema e resolve com os arquivos escolhidos (lista vazia se
+ * cancelar).
  *
  * ⚠️ Cancelar não dispara evento em todo navegador. O `focus` da janela é o sinal que
  * sobra: se voltamos ao app e nenhum `change` veio, foi cancelamento.
  */
-export function pickFile(kind: PickKind = 'any'): Promise<File | null> {
+export function pickFiles(
+  kind: PickKind = 'any',
+  multiple = false,
+): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = ACCEPT_BY_KIND[kind]
+    input.multiple = multiple
     input.style.display = 'none'
 
     let settled = false
-    const finish = (file: File | null) => {
+    const finish = () => {
       if (settled) return
       settled = true
+      const files = input.files ? Array.from(input.files) : []
       input.remove()
-      resolve(file)
+      resolve(files)
     }
 
-    input.onchange = () => finish(input.files?.[0] ?? null)
+    input.onchange = finish
 
     // rede de segurança para o cancelamento
-    window.addEventListener(
-      'focus',
-      () => setTimeout(() => finish(input.files?.[0] ?? null), 500),
-      { once: true },
-    )
+    window.addEventListener('focus', () => setTimeout(finish, 500), { once: true })
 
     document.body.appendChild(input)
     input.click()
   })
+}
+
+/** Conveniência para quando só um arquivo interessa. */
+export async function pickFile(kind: PickKind = 'any'): Promise<File | null> {
+  const [file] = await pickFiles(kind, false)
+  return file ?? null
 }

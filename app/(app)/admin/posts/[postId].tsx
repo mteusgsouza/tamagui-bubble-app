@@ -1,28 +1,21 @@
-import { useParams, useRouter, createRoute } from 'one'
-import { memo, useEffect, useState } from 'react'
+import { createRoute, useParams, useRouter } from 'one'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
 import { adminPost } from '~/data/queries/admin'
 import { activePlans } from '~/data/queries/subscription'
 import { AdminSection } from '~/features/admin/AdminShell'
-import { MediaPicker } from '~/features/admin/MediaPicker'
 import { OptionRow, TextField } from '~/features/admin/fields'
+import { PostMediaField } from '~/features/admin/PostMediaField'
+import { deriveKind } from '~/features/admin/postMediaRules'
 import { useAuth } from '~/features/auth/client/authClient'
-import { newId } from '~/helpers/id'
 import { Button } from '~/interface/buttons/Button'
 import { useQuery, zero } from '~/zero/client'
 
 import type { PostKind, Visibility } from '~/data/types'
 
 const route = createRoute<'/(app)/admin/posts/[postId]'>()
-
-const KINDS: { id: PostKind; label: string }[] = [
-  { id: 'text', label: 'Texto' },
-  { id: 'photo', label: 'Foto' },
-  { id: 'video', label: 'Vídeo' },
-  { id: 'audio', label: 'Áudio' },
-]
 
 const VISIBILITIES: { id: Visibility; label: string }[] = [
   { id: 'subscribers', label: 'Assinantes' },
@@ -44,25 +37,23 @@ export const AdminPostEditPage = memo(() => {
   )
   const [plans] = useQuery(activePlans, { enabled: Boolean(userId) })
 
-  // rascunho local: o Zero é a fonte, mas digitar não pode disparar mutation por tecla
+  // rascunho local: o Zero é a fonte, mas digitar não pode disparar mutation por tecla.
+  // `kind` NÃO entra aqui — ele é deduzido da mídia, nunca escolhido.
   const [draft, setDraft] = useState({
     title: '',
     body: '',
-    kind: 'text' as PostKind,
     visibility: 'subscribers' as Visibility,
     requiredPlanId: null as string | null,
   })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // carrega o post no formulário uma vez; depois disso quem manda é o que está digitado
   useEffect(() => {
     if (loaded || isNew || !post) return
     const row = post as any
     setDraft({
       title: row.title || '',
       body: row.body || '',
-      kind: row.kind,
       visibility: row.visibility,
       requiredPlanId: row.requiredPlanId ?? null,
     })
@@ -73,16 +64,37 @@ export const AdminPostEditPage = memo(() => {
   const exists = Boolean(row)
   const isLoading = !isNew && status?.type !== 'complete' && !post
 
+  const attached = (row?.media ?? []) as any[]
+  const kind = deriveKind(attached)
+
+  // anexar mídia já é mutation imediata, então o `kind` do banco tem que acompanhar na
+  // hora — esperar o "Salvar" deixaria o card do feed com o rótulo errado nesse meio.
+  const savedKindRef = useRef<PostKind | null>(null)
+  const onKindChange = useCallback(
+    (next: PostKind) => {
+      if (!postId || !exists) return
+      if (savedKindRef.current === next || row?.kind === next) {
+        savedKindRef.current = next
+        return
+      }
+      savedKindRef.current = next
+      void zero.mutate.post.update({ id: postId, kind: next })
+    },
+    [postId, exists, row?.kind],
+  )
+
   const save = async () => {
     if (!postId || !userId || saving) return
     setSaving(true)
     try {
       const shared = {
-        kind: draft.kind,
+        kind,
         title: draft.title.trim() || undefined,
         body: draft.body.trim() || undefined,
         visibility: draft.visibility,
-        requiredPlanId: draft.requiredPlanId ?? undefined,
+        // plano só faz sentido em post de assinante
+        requiredPlanId:
+          draft.visibility === 'subscribers' ? (draft.requiredPlanId ?? undefined) : undefined,
       }
 
       if (exists) {
@@ -100,7 +112,6 @@ export const AdminPostEditPage = memo(() => {
           createdAt: Date.now(),
           ...shared,
         })
-        // sai do modo "novo" para a tela passar a editar em vez de recriar
         router.replace(`/admin/posts/${postId}`)
       }
     } finally {
@@ -141,16 +152,19 @@ export const AdminPostEditPage = memo(() => {
     )
   }
 
+  const KIND_LABEL: Record<PostKind, string> = {
+    text: 'Só texto',
+    photo: 'Foto',
+    video: 'Vídeo',
+    audio: 'Áudio',
+  }
+
   return (
     <AdminSection
       title={isNew && !exists ? 'Novo post' : 'Editar post'}
       detail={
         exists
-          ? row.deleted
-            ? 'Apagado — só você vê'
-            : row.published
-              ? 'Publicado'
-              : 'Rascunho'
+          ? `${row.deleted ? 'Apagado — só você vê' : row.published ? 'Publicado' : 'Rascunho'} · ${KIND_LABEL[kind]}`
           : 'Ainda não salvo'
       }
       action={
@@ -174,13 +188,41 @@ export const AdminPostEditPage = memo(() => {
         </XStack>
       }
     >
-      <YStack gap="$4">
+      <YStack gap="$5">
+        {/* a mídia é o campo principal: vem primeiro e o tipo do post sai dela */}
+        {exists ? (
+          <PostMediaField
+            postId={postId!}
+            attached={attached}
+            onKindChange={onKindChange}
+          />
+        ) : (
+          <YStack
+            height={200}
+            rounded="$6"
+            borderWidth={1.5}
+            borderStyle="dashed"
+            borderColor="$borderColor"
+            items="center"
+            justify="center"
+            gap="$1"
+          >
+            <SizableText size="$3" fontWeight="600" color="$color10">
+              Salve para anexar mídia
+            </SizableText>
+            <SizableText size="$1" color="$color9">
+              o post precisa existir antes de receber arquivo
+            </SizableText>
+          </YStack>
+        )}
+
         <TextField
           label="Título"
           value={draft.title}
           onChange={(title) => setDraft((d) => ({ ...d, title }))}
           placeholder="O que este post diz em uma linha"
           testID="post-title"
+          size="lg"
         />
 
         <TextField
@@ -192,45 +234,42 @@ export const AdminPostEditPage = memo(() => {
           testID="post-body"
         />
 
-        <OptionRow
-          label="Tipo"
-          options={KINDS}
-          value={draft.kind}
-          onChange={(kind) => setDraft((d) => ({ ...d, kind }))}
-        />
-
-        <OptionRow
-          label="Quem vê"
-          options={VISIBILITIES}
-          value={draft.visibility}
-          onChange={(visibility) => setDraft((d) => ({ ...d, visibility }))}
-        />
-
-        <OptionRow
-          label="Exige plano"
-          hint="Sem plano, qualquer assinatura ativa libera. Com plano, só aquele."
-          options={[
-            { id: '', label: 'Qualquer assinatura' },
-            ...(plans ?? []).map((p: any) => ({ id: p.id, label: p.name })),
-          ]}
-          value={draft.requiredPlanId ?? ''}
-          onChange={(id) => setDraft((d) => ({ ...d, requiredPlanId: id || null }))}
-        />
-
-        {exists ? (
-          <MediaPicker
-            postId={postId!}
-            kind={draft.kind}
-            attached={(row.media ?? []) as any[]}
-          />
-        ) : (
-          <SizableText size="$2" color="$color10">
-            Salve o post para poder anexar mídia.
+        <YStack
+          gap="$4"
+          p="$3"
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$color1"
+        >
+          <SizableText size="$3" fontWeight="700">
+            Publicação
           </SizableText>
-        )}
+
+          <OptionRow
+            label="Quem vê"
+            options={VISIBILITIES}
+            value={draft.visibility}
+            onChange={(visibility) => setDraft((d) => ({ ...d, visibility }))}
+          />
+
+          {/* plano não faz sentido em post aberto */}
+          {draft.visibility === 'subscribers' ? (
+            <OptionRow
+              label="Exige plano"
+              hint="Sem plano, qualquer assinatura ativa libera. Com plano, só aquele."
+              options={[
+                { id: '', label: 'Qualquer assinatura' },
+                ...(plans ?? []).map((p: any) => ({ id: p.id, label: p.name })),
+              ]}
+              value={draft.requiredPlanId ?? ''}
+              onChange={(id) => setDraft((d) => ({ ...d, requiredPlanId: id || null }))}
+            />
+          ) : null}
+        </YStack>
 
         {exists && !row.deleted ? (
-          <XStack pt="$4">
+          <XStack>
             <Button size="$2" variant="outlined" onPress={remove}>
               <SizableText size="$2" color="$red10">
                 Apagar post

@@ -13,6 +13,7 @@ export const TextField = ({
   multiline,
   hint,
   testID,
+  size = 'md',
 }: {
   label: string
   value: string
@@ -21,6 +22,8 @@ export const TextField = ({
   multiline?: boolean
   hint?: string
   testID?: string
+  /** `lg` para o campo dominante da tela — hoje só o título do post */
+  size?: 'md' | 'lg'
 }) => (
   <YStack gap="$1.5">
     <FieldLabel label={label} hint={hint} />
@@ -38,6 +41,9 @@ export const TextField = ({
         onChangeText={onChange}
         placeholder={placeholder}
         data-testid={testID}
+        {...(size === 'lg'
+          ? { size: '$6' as const, height: 58, fontWeight: '600' as const }
+          : null)}
       />
     )}
   </YStack>

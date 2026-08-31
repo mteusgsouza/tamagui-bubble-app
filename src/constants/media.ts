@@ -63,6 +63,15 @@ export const MEDIA_STREAM_TTL_SEC = 4 * 60 * 60
 /** TTL da URL assinada de upload. Maior porque o PUT do arquivo inteiro cabe dentro. */
 export const UPLOAD_URL_TTL_SEC = 900
 
+/**
+ * Quantas fotos cabem num post.
+ *
+ * Vídeo e áudio ficam em 1 por post: `post.kind` é um valor único, então misturar
+ * tipos deixaria o rótulo do card do feed mentindo. Foto é a exceção porque carrossel
+ * de fotos é o caso comum.
+ */
+export const MAX_PHOTOS_PER_POST = 9
+
 /** Poster (frame de capa) é sempre imagem, independente do `kind` da mídia. */
 export const POSTER_MIME = 'image/jpeg'
 
