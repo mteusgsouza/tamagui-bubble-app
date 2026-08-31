@@ -249,74 +249,32 @@ Estado real da Fase 4:
 
   Corolário: **fluxo de auth só se prova clicando de verdade**, como o upload de
   navegador da Fase 5. Roteiro no [handoff 10](./handoffs/10-auth.md).
-- 🔴 **DEEP LINK NÃO FUNCIONA NA WEB — bug pré-existente, não resolvido.**
-  Carregar direto qualquer URL abaixo do grupo de abas cai em `/home/feed`. Vale para
-  rota do starter também (`/home/settings/edit-profile`), então **não veio das Fases
-  5–7**. Navegação dentro do app funciona normal; só o carregamento direto quebra.
-  Isso também impede compartilhar link de post ou de curso.
+- ✅ **DEEP LINK NA WEB: RESOLVIDO.** O sintoma era carregamento direto de URL terminando
+  em outra rota — e, depois da Fase 8, terminando em `/admin`, inclusive logo após o
+  login e no logout.
 
-  ### ✅ O linking do One está CERTO — o problema é remontagem
+  **Causa:** o guard de `app/(app)/_layout.tsx` fazia `if (state === 'loading') return null`.
+  Isso desmontava a árvore inteira — providers e roteador junto. Quando a sessão resolvia
+  (~200ms depois do boot), tudo remontava e o roteador se reinicializava na **primeira
+  rota do grupo em ordem alfabética**, que virou `/admin` quando a Fase 8 criou a pasta.
 
-  Pesquisado a fundo. **Não perca tempo com o linking config:**
+  **Medido**, instrumentando `history.pushState`/`replaceState` no navegador:
 
-  - `getReactNavigationConfig` gera os paths corretamente:
-    `[courseSlug]/index` → `:courseSlug`, `[courseSlug]/[lessonId]` →
-    `:courseSlug/:lessonId`, `index` → `''`. Conferido em
-    `node_modules/one/src/getReactNavigationConfig.ts`.
-  - `getInitialURL()` na web devolve `window.location.href` — a URL real, não a raiz
-    (`node_modules/one/src/link/linking.ts`). O comentário sobre "sempre começar na raiz"
-    vale só para o **nativo**.
-  - `metaOnly` em `getLinkingConfig` só controla se o nó `_route` é anexado; não afeta
-    paths.
+  | | antes | depois |
+  |---|---|---|
+  | `/home/feed` direto | `/home/feed` → **`/admin`** (1237ms) → `/home/feed` (1530ms) → `/auth/login` | `/home/feed` do começo ao fim |
+  | estabilizou em | 1679ms | 573ms |
 
-  **Prova de que o roteador acerta a rota:** neutralizando o guard de
-  `app/(app)/_layout.tsx` (sem `null`, sem redirect) e carregando
-  `/home/courses/<slug>` direto, a rede mostra `[courseSlug]/index.tsx`,
-  `CourseCurriculum.tsx`, `courseStats.ts` e `ProgressBar.tsx` **sendo carregados**. A
-  rota resolve e monta. Só depois a URL volta para `/home/courses`.
+  **Conserto:** nunca devolver `null` do guard. Os providers ficam montados o tempo todo
+  e só o conteúdo é trocado; o redirect passou a ser decidido depois que a sessão resolve.
 
-  **Onde está errando: a árvore remonta.** No mesmo teste, o console mostra
-  **~15 linhas** de `[zero] enabled {userId: demo-user-id, kvStore: idb}`. Esse
-  `console.info` está num `useEffect` com deps `[disable, userId, kvStore]`, e
-  `kvStore` vem de `useMemo(..., [userId])` — com `userId` **estável** o efeito só
-  poderia disparar de novo se o componente **remontasse**. Cada remontagem do
-  `ProvideZeroImpl` derruba a árvore abaixo e o react-navigation reseta o navegador
-  para a rota inicial do grupo.
+  ⚠️ **Se voltar a acontecer, o alvo é a mesma classe de problema:** algo desmontando a
+  árvore do roteador. E o destino do escorregão é sempre a primeira rota do grupo em
+  ordem alfabética — hoje `/admin`.
 
-  Por isso o sintoma varia conforme o nível: `courses/<slug>` volta para
-  `courses/index`, `feed/<postId>` para `feed/index`, e às vezes cai até em
-  `/home/feed`.
+  Verificado sem passar por `/admin`: `/home/feed` direto, `/home/courses` direto,
+  `/home/settings` deslogado (→ `/auth/login`) e o login completo (→ `/home/feed`).
 
-  **Próximo passo para quem pegar:** descobrir o que remonta `ProvideZeroImpl` em laço
-  (`src/zero/client.tsx`) — não mexer no linking. Suspeitos: o `ZeroProvider` do
-  `@rocicorp/zero/react` recriando instância, o `re-parent` de `on-zero`
-  (`createZeroClient.tsx`: `if (disable) return children` — hoje `disable` não é passado,
-  mas confira), ou o layout raiz re-renderizando.
-
-  Medido no navegador, com `history.pushState/replaceState` instrumentado:
-
-  | pedido | chega em |
-  |---|---|
-  | `/home/courses/<slug>` | `/home/courses` ou `/home/feed` |
-  | `/home/feed/<postId>` | `/home/feed` |
-  | `/home/settings/edit-profile` | `/home/feed` |
-
-  O passo revelador: o roteador reescreve para `/auth/login?courseSlug=<slug>` —
-  **levando os params da rota original**. Isso é o react-navigation recaindo na primeira
-  rota do grupo `(app)`, que é `auth` (vem antes de `home` na árvore). O gatilho é o
-  `return null` de `app/(app)/_layout.tsx` enquanto `state === 'loading'`: devolver
-  `null` desmonta o navegador filho.
-
-  ⚠️ **Tentei remover esse `return null` e PIOROU** — o comportamento virou
-  intermitente (às vezes chegava na rota certa, às vezes no feed). Revertido ao original.
-  Quem for atacar isso precisa entender o linking do One primeiro; provavelmente a
-  solução real é `defaultRenderMode` diferente de `'spa'` no `vite.config.ts`, ou um
-  gate que não desmonte a árvore.
-
-  Já descartados com evidência: bundle velho no navegador (recarga com cache-bust),
-  registro de rota (a árvore do cliente tem as rotas certas), `index+ssg.tsx` (o módulo
-  nunca é carregado na rede) e corrida do estado de auth (o rastro mostra `loading` nos
-  dois renders, nunca `logged-out`).
 - ✅ **Corrigido no caminho:** `ONE_SUSPEND_ROUTES=1` estava no `.env.development` e o
   One deixa isso **off por padrão na web** ("suspense causes flickers on web during nav
   since react navigation doesn't properly respect startTransition"). Com ele ligado, o
