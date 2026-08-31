@@ -42,6 +42,18 @@ export const {
 // re-export global run for convenience
 export { run } from 'on-zero'
 
+/**
+ * Apaga o banco local do Zero (IndexedDB).
+ *
+ * Usado no logout: sem isto o conteúdo que o assinante sincronizou — inclusive o que é
+ * pago — continua no navegador da máquina depois que ele sai. Como pode travar se o
+ * cliente ainda segurar conexões, quem chama trata o erro e **não** bloqueia a saída:
+ * dado local que sobrevive é ruim, sessão que sobrevive é pior.
+ */
+export async function dropLocalZeroData() {
+  await dropAllDatabases()
+}
+
 const ProvideZeroImpl = ({ children }: { children: ReactNode }) => {
   const auth = useAuth()
   const userId = auth?.user?.id || 'anon'
