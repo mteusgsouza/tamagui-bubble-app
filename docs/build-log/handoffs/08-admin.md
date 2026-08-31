@@ -143,9 +143,12 @@ instante em que o arquivo é escolhido. Escolher arquivo já é intenção sufic
 virou "Vídeo", o "+" sumiu e o banco gravou `kind = video`. Escolhendo arquivo num post
 não salvo, a linha foi criada na hora (a URL perdeu o `?novo=1` sozinha).
 
-⚠️ **O upload em si morre no CORS do bucket** — ver `STATE.md`. Interceptei o seletor de
-arquivo no navegador para testar o caminho real e o PUT no R2 foi bloqueado. `scripts/r2-cors.ts`
-existe para consertar, mas precisa de um token R2 com permissão de administração.
+**Upload real pelo navegador: ✅ validado.** Interceptei o seletor de arquivo para testar
+o caminho de verdade e descobri que o PUT no R2 era bloqueado por CORS — a Fase 5 tinha
+"validado" o upload pelo `media-smoke.ts`, que roda no Node e não passa por CORS.
+`scripts/r2-cors.ts` aplicou a política (precisa de token R2 com Admin Read & Write) e o
+fluxo fechou: 3 fotos de uma vez → `ready` no banco → `kind = photo` sozinho → publicado
+→ carrossel "1/3" no feed.
 
 ## Não feito
 

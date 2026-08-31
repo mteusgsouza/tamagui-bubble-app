@@ -155,25 +155,24 @@ Estado real da Fase 4:
   legado do Bun com target de browser e falha com
   `Browser build cannot require() Node.js builtin: "tls"`. O erro não tem nada a ver com
   o script.
-- 🔴 **UPLOAD PELO NAVEGADOR ESTÁ BLOQUEADO POR CORS — nunca funcionou.**
-  O PUT assinado é cross-origin (app em `:8081`, bucket em `r2.cloudflarestorage.com`) e
-  o preflight morre com `No 'Access-Control-Allow-Origin' header`. A mídia chega a ser
-  criada com `status: 'pending'` e para aí.
+- ✅ **Upload pelo navegador: RESOLVIDO e validado ponta a ponta (2026-08-31).**
+  Estava bloqueado por CORS — o PUT assinado é cross-origin (app em `:8081`, bucket em
+  `r2.cloudflarestorage.com`) e o preflight morria com
+  `No 'Access-Control-Allow-Origin' header`.
 
-  ⚠️ **Como isso passou pela verificação da Fase 5:** o `scripts/media-smoke.ts` sobe pelo
-  **Node**, que não tem CORS. O caminho testado era incapaz de pegar o problema. Lição:
-  upload de navegador só se prova no navegador.
+  ⚠️ **Como isso escapou da verificação da Fase 5:** o `scripts/media-smoke.ts` sobe pelo
+  **Node**, que não tem CORS. As imagens que já estavam no bucket vieram por ali. O
+  caminho testado era incapaz de pegar o problema. **Lição: upload de navegador só se
+  prova no navegador.**
 
-  **Conserto:** aplicar a política de CORS no bucket. Existe `scripts/r2-cors.ts` que faz
-  isso pela API S3 do R2 — **a assinatura dele está correta** (o R2 responde
-  `AccessDenied`, não `SignatureDoesNotMatch`), mas o token atual em `.env.local` é de
-  **objeto**, não de administração, então recebe 403. Duas saídas:
-  1. criar um token R2 com **Admin Read & Write** e rodar
-     `bun run:dev scripts/r2-cors.ts`;
-  2. colar a política no painel (R2 → Settings → CORS Policy) — o JSON está em
-     `.env.local.example`.
+  Conserto: `scripts/r2-cors.ts` aplica a política pela API S3 do R2 (SigV4 por
+  cabeçalho, diferente do `r2.ts` que assina por query string e só serve para objeto).
+  Exige token R2 com **Admin Read & Write** — token de objeto recebe `AccessDenied`.
+  `--get` lê a política sem alterar nada.
 
-  Rodar `bun run:dev scripts/r2-cors.ts --get` mostra a política atual sem alterar nada.
+  Validado: 3 fotos escolhidas de uma vez no composer → `status: 'ready'` com bytes
+  reais no Postgres (o `complete` confere por HEAD no bucket) → `post.kind = photo`
+  deduzido sozinho → post publicado aparece no feed com o carrossel e o indicador "1/3".
 
 - 🔴 **DEEP LINK NÃO FUNCIONA NA WEB — bug pré-existente, não resolvido.**
   Carregar direto qualquer URL abaixo do grupo de abas cai em `/home/feed`. Vale para
