@@ -1,6 +1,7 @@
 # Fase 8 — Admin (web-only, mesmo projeto)
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** —
+**Status:** ✅ concluída — ver [`../handoffs/08-admin.md`](../handoffs/08-admin.md)
+· **Pré-requisito humano:** —
 
 ## Escopo
 

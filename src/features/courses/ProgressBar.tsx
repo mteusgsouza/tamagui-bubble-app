@@ -1,7 +1,13 @@
 import { YStack } from 'tamagui'
 
 /** Barra fina de progresso. `ratio` de 0 a 1; valores fora da faixa são fixados. */
-export const ProgressBar = ({ ratio, height = 4 }: { ratio: number; height?: number }) => {
+export const ProgressBar = ({
+  ratio,
+  height = 4,
+}: {
+  ratio: number
+  height?: number
+}) => {
   const clamped = Math.max(0, Math.min(ratio, 1))
 
   return (

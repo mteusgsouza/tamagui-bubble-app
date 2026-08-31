@@ -4,72 +4,108 @@ import { defineQuery, defineQueries } from '@rocicorp/zero'
 import * as v from 'valibot'
 import * as Queries from './groupedQueries'
 
+const admin = {
+  adminCourse: defineQuery(
+    v.object({
+      courseId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.admin.adminCourse(args),
+  ),
+  adminCourses: defineQuery(
+    v.object({
+      feedOwnerId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.admin.adminCourses(args),
+  ),
+  adminPost: defineQuery(
+    v.object({
+      postId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.admin.adminPost(args),
+  ),
+  adminPosts: defineQuery(
+    v.object({
+      feedOwnerId: v.string(),
+      userId: v.string(),
+      limit: v.optional(v.number()),
+    }),
+    ({ args }) => Queries.admin.adminPosts(args),
+  ),
+}
+
 const course = {
   courseBySlug: defineQuery(
     v.object({
-        feedOwnerId: v.string(),
-        slug: v.string(),
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.course.courseBySlug(args)
+      feedOwnerId: v.string(),
+      slug: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.courseBySlug(args),
   ),
   courseDetail: defineQuery(
     v.object({
-        courseId: v.string(),
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.course.courseDetail(args)
+      courseId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.courseDetail(args),
   ),
   courses: defineQuery(
     v.object({
-        feedOwnerId: v.string(),
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.course.courses(args)
+      feedOwnerId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.courses(args),
   ),
   lessonDetail: defineQuery(
     v.object({
-        lessonId: v.string(),
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.course.lessonDetail(args)
+      lessonId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.course.lessonDetail(args),
   ),
   lessonsInProgress: defineQuery(
     v.object({
-        userId: v.string(),
-        limit: v.optional(v.number()),
-      }),
-    ({ args }) => Queries.course.lessonsInProgress(args)
+      userId: v.string(),
+      limit: v.optional(v.number()),
+    }),
+    ({ args }) => Queries.course.lessonsInProgress(args),
   ),
 }
 
 const feed = {
   feedPosts: defineQuery(
     v.object({
-        feedOwnerId: v.string(),
-        userId: v.string(),
-        limit: v.optional(v.number()),
-      }),
-    ({ args }) => Queries.feed.feedPosts(args)
+      feedOwnerId: v.string(),
+      userId: v.string(),
+      limit: v.optional(v.number()),
+    }),
+    ({ args }) => Queries.feed.feedPosts(args),
   ),
   feedPostsPage: defineQuery(
     v.object({
-        feedOwnerId: v.string(),
-        userId: v.string(),
-        pageSize: v.number(),
-        cursor: v.optional(v.nullable(v.object({
-        id: v.string(),
-        publishedAt: v.number(),
-      }))),
-      }),
-    ({ args }) => Queries.feed.feedPostsPage(args)
+      feedOwnerId: v.string(),
+      userId: v.string(),
+      pageSize: v.number(),
+      cursor: v.optional(
+        v.nullable(
+          v.object({
+            id: v.string(),
+            publishedAt: v.number(),
+          }),
+        ),
+      ),
+    }),
+    ({ args }) => Queries.feed.feedPostsPage(args),
   ),
   postDetail: defineQuery(
     v.object({
-        postId: v.string(),
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.feed.postDetail(args)
+      postId: v.string(),
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.feed.postDetail(args),
   ),
 }
 
@@ -77,36 +113,37 @@ const subscription = {
   activePlans: defineQuery(() => Queries.subscription.activePlans()),
   activeSubscription: defineQuery(
     v.object({
-        userId: v.string(),
-        creatorId: v.string(),
-      }),
-    ({ args }) => Queries.subscription.activeSubscription(args)
+      userId: v.string(),
+      creatorId: v.string(),
+    }),
+    ({ args }) => Queries.subscription.activeSubscription(args),
   ),
   mySubscriptions: defineQuery(
     v.object({
-        userId: v.string(),
-        creatorId: v.string(),
-      }),
-    ({ args }) => Queries.subscription.mySubscriptions(args)
+      userId: v.string(),
+      creatorId: v.string(),
+    }),
+    ({ args }) => Queries.subscription.mySubscriptions(args),
   ),
 }
 
 const user = {
   userById: defineQuery(
     v.object({
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.user.userById(args)
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.user.userById(args),
   ),
   userWithState: defineQuery(
     v.object({
-        userId: v.string(),
-      }),
-    ({ args }) => Queries.user.userWithState(args)
+      userId: v.string(),
+    }),
+    ({ args }) => Queries.user.userWithState(args),
   ),
 }
 
 export const queries = defineQueries({
+  admin,
   course,
   feed,
   subscription,

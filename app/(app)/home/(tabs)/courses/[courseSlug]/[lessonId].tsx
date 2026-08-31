@@ -20,7 +20,6 @@ import type { Course, CourseLesson } from '~/features/courses/types'
 
 const route = createRoute<'/(app)/home/(tabs)/courses/[courseSlug]/[lessonId]'>()
 
-
 export const LessonPage = memo(() => {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -121,9 +120,7 @@ const LessonBody = ({
     alreadyComplete: done,
   })
 
-  const position = course
-    ? lessonPosition(course, lesson.id)
-    : { index: 0, total: 0 }
+  const position = course ? lessonPosition(course, lesson.id) : { index: 0, total: 0 }
   const next = course ? lessonAfter(course, lesson.id) : undefined
   const duration = formatDuration(lesson.durationSec)
 

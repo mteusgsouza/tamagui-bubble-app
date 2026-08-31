@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  fullDate,
-  plural,
-  timeAgo,
-  visibilityLabel,
-} from '~/features/feed/formatDate'
+import { fullDate, plural, timeAgo, visibilityLabel } from '~/features/feed/formatDate'
 import { postMediaItems } from '~/features/feed/types'
 
 const MINUTE = 60_000

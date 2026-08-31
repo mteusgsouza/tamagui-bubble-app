@@ -9,6 +9,13 @@ declare module 'one' {
       StaticRoutes: 
         | `/`
         | `/(app)`
+        | `/(app)/admin`
+        | `/(app)/admin/`
+        | `/(app)/admin/courses`
+        | `/(app)/admin/courses/`
+        | `/(app)/admin/people`
+        | `/(app)/admin/posts`
+        | `/(app)/admin/posts/`
         | `/(app)/auth`
         | `/(app)/auth/login`
         | `/(app)/auth/login/password`
@@ -27,6 +34,13 @@ declare module 'one' {
         | `/(app)/home/settings/blocked-users`
         | `/(app)/home/settings/edit-profile`
         | `/_sitemap`
+        | `/admin`
+        | `/admin/`
+        | `/admin/courses`
+        | `/admin/courses/`
+        | `/admin/people`
+        | `/admin/posts`
+        | `/admin/posts/`
         | `/auth`
         | `/auth/login`
         | `/auth/login/password`
@@ -45,6 +59,8 @@ declare module 'one' {
         | `/home/settings/blocked-users`
         | `/home/settings/edit-profile`
       DynamicRoutes: 
+        | `/(app)/admin/courses/${OneRouter.SingleRoutePart<T>}`
+        | `/(app)/admin/posts/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/auth/signup/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
@@ -52,6 +68,8 @@ declare module 'one' {
         | `/(app)/home/courses/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/feed/${OneRouter.SingleRoutePart<T>}`
+        | `/admin/courses/${OneRouter.SingleRoutePart<T>}`
+        | `/admin/posts/${OneRouter.SingleRoutePart<T>}`
         | `/auth/signup/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
@@ -60,6 +78,8 @@ declare module 'one' {
         | `/home/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
         | `/home/feed/${OneRouter.SingleRoutePart<T>}`
       DynamicRouteTemplate: 
+        | `/(app)/admin/courses/[courseId]`
+        | `/(app)/admin/posts/[postId]`
         | `/(app)/auth/signup/[method]`
         | `/(app)/home/(tabs)/courses/[courseSlug]`
         | `/(app)/home/(tabs)/courses/[courseSlug]/[lessonId]`
@@ -67,6 +87,8 @@ declare module 'one' {
         | `/(app)/home/courses/[courseSlug]`
         | `/(app)/home/courses/[courseSlug]/[lessonId]`
         | `/(app)/home/feed/[postId]`
+        | `/admin/courses/[courseId]`
+        | `/admin/posts/[postId]`
         | `/auth/signup/[method]`
         | `/home/(tabs)/courses/[courseSlug]`
         | `/home/(tabs)/courses/[courseSlug]/[lessonId]`
@@ -76,6 +98,8 @@ declare module 'one' {
         | `/home/feed/[postId]`
       IsTyped: true
       RouteTypes: {
+        '/(app)/admin/courses/[courseId]': RouteInfo<{ courseId: string }>
+        '/(app)/admin/posts/[postId]': RouteInfo<{ postId: string }>
         '/(app)/auth/signup/[method]': RouteInfo<{ method: string }>
         '/(app)/home/(tabs)/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
         '/(app)/home/(tabs)/courses/[courseSlug]/[lessonId]': RouteInfo<{ courseSlug: string; lessonId: string }>
@@ -83,6 +107,8 @@ declare module 'one' {
         '/(app)/home/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
         '/(app)/home/courses/[courseSlug]/[lessonId]': RouteInfo<{ courseSlug: string; lessonId: string }>
         '/(app)/home/feed/[postId]': RouteInfo<{ postId: string }>
+        '/admin/courses/[courseId]': RouteInfo<{ courseId: string }>
+        '/admin/posts/[postId]': RouteInfo<{ postId: string }>
         '/auth/signup/[method]': RouteInfo<{ method: string }>
         '/home/(tabs)/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
         '/home/(tabs)/courses/[courseSlug]/[lessonId]': RouteInfo<{ courseSlug: string; lessonId: string }>

@@ -16,10 +16,7 @@ import type { Course, CourseLesson } from '~/features/courses/types'
 // O Zero não expõe agregação: toda contagem de curso sai das linhas sincronizadas.
 // É por isso que estas funções existem — e por isso vale testá-las.
 
-const lesson = (
-  id: string,
-  extra: Partial<CourseLesson> = {},
-): CourseLesson => ({
+const lesson = (id: string, extra: Partial<CourseLesson> = {}): CourseLesson => ({
   id,
   courseId: 'c1',
   title: `Aula ${id}`,
@@ -77,9 +74,9 @@ describe('courseStats', () => {
 
   test('detecta aula de amostra', () => {
     expect(courseStats(course([lesson('1')])).hasFreePreview).toBe(false)
-    expect(
-      courseStats(course([lesson('1', { freePreview: true })])).hasFreePreview,
-    ).toBe(true)
+    expect(courseStats(course([lesson('1', { freePreview: true })])).hasFreePreview).toBe(
+      true,
+    )
   })
 
   test('conta módulos', () => {
@@ -166,10 +163,9 @@ describe('formatLongDuration', () => {
 describe('linhas de resumo', () => {
   test('curso completo: módulos, aulas e duração', () => {
     const stats = courseStats(
-      course(
-        [lesson('1', { durationSec: 1800 }), lesson('2', { durationSec: 1080 })],
-        { modules: [{ id: 'm1', title: 'A', order: 0 }] },
-      ),
+      course([lesson('1', { durationSec: 1800 }), lesson('2', { durationSec: 1080 })], {
+        modules: [{ id: 'm1', title: 'A', order: 0 }],
+      }),
     )
     expect(courseSummaryLine(stats)).toBe('1 módulo · 2 aulas · 48 min')
   })

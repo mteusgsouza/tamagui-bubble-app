@@ -61,11 +61,7 @@ const PlayableMedia = ({
   onEnded,
   startAtSec,
 }: MediaViewProps & { aspectRatio?: number }) => {
-  const { url, loading, error, reload } = useSignedPlayback(
-    media.id,
-    'original',
-    enabled,
-  )
+  const { url, loading, error, reload } = useSignedPlayback(media.id, 'original', enabled)
 
   if (error) {
     return (

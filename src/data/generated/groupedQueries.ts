@@ -5,6 +5,7 @@
  * this file re-exports all query modules - while this breaks tree-shaking,
  * queries are typically small and few in number even in larger apps.
  */
+export * as admin from '../queries/admin'
 export * as course from '../queries/course'
 export * as feed from '../queries/feed'
 export * as subscription from '../queries/subscription'

@@ -69,11 +69,7 @@ export const POST: Endpoint = async (request) => {
   if (!head) {
     // o objeto não está lá: registra o fracasso em vez de deixar `pending` para sempre
     await db.update(media).set({ status: 'failed' }).where(eq(media.id, id))
-    return fail(
-      422,
-      'object-missing',
-      'O arquivo não chegou ao bucket. Refaça o upload.',
-    )
+    return fail(422, 'object-missing', 'O arquivo não chegou ao bucket. Refaça o upload.')
   }
 
   // poster é opcional: se foi pedido mas não subiu, some do registro em vez de virar

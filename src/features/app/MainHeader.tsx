@@ -2,6 +2,7 @@ import { Link, router } from 'one'
 import { memo, useState } from 'react'
 import { H3, Separator, Sheet, Spacer, View, XStack, YStack } from 'tamagui'
 
+import { canManage } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
 import { useLogout } from '~/features/auth/useLogout'
 import { Logo } from '~/interface/app/Logo'
@@ -17,7 +18,10 @@ import { ThemeSwitch } from '~/interface/theme/ThemeSwitch'
 import { NavigationTabs } from './NavigationTabs'
 
 export const MainHeader = () => {
-  const { user } = useAuth()
+  const { user, authData } = useAuth()
+  // o admin não tem aba própria: o deep link do One não sobrevive a recarga
+  // (ver STATE.md), então o único acesso confiável é este link
+  const showAdmin = canManage(authData)
   return (
     <ScrollHeader>
       <PageContainer>
@@ -44,6 +48,14 @@ export const MainHeader = () => {
             </XStack>
 
             <XStack gap="$2.5" items="center" display="none" $md={{ display: 'flex' }}>
+              {showAdmin ? (
+                <Link href="/admin" aria-label="Admin" data-testid="admin-link">
+                  <Button size="$2" variant="outlined" cursor="pointer">
+                    Admin
+                  </Button>
+                </Link>
+              ) : null}
+
               {user && (
                 <Button circular cursor="pointer">
                   <Avatar

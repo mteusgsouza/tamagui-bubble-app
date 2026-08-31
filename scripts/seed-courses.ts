@@ -110,10 +110,9 @@ async function seed() {
     await client.query('BEGIN')
 
     // o criador precisa existir em userPublic — as FKs de conteúdo apontam para lá
-    const { rowCount } = await client.query(
-      'SELECT 1 FROM "userPublic" WHERE id = $1',
-      [CREATOR],
-    )
+    const { rowCount } = await client.query('SELECT 1 FROM "userPublic" WHERE id = $1', [
+      CREATOR,
+    ])
     if (!rowCount) {
       throw new Error(
         `criador "${CREATOR}" não existe em userPublic. ` +

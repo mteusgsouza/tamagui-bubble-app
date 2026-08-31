@@ -221,8 +221,7 @@ export function useMediaUpload() {
           await putWithProgress({
             upload: signed.posterUpload,
             blob: input.poster,
-            onProgress: (ratio) =>
-              patch({ progress: FILE_SHARE + ratio * POSTER_SHARE }),
+            onProgress: (ratio) => patch({ progress: FILE_SHARE + ratio * POSTER_SHARE }),
             registerXhr: (xhr) => {
               xhrRef.current = xhr
             },

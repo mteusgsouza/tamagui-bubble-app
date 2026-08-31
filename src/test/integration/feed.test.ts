@@ -24,7 +24,10 @@ test('o feed lista os posts do criador', async ({ page }) => {
 
   const cards = page.locator('[data-testid="post-card"]')
   // o Zero sincroniza depois do primeiro render: espera a linha chegar
-  await cards.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+  await cards
+    .first()
+    .waitFor({ state: 'visible', timeout: 15000 })
+    .catch(() => {})
 
   const count = await cards.count()
   test.skip(count === 0, 'banco sem posts publicados para o criador')
@@ -38,7 +41,10 @@ test('abrir um post leva ao detalhe, com a caixa de comentário', async ({ page 
   await loginAsDemo(page)
 
   const links = page.locator('[data-testid="post-link"]')
-  await links.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+  await links
+    .first()
+    .waitFor({ state: 'visible', timeout: 15000 })
+    .catch(() => {})
 
   const count = await links.count()
   test.skip(count === 0, 'banco sem posts publicados para o criador')

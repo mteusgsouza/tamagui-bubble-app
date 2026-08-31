@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 7 — Cursos UI** (código pronto; falta o usuário validar) |
-| Próxima fase | **Fase 8 — Admin** |
+| Última fase concluída | **Fase 8 — Admin** (validada no navegador) |
+| Próxima fase | **Fase 9 — Billing** |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 
 Estado real da Fase 5:
@@ -33,6 +33,22 @@ Estado real da Fase 5:
   `storageKey` a esse usuário; a rota de playback barrou os bytes.
 - ℹ️ **sem migration e sem tabela nova.** O replica do zero-cache **não** precisa ser
   reconstruído nesta fase
+
+Estado real da Fase 8:
+
+- ✅ admin de conteúdo (posts com mídia, cursos com módulos/aulas) e de pessoas
+  (usuários, assinaturas, faturamento)
+- ✅ **validado no navegador**: criei um post pelo composer, publiquei, confirmei no
+  Postgres (`published = t`, `publishedAt` preenchido) e apaguei
+- ✅ typecheck limpo; **56 testes** passando
+- ℹ️ **dois níveis de acesso**: `canManage` (admin **ou** criador) abre o admin de
+  conteúdo; `canManagePeople` (só `role = 'admin'`) abre a aba Pessoas. O criador
+  semeado tem `role = 'user'`, então a aba Pessoas não aparece para ele
+- ℹ️ **as rotas de `/api/admin/` relêem a role do Postgres**, não do JWT — é o contorno
+  do token de 3 anos que o plano avisava
+- ⚠️ `admin` virou a **primeira rota do grupo `(app)`** em ordem alfabética, então o
+  fallback do carregamento direto agora pisca em `/admin` antes do destino. O destino
+  final não mudou (medido antes e depois)
 
 Estado real da Fase 7:
 
@@ -344,3 +360,4 @@ Estado real da Fase 4:
 - [`handoffs/05-midia-r2.md`](./handoffs/05-midia-r2.md)
 - [`handoffs/06-feed.md`](./handoffs/06-feed.md)
 - [`handoffs/07-cursos.md`](./handoffs/07-cursos.md)
+- [`handoffs/08-admin.md`](./handoffs/08-admin.md)

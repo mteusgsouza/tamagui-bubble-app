@@ -38,9 +38,7 @@ export type SignedPlayback = {
 
 export function fetchSignedPlayback(mediaId: string, variant: MediaVariant = 'original') {
   const query = variant === 'poster' ? 'format=json&variant=poster' : 'format=json'
-  return mediaApi<SignedPlayback>(
-    `/media/${encodeURIComponent(mediaId)}/play?${query}`,
-  )
+  return mediaApi<SignedPlayback>(`/media/${encodeURIComponent(mediaId)}/play?${query}`)
 }
 
 // teto de renovações automáticas: sem ele, mídia quebrada e `onError` viram laço
