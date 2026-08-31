@@ -1,6 +1,7 @@
 import { authClient } from './authClient'
 
-type Result =
+/** Compartilhado com `passwordSignup` — as duas telas tratam o erro do mesmo jeito. */
+export type PasswordResult =
   | { success: true; error?: undefined }
   | {
       success: false
@@ -10,7 +11,10 @@ type Result =
 /**
  * Login with email and password.
  */
-export async function passwordLogin(email: string, password: string): Promise<Result> {
+export async function passwordLogin(
+  email: string,
+  password: string
+): Promise<PasswordResult> {
   const { error } = await authClient.signIn.email({
     email,
     password,
@@ -28,8 +32,9 @@ export async function passwordLogin(email: string, password: string): Promise<Re
         success: false,
         error: {
           code,
-          title: 'Incorrect Password',
-          message: 'The password you entered is incorrect. Please try again.',
+          title: 'Não deu para entrar',
+          message:
+            'E-mail ou senha incorretos. Se você ainda não tem conta, escolha "Criar conta".',
         },
       }
 
@@ -38,8 +43,8 @@ export async function passwordLogin(email: string, password: string): Promise<Re
         success: false,
         error: {
           code,
-          title: 'An Error Occurred',
-          message: `Failed to log in: "${message}" (${code}). Please try again.`,
+          title: 'Não foi possível entrar',
+          message: `${message} (${code})`,
         },
       }
     }

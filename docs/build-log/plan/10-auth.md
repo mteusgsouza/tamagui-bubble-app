@@ -1,6 +1,6 @@
 # Fase 10 — Auth (cadastro pela UI + Google OAuth)
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** ⚠️ **credenciais OAuth do Google Cloud**
+**Status:** ✅ concluída (Google pendente de credenciais) — ver [handoff](../handoffs/10-auth.md) · **Pré-requisito humano:** ⚠️ **credenciais OAuth do Google Cloud**
 
 > Fase **acrescentada durante a execução**. O plano original não previa nada de
 > autenticação — assumiu que o que vinha do Takeout bastava. Não basta.

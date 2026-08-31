@@ -8,9 +8,29 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 9 — Billing** (validada no navegador e por smoke) |
-| Próxima fase | **Fase 10 — Auth (cadastro + Google OAuth)** |
+| Última fase concluída | **Fase 10 — Auth** (cadastro validado contra o servidor) |
+| Próxima fase | — todas as fases planejadas foram executadas; ver "Pendências abertas" |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
+
+Estado real da Fase 10:
+
+- ✅ **cadastro pela UI existe**: "Entrar com e-mail" e "Criar conta" são caminhos
+  separados, o `intent` atravessa as telas, e o cadastro pede nome + senha
+- ✅ **validado contra o servidor** com conta nova: as 4 linhas nascem
+  (`user`, `userPublic`, `userState`, `account`), senha errada dá 401, e-mail repetido
+  com senha certa cai para sign-in (200), senha curta dá `PASSWORD_TOO_SHORT`
+- ✅ **elo com a Fase 9 fechado**: a conta criada assim recebeu assinatura pelo
+  `/api/admin/people`. O hook `afterCreateUser` está em `databaseHooks.user.create.after`,
+  então **vale também para o OAuth**
+- ✅ `EXTRA_TRUSTED_ORIGINS` — origem extra por env, que é o que faz o app abrir no
+  **celular físico** (pelo IP, todo login voltava 403 `INVALID_ORIGIN`)
+- ⚠️ **Google OAuth está escrito mas nunca foi exercido.** Sem `GOOGLE_CLIENT_ID` e
+  `GOOGLE_CLIENT_SECRET`, o provider não é registrado e o botão avisa em vez de quebrar.
+  Ligar é preencher as duas chaves no `.env.local` — receita no
+  [handoff 10](./handoffs/10-auth.md)
+- ⚠️ **Sem recuperação de senha e sem verificação de e-mail.**
+- ⏳ **O clique pelas telas precisa de um humano** — ver a armadilha do `document.hidden`
+  logo abaixo. Roteiro no handoff 10
 
 Estado real da Fase 9:
 
@@ -216,6 +236,19 @@ Estado real da Fase 4:
   reais no Postgres (o `complete` confere por HEAD no bucket) → `post.kind = photo`
   deduzido sozinho → post publicado aparece no feed com o carrossel e o indicador "1/3".
 
+- 🔴 **Ferramenta automatizada não consegue clicar na UI animada — e a tela parece
+  vazia.** O navegador de automação roda com `document.hidden === true`, e aí
+  `requestAnimationFrame` **não dispara**. O Tamagui usa **duplo rAF** para remover o
+  `enterStyle` (`@tamagui/web/src/createComponent.tsx`, "Animation enter state machine"),
+  então todo componente com `enterStyle` fica parado em `opacity: 0` com a classe
+  `t_unmounted` — na tela de login, isso é **todos os botões**.
+
+  **Não é bug do app.** Antes de caçar fantasma numa tela "vazia", rode
+  `document.hidden` no console. Telas sem `enterStyle` (todo o `/admin`) funcionam
+  normalmente por ferramenta.
+
+  Corolário: **fluxo de auth só se prova clicando de verdade**, como o upload de
+  navegador da Fase 5. Roteiro no [handoff 10](./handoffs/10-auth.md).
 - 🔴 **DEEP LINK NÃO FUNCIONA NA WEB — bug pré-existente, não resolvido.**
   Carregar direto qualquer URL abaixo do grupo de abas cai em `/home/feed`. Vale para
   rota do starter também (`/home/settings/edit-profile`), então **não veio das Fases
@@ -360,6 +393,10 @@ Estado real da Fase 4:
    URL assinada; leitura é 302 para URL assinada. O servidor só assina e decide.
    Corolário: **a tela nunca monta URL de R2** — o `storageKey` que chega pelo sync não
    abre arquivo nenhum. Tudo passa por `<MediaView>` ou `/api/media/[id]/play`.
+13. **TTL da URL assinada de vídeo/áudio é longo (4 h), não curto.** O player revalida a
+   assinatura a cada `Range`, e renovar por timer trocaria o `src` e reiniciaria a
+   reprodução. Renovação acontece no `onError`, não no relógio. Foto e poster ficam em
+   5 min. Ver decisão 6 do [handoff 05](./handoffs/05-midia-r2.md).
 14. **O criador (`demo-user-id`) é `role = 'admin'`.** Pendência resolvida na Fase 9,
    por necessidade: sem nenhum admin no banco, **ninguém** abria as abas Planos e
    Pessoas. O `get-session` passa a reportar `admin` sem re-login; a claim do **JWT do
@@ -371,19 +408,25 @@ Estado real da Fase 4:
    Fase 4 passaria a depender de qual caminho gravou por último.
 16. **Plano nunca é apagado, só sai de venda.** É o `requiredPlanId` de posts antigos e o
    `planId` de assinaturas vendidas.
+17. **Entrar e criar conta são caminhos separados na UI.** Um campo só que decide
+   sozinho exigiria perguntar ao servidor se o e-mail existe — o que entrega a lista de
+   cadastrados a quem testar um por um. E `signUp` primeiro faria e-mail com typo virar
+   conta nova em vez de "senha incorreta".
+18. **Provider social só é registrado quando as credenciais existem.** Registrar sem
+   `clientId` faz o Better Auth responder 500: botão que existe e quebra é pior que botão
+   que avisa. Quem decide é o servidor, nunca uma flag duplicada no cliente.
 
-13. **TTL da URL assinada de vídeo/áudio é longo (4 h), não curto.** O player revalida a
-   assinatura a cada `Range`, e renovar por timer trocaria o `src` e reiniciaria a
-   reprodução. Renovação acontece no `onError`, não no relógio. Foto e poster ficam em
-   5 min. Ver decisão 6 do [handoff 05](./handoffs/05-midia-r2.md).
 
 ## Pendências abertas
 
-- **`VITE_MASTER_USER_ID` está vazio.** A constante existe
-  (`src/constants/creator.ts`), mas o id do criador é escolha humana: rodar o `psql` do
-  [handoff 04](./handoffs/04-camada-zero.md) e preencher `.env.development`. Com ele
-  vazio, o feed abre vazio — é o comportamento correto, não bug.
-- **Não existe cadastro pela UI.** O Takeout Free nunca chama `authClient.signUp.email`
+- ~~**`VITE_MASTER_USER_ID` está vazio.**~~ **Preenchido** em `.env.development`
+  (`demo-user-id`) desde a Fase 4 — a pendência estava obsoleta. Fica o aviso: **com ele
+  vazio o feed abre vazio**, e isso é o comportamento correto, não bug.
+- ~~**Não existe cadastro pela UI.**~~ **Resolvido na Fase 10** — telas separadas de
+  entrar e criar conta, validadas contra o servidor. O texto original ficou abaixo porque
+  descreve o mecanismo que continua valendo (o fallback do servidor para sign-in):
+
+  ~~O Takeout Free nunca chama `authClient.signUp.email`
   fora do botão de demo: a rota `/auth/signup/email` só coleta o e-mail e manda para a
   tela de senha, que chama `passwordLogin` → `signIn.email`. Com e-mail novo dá
   `INVALID_EMAIL_OR_PASSWORD`. O servidor **já suporta** cadastro
@@ -391,7 +434,7 @@ Estado real da Fase 4:
   e-mail existente e cai para sign-in) — falta o cliente chamar. O conserto é espelhar
   `signInAsDemo.ts` dentro de `passwordLogin`. **Não feito: decisão pendente**, porque
   signUp-primeiro faz e-mail com typo virar conta nova. O certo mesmo é separar as telas
-  de login e cadastro numa fase de auth.
+  de login e cadastro numa fase de auth.~~
 - **Contas existentes hoje:** `demo@takeout.tamagui.dev` / `demopassword123`
   (id `demo-user-id`, é o criador) e `teste@bubble.local` / `teste123456`
   (id `test-user-b`, cobaia do teste de paywall, criada à mão no banco).
@@ -412,6 +455,12 @@ Estado real da Fase 4:
 - **Fase 1 (Repositório) não foi executada.** O app continua na subpasta
   `mobile-bubble-app/` e o `package.json` ainda se chama `my-bubble-app`. Nada depende
   disso para as fases seguintes, mas continua no plano.
+- **Auth: falta recuperação de senha e verificação de e-mail.** Quem esquecer a senha
+  não tem saída pela UI; o `magicLink` já está ligado no `authServer` e é o caminho mais
+  curto. `emailVerified` nasce `false` e ninguém olha.
+- **`APP_NAME` ainda é `'Takeout'`** (`src/constants/app.ts`), então a tela de login diz
+  "Entrar no Takeout". Trocar é uma linha — mas **não mexa em `DOMAIN`** junto:
+  `DEMO_EMAIL` deriva dele e a conta demo do banco é `demo@takeout.tamagui.dev`.
 - **Idioma da UI — ainda aberto, e agora meio a meio.** Tudo que as Fases 5 e 6
   escreveram (feed, detalhe, comentários, mensagens de mídia) é **português literal**;
   o que veio do Takeout (auth, settings) segue em inglês. Ninguém decidiu entre traduzir
@@ -439,3 +488,4 @@ Estado real da Fase 4:
 - [`handoffs/07-cursos.md`](./handoffs/07-cursos.md)
 - [`handoffs/08-admin.md`](./handoffs/08-admin.md)
 - [`handoffs/09-billing.md`](./handoffs/09-billing.md)
+- [`handoffs/10-auth.md`](./handoffs/10-auth.md)
