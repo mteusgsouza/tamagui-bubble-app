@@ -12,6 +12,7 @@ import { ScrollHeader } from '~/interface/headers/ScrollHeader'
 import { DoorIcon } from '~/interface/icons/phosphor/DoorIcon'
 import { GearIcon } from '~/interface/icons/phosphor/GearIcon'
 import { ListIcon } from '~/interface/icons/phosphor/ListIcon'
+import { SquaresFourIcon } from '~/interface/icons/phosphor/SquaresFourIcon'
 import { PageContainer } from '~/interface/layout/PageContainer'
 import { ThemeSwitch } from '~/interface/theme/ThemeSwitch'
 
@@ -48,11 +49,15 @@ export const MainHeader = () => {
             </XStack>
 
             <XStack gap="$2.5" items="center" display="none" $md={{ display: 'flex' }}>
+              {/* circular como os vizinhos: um botão de texto com borda no meio de uma
+                  fileira de ícones era a única peça fora do padrão do header */}
               {showAdmin ? (
                 <Link href="/admin" aria-label="Admin" data-testid="admin-link">
-                  <Button size="$2" variant="outlined" cursor="pointer">
-                    Admin
-                  </Button>
+                  <Button
+                    circular
+                    cursor="pointer"
+                    icon={<SquaresFourIcon size={18} />}
+                  />
                 </Link>
               ) : null}
 

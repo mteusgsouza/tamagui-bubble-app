@@ -328,6 +328,24 @@ Estado real da Fase 4:
 - ⚠️ **Query nova exige `bun zero:generate`.** As synced queries são registradas em
   `src/data/generated/syncedQueries.ts`; sem regenerar, a query nem existe para o
   servidor e a tela fica vazia sem erro óbvio. Aconteceu com a `courseBySlug` da Fase 7.
+- 🔴 **`pkill -f "one dev"` NÃO mata o dev server.** O processo se renomeia para
+  `Onejs:dev > /mnt/f/...`, então o padrão não casa. O que acontece é pior que nada: o
+  `pkill` não mata, o novo `bun dev` morre porque a porta 8081 está ocupada, e **o
+  servidor antigo continua servindo** — com o cache em memória de antes das suas
+  edições. O sintoma engana: você edita, reinicia, e a tela não muda; limpa
+  `node_modules/.vite`, reinicia, e continua não mudando.
+
+  **Diagnóstico rápido:** o módulo pedido com query volta novo e sem query volta velho.
+
+  ```bash
+  curl -s "http://localhost:8081/src/features/app/MainHeader.tsx"        # velho
+  curl -s "http://localhost:8081/src/features/app/MainHeader.tsx?t=1"    # novo
+  ```
+
+  **Matar de verdade:** `pkill -f "Onejs:dev"; pkill -f "bun dev"`, e conferir com
+  `ps -eo pid,args | grep -i onejs` e `ss -ltn | grep 8081` antes de subir de novo.
+  Ao subir depois de apagar `node_modules/.vxrn/compiler-cache`, o Vite reotimiza as
+  dependências e recarrega **duas vezes** — espere ~60 s antes de olhar a tela.
 - ℹ️ **Dá para reiniciar o dev server sem o usuário**, do Windows:
   `wsl.exe -d Ubuntu-22.04 -- bash -lc "cd /mnt/f/apps/bubble-app/mobile-bubble-app && exec /home/mateus/.bun/bin/bun dev"`
   em background. O `bun` **não** está no PATH de shell não-interativo — use o caminho
