@@ -1,6 +1,6 @@
 # Fase 9 — Billing (adapter agnóstico)
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** — (o gateway real fica pra depois)
+**Status:** ✅ concluída — ver [handoff](../handoffs/09-billing.md) · **Pré-requisito humano:** — (o gateway real fica pra depois)
 
 ## Escopo
 

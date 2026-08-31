@@ -1,6 +1,10 @@
 import { zql } from 'on-zero'
 
-import { canAccessCourse, canAccessPost } from '~/data/where/canAccessContent'
+import {
+  canAccessCourse,
+  canAccessPlan,
+  canAccessPost,
+} from '~/data/where/canAccessContent'
 
 // Queries do admin de conteúdo.
 //
@@ -66,4 +70,13 @@ export const adminCourse = (props: { courseId: string; userId: string }) => {
     .related('requiredPlan', (q) => q.one())
     .related('modules', (q) => q.orderBy('order', 'asc'))
     .related('lessons', (q) => q.orderBy('order', 'asc').related('media', (m) => m.one()))
+}
+
+/**
+ * Todos os planos, **inclusive os inativos** — é a diferença para o `activePlans` que a
+ * tabela de preços usa. Plano desativado precisa continuar visível aqui: ele ainda é o
+ * `requiredPlanId` de posts antigos e de assinaturas que já foram vendidas.
+ */
+export const adminPlans = () => {
+  return zql.plan.where(canAccessPlan).orderBy('order', 'asc')
 }

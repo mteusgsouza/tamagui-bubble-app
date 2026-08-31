@@ -16,8 +16,12 @@ import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { getDb } from '~/database'
 import { payment, user } from '~/database/schema-private'
-import { plan, subscription, userPublic } from '~/database/schema-public'
+import { plan, subscription } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
+import {
+  cancelSubscription,
+  grantSubscription,
+} from '~/features/billing/server/subscriptionActions'
 
 import type { AuthData } from '~/features/auth/types'
 import type { Endpoint } from 'one'
@@ -141,48 +145,21 @@ export const POST: Endpoint = async (request) => {
       return fail(400, 'missing-fields', 'Informe userId, planId e creatorId.')
     }
 
-    // a FK de subscription aponta para userPublic, não para user
-    const [pub] = await db
-      .select({ id: userPublic.id })
-      .from(userPublic)
-      .where(eq(userPublic.id, userId))
-      .limit(1)
-    if (!pub) {
-      return fail(
-        422,
-        'no-public-profile',
-        'Esse usuário não tem perfil público ainda — ele precisa abrir o app uma vez.',
-      )
-    }
-
-    // uma assinatura ativa por (usuário, criador): reusa a que existir
-    const [existing] = await db
-      .select({ id: subscription.id })
-      .from(subscription)
-      .where(and(eq(subscription.userId, userId), eq(subscription.creatorId, creatorId)))
-      .limit(1)
-
-    const now = new Date().toISOString()
-    if (existing) {
-      await db
-        .update(subscription)
-        .set({ planId, status: 'active', updatedAt: now })
-        .where(eq(subscription.id, existing.id))
-      return Response.json({ ok: true, subscriptionId: existing.id, reused: true })
-    }
-
-    const id = `sub-${crypto.randomUUID()}`
-    await db.insert(subscription).values({
-      id,
+    // mesma escrita que o webhook usa: uma assinatura por (usuário, criador)
+    const result = await grantSubscription({
       userId,
       creatorId,
       planId,
       provider: 'manual',
       status: 'active',
-      createdAt: now,
-      updatedAt: now,
     })
-    return Response.json({ ok: true, subscriptionId: id, reused: false })
+
+    if (!result.ok) return fail(422, result.code, result.message)
+    return Response.json({
+      ok: true,
+      subscriptionId: result.subscriptionId,
+      reused: result.reused,
+    })
   }
 
   if (action === 'revoke') {
@@ -190,10 +167,7 @@ export const POST: Endpoint = async (request) => {
     if (!subscriptionId) return fail(400, 'missing-fields', 'Informe subscriptionId.')
 
     // cancela em vez de apagar: o histórico importa para faturamento
-    await db
-      .update(subscription)
-      .set({ status: 'canceled', updatedAt: new Date().toISOString() })
-      .where(eq(subscription.id, subscriptionId))
+    await cancelSubscription(subscriptionId)
     return Response.json({ ok: true })
   }
 

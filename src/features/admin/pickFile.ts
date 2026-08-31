@@ -19,10 +19,7 @@ export type PickKind = keyof typeof ACCEPT_BY_KIND
  * ⚠️ Cancelar não dispara evento em todo navegador. O `focus` da janela é o sinal que
  * sobra: se voltamos ao app e nenhum `change` veio, foi cancelamento.
  */
-export function pickFiles(
-  kind: PickKind = 'any',
-  multiple = false,
-): Promise<File[]> {
+export function pickFiles(kind: PickKind = 'any', multiple = false): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'

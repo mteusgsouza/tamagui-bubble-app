@@ -19,6 +19,7 @@ const admin = {
     }),
     ({ args }) => Queries.admin.adminCourses(args),
   ),
+  adminPlans: defineQuery(() => Queries.admin.adminPlans()),
   adminPost: defineQuery(
     v.object({
       postId: v.string(),

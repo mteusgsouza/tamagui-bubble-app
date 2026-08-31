@@ -46,6 +46,23 @@ No navegador do desktop, basta usar `localhost`. Para testar em **celular físic
 que é como o usuário valida — o IP tem que entrar na lista, e ele muda a cada reinício
 da WSL. Resolver com env var, não com string fixa.
 
+## [Fase 9] O que mudou desde que este plano foi escrito
+
+- **Conta nova precisa de `userPublic` para poder assinar.** `grantSubscription`
+  (`src/features/billing/server/subscriptionActions.ts`) devolve `no-public-profile` e
+  **recusa** quando a linha não existe — a FK de `subscription` aponta para `userPublic`,
+  não para `user`. O item 3 acima diz que o hook `afterCreateUser` já cria as duas
+  linhas; **confirme que o caminho do OAuth passa por ele**, senão conta criada por
+  Google nunca consegue assinar, e o erro só aparece na hora de pagar.
+- **O criador (`demo-user-id`) agora é `role = 'admin'`.** Usuário novo continua nascendo
+  `role = 'user'`, que é o certo.
+- **`.env.development` ganhou `BILLING_WEBHOOK_SECRET` e `CRON_SECRET`** (valores de
+  desenvolvimento). Se você mexer no bloco `env` do `package.json`, rode
+  `bun env:update` para propagar em `src/server/env-server.ts` e no `ci.yml`.
+- **A verificação abaixo ganhou um passo:** uma conta criada pela UI tem que conseguir
+  **receber assinatura** pelo `/admin/people`. Se der `no-public-profile`, o cadastro
+  ficou incompleto.
+
 ## Verificação
 
 Cadastro por e-mail cria as 4 linhas (`user`, `account`, `userPublic`, `userState`).

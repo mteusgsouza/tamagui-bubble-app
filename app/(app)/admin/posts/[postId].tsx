@@ -92,7 +92,9 @@ export const AdminPostEditPage = memo(() => {
     visibility: draft.visibility,
     // plano só faz sentido em post de assinante
     requiredPlanId:
-      draft.visibility === 'subscribers' ? (draft.requiredPlanId ?? undefined) : undefined,
+      draft.visibility === 'subscribers'
+        ? (draft.requiredPlanId ?? undefined)
+        : undefined,
   })
 
   /**

@@ -49,3 +49,6 @@ dist
 # Docker volume data
 .docker
 .vxrn-entry-native.tsx
+
+# permissões locais do Claude Code — máquina de quem roda, não do projeto
+.claude/settings.local.json

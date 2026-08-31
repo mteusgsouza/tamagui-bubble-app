@@ -8,9 +8,29 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 8 — Admin** (validada no navegador) |
-| Próxima fase | **Fase 9 — Billing** |
+| Última fase concluída | **Fase 9 — Billing** (validada no navegador e por smoke) |
+| Próxima fase | **Fase 10 — Auth (cadastro + Google OAuth)** |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
+
+Estado real da Fase 9:
+
+- ✅ adapter de cobrança (`src/features/billing/`), webhook com HMAC, rota de checkout,
+  job de expiração e **CRUD de planos** (`/admin/plans`) — os planos só existiam por
+  `INSERT` à mão até aqui
+- ✅ typecheck limpo; **92 testes** (era 65)
+- ✅ **validado**: `scripts/billing-smoke.ts` com 12 casos verdes (assinatura inválida
+  401, provider inexistente 404, cron sem token 401, criação de assinatura por webhook,
+  e **pagamento reenviado devolvendo `duplicate`**). Job de expiração provado no banco:
+  `currentPeriodEnd` recuado 2 dias → `{"expired":1}` → `status = expired`
+- ⚠️ **`BILLING_PROVIDER=manual`: não há gateway real.** `POST /api/billing/checkout`
+  devolve **501 `no-gateway`** de propósito — o `createCheckout` do manual concede na
+  hora, então expor a rota daria assinatura de graça a qualquer um logado
+- ⚠️ **Ninguém agenda o cron.** `/api/cron/expire-subscriptions` existe e é protegida por
+  `CRON_SECRET`, mas nada a chama sozinho. Sem um agendador em produção, assinatura
+  vencida continua liberando conteúdo
+- ⚠️ **Não existe tela de assinar.** `activePlans` não é renderizada em lugar nenhum do
+  app — o assinante não tem onde clicar
+- ✅ **o criador virou `role = 'admin'`** (era pendência aberta; ver "Decisões", 14)
 
 Estado real da Fase 5:
 
@@ -340,6 +360,18 @@ Estado real da Fase 4:
    URL assinada; leitura é 302 para URL assinada. O servidor só assina e decide.
    Corolário: **a tela nunca monta URL de R2** — o `storageKey` que chega pelo sync não
    abre arquivo nenhum. Tudo passa por `<MediaView>` ou `/api/media/[id]/play`.
+14. **O criador (`demo-user-id`) é `role = 'admin'`.** Pendência resolvida na Fase 9,
+   por necessidade: sem nenhum admin no banco, **ninguém** abria as abas Planos e
+   Pessoas. O `get-session` passa a reportar `admin` sem re-login; a claim do **JWT do
+   Zero** continua congelada por 3 anos, e é por isso que as rotas `/api/admin/*` releem
+   a role do Postgres.
+15. **As escritas de assinatura e pagamento moram em
+   `src/features/billing/server/subscriptionActions.ts`.** Três chamadores mexem em
+   `subscription` (admin, webhook, cron); se cada um escrevesse do seu jeito, o gate da
+   Fase 4 passaria a depender de qual caminho gravou por último.
+16. **Plano nunca é apagado, só sai de venda.** É o `requiredPlanId` de posts antigos e o
+   `planId` de assinaturas vendidas.
+
 13. **TTL da URL assinada de vídeo/áudio é longo (4 h), não curto.** O player revalida a
    assinatura a cada `Range`, e renovar por timer trocaria o `src` e reiniciaria a
    reprodução. Renovação acontece no `onError`, não no relógio. Foto e poster ficam em
@@ -372,10 +404,9 @@ Estado real da Fase 4:
 - ~~**`canAccessMedia` ignora `requiredPlanId`** de propósito.~~ **Fechado na Fase 5:**
   `src/server/media/mediaAccess.ts` refaz o gate com o tier antes de assinar a URL do R2.
   Falta o usuário provar em runtime (roteiro no handoff 05).
-- **Promover o criador a `role = 'admin'`?** O criador (`demo-user-id`) tem
-  `role = 'user'`, então `canUploadMedia()` aceita `admin` **ou** `MASTER_USER_ID`. Um
-  `UPDATE "user" SET role = 'admin'` no criador simplificaria isso e a Fase 8. Decisão
-  humana, não tomei.
+- ~~**Promover o criador a `role = 'admin'`?**~~ **Feito na Fase 9.** Sem admin nenhum
+  no banco, as abas Planos e Pessoas eram inalcançáveis. `canUploadMedia()` continua
+  aceitando `admin` **ou** `MASTER_USER_ID`; nada mais mudou.
 - **Conta Cloudflare R2 e `.env.local`** continuam pendentes — sem eles as rotas de mídia
   respondem 503 e o resto do app funciona normalmente.
 - **Fase 1 (Repositório) não foi executada.** O app continua na subpasta
@@ -386,6 +417,11 @@ Estado real da Fase 4:
   o que veio do Takeout (auth, settings) segue em inglês. Ninguém decidiu entre traduzir
   o resto ou adotar i18n. **Cada fase de UI encarece essa decisão** — decidir antes da
   Fase 7 é mais barato que depois.
+- **Cobrança: falta o que depende de decisão humana.** Escolher o gateway
+  (Stripe/Asaas/Pagar.me/Iugu) e escrever `providers/<nome>.ts` seguindo o `generic.ts`;
+  renderizar a tabela de preços em algum lugar do app; agendar
+  `/api/cron/expire-subscriptions` (uma vez por dia basta); e chamar `provider.cancel()`
+  ao revogar, senão a cobrança segue no gateway.
 - **Build nativo nunca validado.** Só o web subiu até hoje.
 - ~~**Sintaxe de permission do Zero** (`q.or`, operador `IN`) não confirmada.~~
   **Resolvido na Fase 3:** o expression builder do `@rocicorp/zero` 0.26.2 tem
@@ -402,3 +438,4 @@ Estado real da Fase 4:
 - [`handoffs/06-feed.md`](./handoffs/06-feed.md)
 - [`handoffs/07-cursos.md`](./handoffs/07-cursos.md)
 - [`handoffs/08-admin.md`](./handoffs/08-admin.md)
+- [`handoffs/09-billing.md`](./handoffs/09-billing.md)

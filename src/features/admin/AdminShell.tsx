@@ -9,27 +9,30 @@ import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
 import type { ReactNode } from 'react'
 import type { Href } from 'one'
 
-type NavItem = { href: Href; label: string; peopleOnly?: boolean }
+type NavItem = { href: Href; label: string; adminOnly?: boolean }
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Visão geral' },
   { href: '/admin/posts', label: 'Posts' },
   { href: '/admin/courses', label: 'Cursos' },
-  { href: '/admin/people', label: 'Pessoas', peopleOnly: true },
+  { href: '/admin/plans', label: 'Planos', adminOnly: true },
+  { href: '/admin/people', label: 'Pessoas', adminOnly: true },
 ]
 
 /**
  * Moldura do admin: cabeçalho, navegação e largura de leitura.
  *
- * "Pessoas" só aparece para `role = 'admin'` de verdade — o criador administra o
- * conteúdo dele, não a base de usuários (ver `canManage.ts`).
+ * "Pessoas" e "Planos" só aparecem para `role = 'admin'` de verdade — o criador
+ * administra o conteúdo dele, não a base de usuários nem os preços (ver `canManage.ts`).
+ * Não é só estética: a escrita em `plan` é fechada por `serverWhere(() => false)` e só o
+ * admin passa, então mostrar a tela ao criador daria um formulário que reverte sozinho.
  */
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname()
   const { authData } = useAuth()
   const showPeople = canManagePeople(authData)
 
-  const items = NAV.filter((item) => !item.peopleOnly || showPeople)
+  const items = NAV.filter((item) => !item.adminOnly || showPeople)
 
   return (
     <YStack bg="$background" flex={1} {...({ minHeight: '100vh' } as any)}>

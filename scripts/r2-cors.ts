@@ -43,7 +43,8 @@ const extraOrigins = argv.filter((a) => !a.startsWith('--'))
 // a origem de dev sempre entra; produção vem por argumento
 const ORIGINS = ['http://localhost:8081', ...extraOrigins]
 
-const sha256Hex = (data: string) => createHash('sha256').update(data, 'utf8').digest('hex')
+const sha256Hex = (data: string) =>
+  createHash('sha256').update(data, 'utf8').digest('hex')
 const hmac = (key: Buffer | string, data: string) =>
   createHmac('sha256', key).update(data, 'utf8').digest()
 

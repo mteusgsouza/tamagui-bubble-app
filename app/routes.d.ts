@@ -14,6 +14,7 @@ declare module 'one' {
         | `/(app)/admin/courses`
         | `/(app)/admin/courses/`
         | `/(app)/admin/people`
+        | `/(app)/admin/plans`
         | `/(app)/admin/posts`
         | `/(app)/admin/posts/`
         | `/(app)/auth`
@@ -39,6 +40,7 @@ declare module 'one' {
         | `/admin/courses`
         | `/admin/courses/`
         | `/admin/people`
+        | `/admin/plans`
         | `/admin/posts`
         | `/admin/posts/`
         | `/auth`

@@ -9,7 +9,13 @@ import { Pressable } from '~/interface/buttons/Pressable'
 import { zero } from '~/zero/client'
 
 import { pickFiles } from './pickFile'
-import { acceptKind, canAddMore, deriveKind, remainingSlots, withMedia } from './postMediaRules'
+import {
+  acceptKind,
+  canAddMore,
+  deriveKind,
+  remainingSlots,
+  withMedia,
+} from './postMediaRules'
 
 import type { PostKind } from '~/data/types'
 import type { AttachedMedia } from './postMediaRules'
@@ -63,7 +69,9 @@ export const PostMediaField = ({
     // cria o rascunho agora, se ainda não existe — escolher arquivo já é intenção
     // suficiente; ninguém precisa ser mandado "salvar antes"
     if (!(await ensurePost())) {
-      setLocalError('Não consegui criar o rascunho do post. Tente salvar e anexar de novo.')
+      setLocalError(
+        'Não consegui criar o rascunho do post. Tente salvar e anexar de novo.',
+      )
       return
     }
 
@@ -158,11 +166,7 @@ type BusyProps = { busy: boolean; queue: { done: number; total: number } | null 
 const busyLabel = (queue: BusyProps['queue']) =>
   queue ? `Enviando ${Math.min(queue.done + 1, queue.total)} de ${queue.total}…` : ''
 
-const EmptyDropArea = ({
-  onPress,
-  busy,
-  queue,
-}: BusyProps & { onPress: () => void }) => (
+const EmptyDropArea = ({ onPress, busy, queue }: BusyProps & { onPress: () => void }) => (
   <Pressable
     onPress={busy ? undefined : onPress}
     role="button"
