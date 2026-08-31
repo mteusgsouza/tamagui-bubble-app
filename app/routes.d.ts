@@ -26,6 +26,10 @@ declare module 'one' {
         | `/(app)/home/(tabs)/courses/`
         | `/(app)/home/(tabs)/feed`
         | `/(app)/home/(tabs)/feed/`
+        | `/(app)/home/(tabs)/settings`
+        | `/(app)/home/(tabs)/settings/`
+        | `/(app)/home/(tabs)/settings/blocked-users`
+        | `/(app)/home/(tabs)/settings/edit-profile`
         | `/(app)/home/courses`
         | `/(app)/home/courses/`
         | `/(app)/home/feed`
@@ -52,6 +56,10 @@ declare module 'one' {
         | `/home/(tabs)/courses/`
         | `/home/(tabs)/feed`
         | `/home/(tabs)/feed/`
+        | `/home/(tabs)/settings`
+        | `/home/(tabs)/settings/`
+        | `/home/(tabs)/settings/blocked-users`
+        | `/home/(tabs)/settings/edit-profile`
         | `/home/courses`
         | `/home/courses/`
         | `/home/feed`

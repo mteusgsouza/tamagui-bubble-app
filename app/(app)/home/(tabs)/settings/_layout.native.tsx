@@ -2,6 +2,7 @@ import { Stack } from 'one'
 
 import { HeaderBackButton } from '~/interface/buttons/HeaderBackButton'
 
+/** O `index` é aba raiz — sem botão de voltar. As telas de dentro mantêm o dele. */
 export function SettingLayout() {
   return (
     <Stack
@@ -15,22 +16,21 @@ export function SettingLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'Settings',
+          title: 'Perfil',
           headerLargeTitle: true,
-          headerLeft: () => <HeaderBackButton />,
         }}
       />
       <Stack.Screen
         name="edit-profile"
         options={{
-          title: 'Edit Profile',
+          title: 'Editar perfil',
           headerLeft: () => <HeaderBackButton />,
         }}
       />
       <Stack.Screen
         name="blocked-users"
         options={{
-          title: 'Blocked Users',
+          title: 'Bloqueados',
           headerLeft: () => <HeaderBackButton />,
         }}
       />

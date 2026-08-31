@@ -11,8 +11,8 @@ export function AppLayout() {
       ) : (
         // We need Stack here for transition animation to work on native
         <Stack screenOptions={{ headerShown: false }}>
+          {/* `settings` saiu daqui: virou aba, então mora dentro de `(tabs)` */}
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="settings" />
         </Stack>
       )}
     </>

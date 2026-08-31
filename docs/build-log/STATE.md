@@ -347,9 +347,16 @@ Estado real da Fase 4:
   Ao subir depois de apagar `node_modules/.vxrn/compiler-cache`, o Vite reotimiza as
   dependências e recarrega **duas vezes** — espere ~60 s antes de olhar a tela.
 - ℹ️ **Dá para reiniciar o dev server sem o usuário**, do Windows:
-  `wsl.exe -d Ubuntu-22.04 -- bash -lc "cd /mnt/f/apps/bubble-app/mobile-bubble-app && exec /home/mateus/.bun/bin/bun dev"`
-  em background. O `bun` **não** está no PATH de shell não-interativo — use o caminho
-  completo. Matar: `ss -ltnp | grep :8081` para achar o pid.
+  `wsl.exe -d Ubuntu-22.04 -- bash -c "cd /mnt/f/apps/bubble-app/mobile-bubble-app && exec /home/mateus/.bun/bin/bun dev"`,
+  **em tarefa de background que fica viva**. Três armadilhas juntas aqui:
+  1. **`export PATH=$HOME/.bun/bin:$PATH` quebra**: o PATH do Windows entra na sessão WSL
+     com espaços (`/mnt/c/Program Files/...`) e o `export` sem aspas vira erro de sintaxe,
+     deixando o `bun` fora do PATH. Use o **caminho completo**, ou `PATH="..." bun ...`
+     numa linha só, com aspas.
+  2. **`setsid nohup ... &` não basta**: se nenhum outro processo estiver rodando na
+     distro, a sessão do WSL encerra junto com o comando e leva o servidor. Manter a
+     tarefa em background é o que segura a distro de pé.
+  3. Matar: `pkill -f "Onejs:dev"` (ver acima), não `pkill -f "one dev"`.
 - Typecheck é **`bun check types`**. `bun check` sozinho só lista os sub-scripts do
   `tko` (`lint`, `types`) e não roda nada.
 - ⚠️ **`bun check lint` / `bun lint:fix` quebram** com `panic: unknown rule:

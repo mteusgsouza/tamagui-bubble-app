@@ -1,8 +1,10 @@
 // Brand
-export const APP_NAME = 'Takeout'
-export const APP_NAME_LOWERCASE = 'takeout'
+export const APP_NAME = 'Bubble'
+export const APP_NAME_LOWERCASE = 'bubble'
 
 // Domain
+// ⚠️ NÃO renomear junto com a marca: `DEMO_EMAIL` deriva daqui e a conta demo que existe
+// no banco é `demo@takeout.tamagui.dev`. Trocar o domínio quebra o login de demonstração.
 export const DOMAIN = 'takeout.tamagui.dev'
 
 // Social

@@ -1,14 +1,11 @@
 import { Slot } from 'one'
-import { Spacer } from 'tamagui'
 
-import { MainHeader } from '~/features/app/MainHeader'
+import { AppShell } from '~/features/app/AppNav'
 
 export function TabsLayout() {
   return (
-    <>
-      <MainHeader />
-      <Spacer height={50} />
+    <AppShell>
       <Slot />
-    </>
+    </AppShell>
   )
 }

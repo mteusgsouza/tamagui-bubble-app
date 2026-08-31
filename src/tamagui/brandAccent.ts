@@ -48,11 +48,21 @@ const accentLight = {
   accent12: '#40290a',
 }
 
+/**
+ * A cor da marca, como valor cru.
+ *
+ * Existe para os poucos lugares que **não** conseguem ler token do Tamagui — hoje só o
+ * `tabBarActiveTintColor` do react-navigation, no layout nativo das abas. Em componente,
+ * continue usando `$accent*`.
+ */
+export const BRAND_ACCENT = '#e5a33a'
+export const BRAND_ACCENT_INK = '#141414'
+
 // `accentBackground` é o preenchimento sólido e `accentColor` o texto que fica em cima
 // dele. Nos dois temas o 9 é claro o bastante para pedir tinta escura.
 const accentSurface = {
-  accentBackground: '#e5a33a',
-  accentColor: '#141414',
+  accentBackground: BRAND_ACCENT,
+  accentColor: BRAND_ACCENT_INK,
 }
 
 export const themes = {

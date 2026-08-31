@@ -3,11 +3,15 @@ import { Linking } from 'react-native'
 import { isWeb, ScrollView, SizableText, View, XStack, YStack } from 'tamagui'
 
 import { APP_NAME_LOWERCASE, DOMAIN } from '~/constants/app'
+import { canManage } from '~/features/admin/canManage'
+import { useAuth } from '~/features/auth/client/authClient'
 import { useLogout } from '~/features/auth/useLogout'
 import { CaretRightIcon } from '~/interface/icons/phosphor/CaretRightIcon'
 import { DoorIcon } from '~/interface/icons/phosphor/DoorIcon'
+import { SquaresFourIcon } from '~/interface/icons/phosphor/SquaresFourIcon'
 import { UserIcon } from '~/interface/icons/phosphor/UserIcon'
 import { PageLayout } from '~/interface/pages/PageLayout'
+import { ThemeSwitch } from '~/interface/theme/ThemeSwitch'
 import { SepHeading } from '~/interface/text/Headings'
 
 import type { IconComponent } from '~/interface/icons/types'
@@ -92,25 +96,44 @@ function SettingRow({ item }: { item: SettingItem }) {
 
 export function ProfileSettingsPage() {
   const { logout } = useLogout()
+  const { authData } = useAuth()
+
+  // o admin saiu do header nesta reestruturação: agora o único caminho é por aqui
+  const showAdmin = canManage(authData)
 
   const sections: SettingSection[] = [
     {
-      title: 'Account',
+      title: 'Conta',
       items: [
         {
           id: 'profile',
-          title: 'Edit Profile',
+          title: 'Editar perfil',
           icon: UserIcon,
           href: '/home/settings/edit-profile',
         },
       ],
     },
+    ...(showAdmin
+      ? [
+          {
+            title: 'Criador',
+            items: [
+              {
+                id: 'admin',
+                title: 'Administração',
+                icon: SquaresFourIcon,
+                href: '/admin' as Href,
+              },
+            ],
+          },
+        ]
+      : []),
     {
-      title: 'Other',
+      title: 'Outros',
       items: [
         {
           id: 'logout',
-          title: 'Log Out',
+          title: 'Sair',
           icon: DoorIcon,
           onPress: logout,
         },
@@ -126,6 +149,12 @@ export function ProfileSettingsPage() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <YStack flex={1} flexBasis="auto" pb="$10">
+          {/* o seletor de tema morava no header, que deixou de existir */}
+          <XStack items="center" justify="space-between" px="$4" pb="$4">
+            <SizableText size="$5">Tema</SizableText>
+            <ThemeSwitch />
+          </XStack>
+
           {sections.map((section) => (
             <YStack key={section.title} mb="$6" ml="$4">
               <SepHeading>{section.title}</SepHeading>
