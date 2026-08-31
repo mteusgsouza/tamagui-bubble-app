@@ -375,11 +375,34 @@ Estado real da Fase 4:
   `node ./node_modules/typescript/lib/tsc.js --noEmit -p tsconfig.json`. É o `tsc` normal
   (o `bun check types` usa tsgo, mais rápido), mas roda e é a única checagem que um agente
   consegue fazer sozinho neste ambiente. Levou ~2 min na Fase 5.
-- ⚠️ **Onde ficam as credenciais.** `.env.local` é gitignored **e é lido pelo `bun dev`**
-  (o `loadEnv` do vxrn lê `.env`, `.env.local`, `.env.development`,
-  `.env.development.local`, nessa ordem — o último vence). Os scripts com dotenvx
-  (`migrate`, `run:dev`, `test`) rodam `-f .env .env.development` e **não** leem
-  `.env.local`. `.env.development` **não** é gitignored: segredo nenhum ali.
+- ⚠️ **Onde fica cada variável, e por que os arquivos pareciam arbitrários.**
+
+  | arquivo | o que vai nele | versionado? |
+  |---|---|---|
+  | `.env` | igual em toda máquina e em produção (versão do Zero, tuning, `BILLING_PROVIDER`) | **não** — é gerado |
+  | `.env.development` | configuração de dev **sem segredo real** (URLs, bancos locais, ids) | sim |
+  | `.env.local` | segredo de verdade: R2, Google, chaves de API | **não** |
+
+  O `.env` **não é versionado**: nasce no `postinstall` e é regravado por
+  `bun env:update` a partir do bloco `env` do `package.json` — que é a fonte de verdade e
+  também alimenta `src/server/env-server.ts` e `.github/workflows/ci.yml`. Só o miolo
+  entre os marcadores `AUTO-GENERATED` é reescrito; comentário fora deles sobrevive.
+
+  🔴 **Uma variável mora em UM arquivo só.** Não é preferência: os três carregadores
+  discordam da ordem, então chave repetida resolve **diferente conforme o comando**.
+
+  | carregador | ordem | quem vence |
+  |---|---|---|
+  | `bun <script>` | `.env` → `.env.development` → `.env.local` | `.env.local` |
+  | `bun dev` (vxrn `loadEnv`) | `.env` → `.env.local` → `.env.development` → `.env.development.local` | `.env.development` |
+  | `dotenvx` (`env:dev`) | só `.env` e `.env.development` | não sobrescreve o que o bun já pôs |
+
+  ⚠️ **Correção de uma nota anterior deste arquivo:** dizia que os scripts com dotenvx
+  "não leem `.env.local`". Eles leem — não pelo dotenvx, mas porque o **próprio `bun`
+  carrega `.env`, `.env.development` e `.env.local` sozinho**, antes de qualquer coisa.
+  Verificado rodando um script sem dotenvx nenhum: as chaves do R2 chegam igual.
+
+  Mapa completo do que é opcional e onde preencher: `.env.local.example`.
 
 ## Decisões acumuladas
 
