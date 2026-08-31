@@ -1,6 +1,5 @@
 import { createRoute, useParams, useRouter } from 'one'
 import { memo, useLayoutEffect, useRef, useState } from 'react'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SizableText, Spinner, useEvent, XStack, YStack } from 'tamagui'
 
 import { Button } from '~/interface/buttons/Button'
@@ -8,12 +7,16 @@ import { Pressable } from '~/interface/buttons/Pressable'
 import { showError } from '~/interface/dialogs/actions'
 import { Input } from '~/interface/forms/Input'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
-import { PageLayout } from '~/interface/pages/PageLayout'
+import { UserCircleIcon } from '~/interface/icons/phosphor/UserCircleIcon'
+import { StepPageLayout } from '~/interface/pages/StepPageLayout'
 
 const route = createRoute<'/(app)/auth/signup/[method]'>()
 
 /**
  * Coleta o e-mail e leva para a senha.
+ *
+ * Usa o `StepPageLayout` do template — o mesmo da tela de senha. Antes esta tela montava
+ * o próprio cabeçalho e nascia colada no topo, fora do ritmo das outras duas etapas.
  *
  * O `intent` (`login` | `signup`) atravessa daqui até a tela de senha e decide qual
  * chamada fazer lá. Ele vem da tela anterior, **não é adivinhado a partir do e-mail**:
@@ -25,7 +28,6 @@ export const SignupPage = memo(() => {
     method?: 'email'
     intent?: 'login' | 'signup'
   }>()
-  const { top } = useSafeAreaInsets()
   const router = useRouter()
   const inputRef = useRef<any>(null)
   const [inputValue, setInputValue] = useState<string>('')
@@ -64,14 +66,14 @@ export const SignupPage = memo(() => {
 
   if (method !== 'email') {
     return (
-      <YStack flex={1} bg="$background" pt={top} px="$4">
+      <YStack flex={1} bg="$background" px="$4" pt="$6" gap="$4">
         <XStack items="center" gap="$3">
           <Pressable onPress={handleGoBack}>
             <CaretLeftIcon size={24} />
           </Pressable>
         </XStack>
         <YStack flex={1} items="center" justify="center">
-          <SizableText fontSize={16} opacity={0.6}>
+          <SizableText size="$4" color="$color10">
             Método de autenticação inválido
           </SizableText>
         </YStack>
@@ -80,49 +82,40 @@ export const SignupPage = memo(() => {
   }
 
   return (
-    <PageLayout>
-      <YStack flex={1} bg="$background" pt={top} px="$4" gap="$4">
-        <XStack items="center" gap="$3">
-          <Pressable onPress={handleGoBack}>
-            <CaretLeftIcon size={24} />
-          </Pressable>
-          <SizableText size="$6" fontWeight="bold">
-            {isSignup ? 'Criar conta' : 'Entrar com e-mail'}
-          </SizableText>
-        </XStack>
-
-        <SizableText size="$4" color="$color10">
-          {isSignup
-            ? 'Escolha o e-mail que você vai usar para entrar.'
-            : 'Digite o e-mail da sua conta.'}
-        </SizableText>
-
-        <YStack gap="$4" mt="$4">
-          <Input
-            data-testid="email-input"
-            ref={inputRef}
-            placeholder="seu@email.com"
-            value={inputValue}
-            onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
-            autoCapitalize="none"
-            onSubmitEditing={handleContinue}
-            type="email"
-            name="email"
-            autoComplete="email"
-            inputMode="email"
-          />
-
-          <Button
-            data-testid="next-button"
-            size="$5"
-            pressStyle={{ scale: 0.97, opacity: 0.9 }}
-            onPress={handleContinue}
-            disabled={isDisabled || loading}
-          >
-            {loading ? <Spinner size="small" /> : 'Continuar'}
-          </Button>
-        </YStack>
-      </YStack>
-    </PageLayout>
+    <StepPageLayout
+      title={isSignup ? 'Criar conta' : 'Entrar com e-mail'}
+      Icon={UserCircleIcon}
+      description={
+        isSignup
+          ? 'Escolha o e-mail que você vai usar para entrar.'
+          : 'Digite o e-mail da sua conta.'
+      }
+      bottom={
+        <Button
+          data-testid="next-button"
+          size="$5"
+          variant="accent"
+          pressStyle={{ scale: 0.98, opacity: 0.9 }}
+          onPress={handleContinue}
+          disabled={isDisabled || loading}
+        >
+          {loading ? <Spinner size="small" /> : 'Continuar'}
+        </Button>
+      }
+    >
+      <Input
+        data-testid="email-input"
+        ref={inputRef}
+        placeholder="seu@email.com"
+        value={inputValue}
+        onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
+        autoCapitalize="none"
+        onSubmitEditing={handleContinue}
+        type="email"
+        name="email"
+        autoComplete="email"
+        inputMode="email"
+      />
+    </StepPageLayout>
   )
 })

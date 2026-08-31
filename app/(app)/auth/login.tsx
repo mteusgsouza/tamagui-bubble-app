@@ -1,17 +1,17 @@
 import { router } from 'one'
 import { useState } from 'react'
-import { Circle, isWeb, SizableText, Spinner, XStack, YStack } from 'tamagui'
+import { Separator, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { APP_NAME } from '~/constants/app'
 import { authClient } from '~/features/auth/client/authClient'
 import { signInAsDemo } from '~/features/auth/client/signInAsDemo'
 import { isDemoMode } from '~/helpers/isDemoMode'
 import { Link } from '~/interface/app/Link'
-import { LogoIcon } from '~/interface/app/LogoIcon'
+import { Logo } from '~/interface/app/Logo'
 import { Button } from '~/interface/buttons/Button'
 import { AppleIcon } from '~/interface/icons/AppleIcon'
 import { GoogleIcon } from '~/interface/icons/GoogleIcon'
-import { H2 } from '~/interface/text/Headings'
+import { H1, SubHeading } from '~/interface/text/Headings'
 import { showToast } from '~/interface/toast/helpers'
 
 /**
@@ -23,6 +23,10 @@ import { showToast } from '~/interface/toast/helpers'
  * Juntar os dois num botão de novo traria de volta o problema que motivou a separação:
  * com signUp-primeiro, e-mail digitado errado vira **conta nova** em vez de "senha
  * incorreta".
+ *
+ * A hierarquia visual: **uma** ação em destaque (entrar), as alternativas em contorno, e
+ * o cadastro como linha de rodapé. Antes eram três botões do mesmo peso empilhados, o que
+ * não dizia por onde começar.
  */
 export const LoginPage = () => {
   const [demoLoading, setDemoLoading] = useState<boolean>(false)
@@ -51,10 +55,9 @@ export const LoginPage = () => {
         callbackURL: '/home/feed',
       })
       if (error) {
-        showToast(
-          'Login com Google ainda não está configurado neste ambiente.',
-          { type: 'info' }
-        )
+        showToast('Login com Google ainda não está configurado neste ambiente.', {
+          type: 'info',
+        })
       }
     } catch {
       showToast('Não foi possível falar com o Google. Tente de novo.', { type: 'error' })
@@ -66,132 +69,127 @@ export const LoginPage = () => {
   return (
     <YStack
       flex={1}
-      justify="center"
       items="center"
-      $platform-web={{ minHeight: '100vh' }}
+      justify="center"
+      px="$4"
+      py="$8"
+      $platform-web={{ minHeight: '100dvh' }}
     >
-      <Circle
-        size={80}
-        my="$4"
-        transition="medium"
-        enterStyle={{ scale: 0.95, opacity: 0 }}
-      >
-        <LogoIcon size={42} />
-      </Circle>
+      <YStack width="100%" maxW={380} gap="$7">
+        <YStack items="center" gap="$4">
+          <Logo height={34} />
 
-      <YStack
-        gap="$6"
-        width="100%"
-        items="center"
-        bg="$background"
-        rounded="$8"
-        p={isWeb ? '$6' : '$4'}
-        maxW={isWeb ? 400 : '90%'}
-      >
-        <H2 text="center">Entrar no {APP_NAME}</H2>
-
-        <YStack
-          key="welcome-content"
-          gap="$4"
-          items="center"
-          width="100%"
-          transition="medium"
-          enterStyle={{ opacity: 0, y: 10 }}
-          exitStyle={{ opacity: 0, y: -10 }}
-          position="relative"
-          overflow="hidden"
-        >
-          <YStack width="100%" gap="$3">
-            <Link
-              href="/auth/signup/email?intent=login"
-              $platform-web={{ display: 'contents' }}
-              asChild
-            >
-              <Button
-                size="$5"
-                theme="dark_blue"
-                variant="floating"
-                data-testid="go-to-login"
-                pressStyle={{ scale: 0.97, opacity: 0.9 }}
-                transition="200ms"
-                enterStyle={{ opacity: 0, scale: 0.95 }}
-              >
-                Entrar com e-mail
-              </Button>
-            </Link>
-
-            <Link
-              href="/auth/signup/email?intent=signup"
-              $platform-web={{ display: 'contents' }}
-              asChild
-            >
-              <Button
-                size="$5"
-                variant="outlined"
-                data-testid="go-to-signup"
-                pressStyle={{ scale: 0.97, opacity: 0.9 }}
-                transition="200ms"
-                enterStyle={{ opacity: 0, scale: 0.95 }}
-              >
-                Criar conta
-              </Button>
-            </Link>
-
-            {/* modo DEMO — ligado em dev ou com VITE_DEMO_MODE=1 */}
-            {isDemoMode && (
-              <Button
-                variant="outlined"
-                size="$5"
-                onPress={async () => {
-                  setDemoLoading(true)
-                  const { error } = await signInAsDemo()
-                  setDemoLoading(false)
-                  if (error) {
-                    showToast('Login de demonstração falhou', { type: 'error' })
-                    return
-                  }
-                  router.replace('/home/feed')
-                }}
-                disabled={demoLoading}
-                width="100%"
-                data-testid="login-as-demo"
-                pressStyle={{ scale: 0.97 }}
-                transition="200ms"
-                enterStyle={{ opacity: 0, scale: 0.95 }}
-              >
-                {demoLoading ? <Spinner size="small" /> : 'Entrar como demonstração'}
-              </Button>
-            )}
+          <YStack items="center" gap="$2">
+            <H1 size="$8" text="center">
+              Entrar no {APP_NAME}
+            </H1>
+            <SubHeading size="$4" text="center">
+              Conteúdo, cursos e bastidores — num lugar só.
+            </SubHeading>
           </YStack>
-
-          <SizableText size="$1" color="$color10">
-            ou continue com
-          </SizableText>
-
-          <XStack width="100%" gap="$3" justify="center" overflow="visible">
-            <Button
-              size="$5"
-              onPress={() => handleSocialLogin('google')}
-              disabled={socialLoading}
-              pressStyle={{ scale: 0.97, bg: '$color2' }}
-              hoverStyle={{ bg: '$color2' }}
-              transition="200ms"
-              enterStyle={{ opacity: 0, scale: 0.95 }}
-              icon={<GoogleIcon size={18} />}
-            />
-
-            <Button
-              size="$5"
-              onPress={() => handleSocialLogin('apple')}
-              pressStyle={{ scale: 0.97, bg: '$color2' }}
-              hoverStyle={{ bg: '$color2' }}
-              transition="200ms"
-              enterStyle={{ opacity: 0, scale: 0.95 }}
-              icon={<AppleIcon size={20} />}
-            />
-          </XStack>
         </YStack>
+
+        <YStack gap="$3">
+          <Link
+            href="/auth/signup/email?intent=login"
+            $platform-web={{ display: 'contents' }}
+            asChild
+          >
+            <Button
+              size="$5"
+              variant="accent"
+              data-testid="go-to-login"
+              pressStyle={{ scale: 0.98 }}
+              transition="quick"
+            >
+              Entrar com e-mail
+            </Button>
+          </Link>
+
+          <Divider>ou</Divider>
+
+          <Button
+            size="$5"
+            variant="outlined"
+            onPress={() => handleSocialLogin('google')}
+            disabled={socialLoading}
+            icon={<GoogleIcon size={18} />}
+            pressStyle={{ scale: 0.98 }}
+            transition="quick"
+          >
+            {socialLoading ? <Spinner size="small" /> : 'Continuar com Google'}
+          </Button>
+
+          <Button
+            size="$5"
+            variant="outlined"
+            onPress={() => handleSocialLogin('apple')}
+            icon={<AppleIcon size={20} />}
+            pressStyle={{ scale: 0.98 }}
+            transition="quick"
+          >
+            Continuar com Apple
+          </Button>
+
+          {/* modo DEMO — ligado em dev ou com VITE_DEMO_MODE=1 */}
+          {isDemoMode && (
+            <Button
+              size="$4"
+              variant="transparent"
+              onPress={async () => {
+                setDemoLoading(true)
+                const { error } = await signInAsDemo()
+                setDemoLoading(false)
+                if (error) {
+                  showToast('Login de demonstração falhou', { type: 'error' })
+                  return
+                }
+                router.replace('/home/feed')
+              }}
+              disabled={demoLoading}
+              data-testid="login-as-demo"
+            >
+              {demoLoading ? <Spinner size="small" /> : 'Entrar como demonstração'}
+            </Button>
+          )}
+        </YStack>
+
+        <XStack items="center" justify="center" gap="$2" flexWrap="wrap">
+          <SizableText size="$3" color="$color10">
+            Ainda não tem conta?
+          </SizableText>
+          <Link href="/auth/signup/email?intent=signup" data-testid="go-to-signup">
+            <SizableText
+              size="$3"
+              fontWeight="700"
+              color="$accent11"
+              hoverStyle={{ color: '$accent10' }}
+              cursor="pointer"
+            >
+              Criar conta
+            </SizableText>
+          </Link>
+        </XStack>
       </YStack>
     </YStack>
   )
 }
+
+/**
+ * Linha com um rótulo no meio: `———— ou ————`.
+ *
+ * Dois detalhes que pareciam ajuste fino e não eram:
+ * - **`flex={1}`**: sem ele o `Separator` fica com largura zero e sobra só o rótulo,
+ *   solto no meio do nada.
+ * - **`borderColor="$color5"`**: o padrão é `$borderColor`, que no tema escuro é quase a
+ *   cor do fundo — a linha existia, com 168px, e mesmo assim não dava para ver.
+ */
+const Divider = ({ children }: { children: string }) => (
+  <XStack items="center" gap="$3" py="$1">
+    <Separator flex={1} borderColor="$color5" />
+    <SizableText size="$1" color="$color10" textTransform="uppercase">
+      {children}
+    </SizableText>
+    <Separator flex={1} borderColor="$color5" />
+  </XStack>
+)

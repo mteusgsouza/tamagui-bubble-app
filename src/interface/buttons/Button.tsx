@@ -38,6 +38,22 @@ export const Button = styled(TamaguiButton, {
         hoverStyle: { bg: '$color5' },
         pressStyle: { bg: '$color3', opacity: 0.9 },
       },
+      /**
+       * A ação principal da tela, na cor da marca.
+       *
+       * Existe porque a tela de login usava `theme="dark_blue"` — um tema do starter que
+       * pintava de azul o botão mais importante de um app âmbar. Aqui a cor sai do par
+       * `$accentBackground`/`$accentColor`, que já é definido nos dois temas.
+       *
+       * Use **um por tela**: se tudo é destaque, nada é.
+       */
+      accent: {
+        bg: '$accentBackground',
+        color: '$accentColor',
+        fontWeight: '600',
+        hoverStyle: { bg: '$accent10' },
+        pressStyle: { bg: '$accent8', opacity: 0.9 },
+      },
     },
   } as const,
 

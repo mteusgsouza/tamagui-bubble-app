@@ -75,6 +75,7 @@ export const PasswordPage = () => {
           <Button
             data-testid="submit-password-button"
             size="$5"
+            variant="accent"
             onPress={handleContinue}
             disabled={!canSubmit}
           >

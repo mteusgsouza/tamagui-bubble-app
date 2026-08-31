@@ -12,7 +12,16 @@ export interface KeyboardStickyFooterProps {
 
 export const KeyboardStickyFooter = ({ children, offset }: KeyboardStickyFooterProps) => {
   return (
-    <YStack maxW={500} self="center" pt="$8" pb="$4" style={{ paddingBottom: offset }}>
+    // `width="100%"` porque `self="center"` sozinho encolhe o rodapé até o conteúdo, e
+    // o botão de ação da etapa saía estreito e centralizado, diferente das outras telas
+    <YStack
+      width="100%"
+      maxW={500}
+      self="center"
+      pt="$8"
+      pb="$4"
+      style={{ paddingBottom: offset }}
+    >
       {children}
     </YStack>
   )
