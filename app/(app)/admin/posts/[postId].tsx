@@ -69,10 +69,12 @@ export const AdminPostEditPage = memo(() => {
 
   // anexar mídia já é mutation imediata, então o `kind` do banco tem que acompanhar na
   // hora — esperar o "Salvar" deixaria o card do feed com o rótulo errado nesse meio.
+  const createdRef = useRef(false)
   const savedKindRef = useRef<PostKind | null>(null)
   const onKindChange = useCallback(
     (next: PostKind) => {
-      if (!postId || !exists) return
+      // `createdRef` cobre a janela entre `ensurePost` criar a linha e a query refletir
+      if (!postId || (!exists && !createdRef.current)) return
       if (savedKindRef.current === next || row?.kind === next) {
         savedKindRef.current = next
         return
@@ -83,36 +85,59 @@ export const AdminPostEditPage = memo(() => {
     [postId, exists, row?.kind],
   )
 
+  const fields = () => ({
+    kind,
+    title: draft.title.trim() || undefined,
+    body: draft.body.trim() || undefined,
+    visibility: draft.visibility,
+    // plano só faz sentido em post de assinante
+    requiredPlanId:
+      draft.visibility === 'subscribers' ? (draft.requiredPlanId ?? undefined) : undefined,
+  })
+
+  /**
+   * Cria a linha do post se ela ainda não existe.
+   *
+   * Chamada pelo "Salvar" **e** pelo primeiro anexo de mídia: `postMedia.postId` é FK,
+   * então o post precisa existir antes do arquivo — mas isso é problema nosso, não de
+   * quem publica. O id já nasceu no cliente (veio na URL), então escolher um arquivo já
+   * basta para materializar o rascunho.
+   */
+  const ensurePost = async () => {
+    if (exists || createdRef.current) return true
+    if (!postId || !userId || !MASTER_USER_ID) return false
+
+    createdRef.current = true
+    try {
+      // `newId()` e `Date.now()` na tela, nunca dentro da mutation
+      await zero.mutate.post.insert({
+        id: postId,
+        feedOwnerId: MASTER_USER_ID,
+        published: false,
+        publishedAt: undefined,
+        likeCount: 0,
+        commentCount: 0,
+        deleted: false,
+        createdAt: Date.now(),
+        ...fields(),
+      })
+      // sai do modo "novo": daqui pra frente a tela edita em vez de recriar
+      router.replace(`/admin/posts/${postId}`)
+      return true
+    } catch {
+      createdRef.current = false
+      return false
+    }
+  }
+
   const save = async () => {
     if (!postId || !userId || saving) return
     setSaving(true)
     try {
-      const shared = {
-        kind,
-        title: draft.title.trim() || undefined,
-        body: draft.body.trim() || undefined,
-        visibility: draft.visibility,
-        // plano só faz sentido em post de assinante
-        requiredPlanId:
-          draft.visibility === 'subscribers' ? (draft.requiredPlanId ?? undefined) : undefined,
-      }
-
-      if (exists) {
-        await zero.mutate.post.update({ id: postId, ...shared })
+      if (exists || createdRef.current) {
+        await zero.mutate.post.update({ id: postId, ...fields() })
       } else {
-        // `newId()` e `Date.now()` na tela, nunca dentro da mutation
-        await zero.mutate.post.insert({
-          id: postId,
-          feedOwnerId: MASTER_USER_ID,
-          published: false,
-          publishedAt: undefined,
-          likeCount: 0,
-          commentCount: 0,
-          deleted: false,
-          createdAt: Date.now(),
-          ...shared,
-        })
-        router.replace(`/admin/posts/${postId}`)
+        await ensurePost()
       }
     } finally {
       setSaving(false)
@@ -189,32 +214,14 @@ export const AdminPostEditPage = memo(() => {
       }
     >
       <YStack gap="$5">
-        {/* a mídia é o campo principal: vem primeiro e o tipo do post sai dela */}
-        {exists ? (
-          <PostMediaField
-            postId={postId!}
-            attached={attached}
-            onKindChange={onKindChange}
-          />
-        ) : (
-          <YStack
-            height={200}
-            rounded="$6"
-            borderWidth={1.5}
-            borderStyle="dashed"
-            borderColor="$borderColor"
-            items="center"
-            justify="center"
-            gap="$1"
-          >
-            <SizableText size="$3" fontWeight="600" color="$color10">
-              Salve para anexar mídia
-            </SizableText>
-            <SizableText size="$1" color="$color9">
-              o post precisa existir antes de receber arquivo
-            </SizableText>
-          </YStack>
-        )}
+        {/* a mídia é o campo principal: vem primeiro, o tipo do post sai dela, e ela
+            funciona desde o primeiro instante — `ensurePost` materializa o rascunho */}
+        <PostMediaField
+          postId={postId!}
+          attached={attached}
+          onKindChange={onKindChange}
+          ensurePost={ensurePost}
+        />
 
         <TextField
           label="Título"

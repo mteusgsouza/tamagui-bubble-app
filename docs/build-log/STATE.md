@@ -155,6 +155,26 @@ Estado real da Fase 4:
   legado do Bun com target de browser e falha com
   `Browser build cannot require() Node.js builtin: "tls"`. O erro não tem nada a ver com
   o script.
+- 🔴 **UPLOAD PELO NAVEGADOR ESTÁ BLOQUEADO POR CORS — nunca funcionou.**
+  O PUT assinado é cross-origin (app em `:8081`, bucket em `r2.cloudflarestorage.com`) e
+  o preflight morre com `No 'Access-Control-Allow-Origin' header`. A mídia chega a ser
+  criada com `status: 'pending'` e para aí.
+
+  ⚠️ **Como isso passou pela verificação da Fase 5:** o `scripts/media-smoke.ts` sobe pelo
+  **Node**, que não tem CORS. O caminho testado era incapaz de pegar o problema. Lição:
+  upload de navegador só se prova no navegador.
+
+  **Conserto:** aplicar a política de CORS no bucket. Existe `scripts/r2-cors.ts` que faz
+  isso pela API S3 do R2 — **a assinatura dele está correta** (o R2 responde
+  `AccessDenied`, não `SignatureDoesNotMatch`), mas o token atual em `.env.local` é de
+  **objeto**, não de administração, então recebe 403. Duas saídas:
+  1. criar um token R2 com **Admin Read & Write** e rodar
+     `bun run:dev scripts/r2-cors.ts`;
+  2. colar a política no painel (R2 → Settings → CORS Policy) — o JSON está em
+     `.env.local.example`.
+
+  Rodar `bun run:dev scripts/r2-cors.ts --get` mostra a política atual sem alterar nada.
+
 - 🔴 **DEEP LINK NÃO FUNCIONA NA WEB — bug pré-existente, não resolvido.**
   Carregar direto qualquer URL abaixo do grupo de abas cai em `/home/feed`. Vale para
   rota do starter também (`/home/settings/edit-profile`), então **não veio das Fases

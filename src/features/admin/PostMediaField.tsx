@@ -25,10 +25,19 @@ export const PostMediaField = ({
   postId,
   attached,
   onKindChange,
+  ensurePost,
 }: {
   postId: string
   attached: AttachedMedia[]
   onKindChange: (kind: PostKind) => void
+  /**
+   * Garante que a linha do post exista antes do primeiro anexo.
+   *
+   * `postMedia.postId` é FK, então o post precisa existir — mas isso é problema nosso,
+   * não de quem publica. O id já nasceu no cliente, então dá para criar o rascunho no
+   * instante em que o arquivo é escolhido, sem pedir "salve primeiro".
+   */
+  ensurePost: () => Promise<boolean>
 }) => {
   const { upload, error, reset } = useMediaUpload()
   const [queue, setQueue] = useState<{ done: number; total: number } | null>(null)
@@ -50,6 +59,13 @@ export const PostMediaField = ({
 
     const files = await pickFiles(acceptKind(attached), slots > 1)
     if (files.length === 0) return
+
+    // cria o rascunho agora, se ainda não existe — escolher arquivo já é intenção
+    // suficiente; ninguém precisa ser mandado "salvar antes"
+    if (!(await ensurePost())) {
+      setLocalError('Não consegui criar o rascunho do post. Tente salvar e anexar de novo.')
+      return
+    }
 
     const accepted = files.slice(0, slots)
     if (files.length > slots) {

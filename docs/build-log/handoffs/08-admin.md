@@ -133,9 +133,19 @@ solta o arquivo e segue. Refeito:
 `MediaPicker.tsx` foi substituído por `PostMediaField.tsx`. As regras ficaram num módulo
 puro para serem testadas (`post-media-rules.test.ts`, 9 testes).
 
+**Sem "salve antes de anexar".** A primeira versão bloqueava o campo de mídia até o post
+existir, porque `postMedia.postId` é FK. Isso é problema nosso, não de quem publica: o id
+do post já nasce no cliente e vai na URL, então `ensurePost()` materializa o rascunho no
+instante em que o arquivo é escolhido. Escolher arquivo já é intenção suficiente.
+
 **Validado no navegador:** post novo nasce "Só texto"; anexadas 3 fotos, a tela virou
 "Foto" com grade e "3 de 9" e o banco gravou `kind = photo` sozinho; trocado por 1 vídeo,
-virou "Vídeo", o "+" sumiu e o banco gravou `kind = video`.
+virou "Vídeo", o "+" sumiu e o banco gravou `kind = video`. Escolhendo arquivo num post
+não salvo, a linha foi criada na hora (a URL perdeu o `?novo=1` sozinha).
+
+⚠️ **O upload em si morre no CORS do bucket** — ver `STATE.md`. Interceptei o seletor de
+arquivo no navegador para testar o caminho real e o PUT no R2 foi bloqueado. `scripts/r2-cors.ts`
+existe para consertar, mas precisa de um token R2 com permissão de administração.
 
 ## Não feito
 
