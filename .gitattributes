@@ -1,0 +1,26 @@
+# Fim de linha: LF no repositório E na árvore de trabalho.
+#
+# Por que isto existe: o projeto é editado do Windows (git com `core.autocrlf=true`) mas
+# rodado da WSL, e o dev server grava os arquivos gerados com LF. Sem esta regra o git
+# **espera** CRLF na árvore e marca como modificado todo arquivo que a WSL escreveu —
+# `src/tamagui/tamagui.generated.css` vivia com um ` M` no Source Control mesmo tendo
+# conteúdo byte a byte idêntico ao commitado, e cada `git add` cuspia
+# "LF will be replaced by CRLF".
+#
+# Todos os blobs já commitados são LF, então isto não renormaliza nada — só alinha a
+# expectativa do git com a realidade.
+* text=auto eol=lf
+
+# Binários: o git detecta sozinho, mas ser explícito evita corrupção se a detecção falhar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary
+*.mp3 binary
