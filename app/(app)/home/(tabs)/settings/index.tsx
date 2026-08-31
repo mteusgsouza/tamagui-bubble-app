@@ -5,6 +5,7 @@ import { isWeb, ScrollView, SizableText, View, XStack, YStack } from 'tamagui'
 import { APP_NAME_LOWERCASE, DOMAIN } from '~/constants/app'
 import { canManage } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
+import { Avatar } from '~/interface/avatars/Avatar'
 import { useLogout } from '~/features/auth/useLogout'
 import { CaretRightIcon } from '~/interface/icons/phosphor/CaretRightIcon'
 import { DoorIcon } from '~/interface/icons/phosphor/DoorIcon'
@@ -96,7 +97,7 @@ function SettingRow({ item }: { item: SettingItem }) {
 
 export function ProfileSettingsPage() {
   const { logout } = useLogout()
-  const { authData } = useAuth()
+  const { authData, user } = useAuth()
 
   // o admin saiu do header nesta reestruturação: agora o único caminho é por aqui
   const showAdmin = canManage(authData)
@@ -149,6 +150,23 @@ export function ProfileSettingsPage() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <YStack flex={1} flexBasis="auto" pb="$10">
+          {/* Quem está logado. Antes isto vivia no avatar do header; quando o header saiu
+              na reestruturação da navegação, o nome e a foto do usuário deixaram de
+              aparecer em qualquer lugar do app — inclusive os que vêm do Google. */}
+          {user ? (
+            <XStack items="center" gap="$3" px="$4" pt="$2" pb="$5">
+              <Avatar size={56} image={user.image} name={user.name ?? 'Você'} />
+              <YStack flex={1} gap="$0.5">
+                <SizableText size="$6" fontWeight="700">
+                  {user.name || 'Sem nome'}
+                </SizableText>
+                <SizableText size="$3" color="$color10">
+                  {user.email}
+                </SizableText>
+              </YStack>
+            </XStack>
+          ) : null}
+
           {/* o seletor de tema morava no header, que deixou de existir */}
           <XStack items="center" justify="space-between" px="$4" pb="$4">
             <SizableText size="$5">Tema</SizableText>
