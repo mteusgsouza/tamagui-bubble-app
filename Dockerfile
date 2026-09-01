@@ -11,7 +11,7 @@ COPY --from=bun-base /usr/local/bin/bunx /usr/local/bin/bunx
 WORKDIR /app
 
 COPY package.json bun.lock ./
-COPY packages ./packages
+# (o template do Takeout é monorepo e copiava `packages/` aqui — este repo não tem)
 
 # skip postinstall during docker build (it's dev-only setup)
 RUN bun install --ignore-scripts
