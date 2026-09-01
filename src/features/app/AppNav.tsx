@@ -1,6 +1,7 @@
 import { Link, usePathname } from 'one'
 import { SizableText, XStack, YStack } from 'tamagui'
 
+import { BOTTOM_BAR_HEIGHT, TOP_BAR_HEIGHT } from '~/constants/navigation'
 import { Logo } from '~/interface/app/Logo'
 import { Pressable } from '~/interface/buttons/Pressable'
 
@@ -20,8 +21,6 @@ import type { ReactNode } from 'react'
  * estilo base é o do celular e o `$md` é o do desktop — o contrário da v4.
  */
 
-const TOP_BAR_HEIGHT = 56
-const BOTTOM_BAR_HEIGHT = 68
 const SIDEBAR_WIDTH = 240
 
 /** Cor do item ativo. */
