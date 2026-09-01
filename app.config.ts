@@ -1,5 +1,3 @@
-import { APP_VERSION } from './src/constants/app'
-
 import type { ExpoConfig } from 'expo/config'
 
 const appName = 'Bubble'
@@ -33,8 +31,18 @@ const getAppIcon = () => {
   return './assets/icon.png'
 }
 
-// fonte única em src/constants/app.ts, compartilhada com a tela de Perfil
-const version = APP_VERSION
+/**
+ * A versão sai do `package.json`.
+ *
+ * ⚠️ **`require` de JSON, e nunca `import` de outro módulo TS.** O carregador de config
+ * do Expo transpila este arquivo e resolve os `require` em CJS puro: importar
+ * `./src/constants/app` quebra o `expo config` com "Cannot find module" — e com ele todo
+ * build nativo. Já aconteceu; o Bun resolvia o import e escondia o problema.
+ *
+ * `src/constants/app.ts` repete o número para a tela de Perfil, e
+ * `src/test/unit/app-version.test.ts` falha se os dois divergirem.
+ */
+const { version } = require('./package.json') as { version: string }
 
 export default {
   expo: {
@@ -48,9 +56,9 @@ export default {
           return ''
       }
     })()}`,
-    slug: 'bubble',
-    // `owner` removido de propósito: era `takeout`, a conta da Tamagui no EAS, e o build
-    // falharia por falta de permissão. Sem o campo, o EAS usa a conta que está logada.
+    // `slug` e `owner` precisam bater com o projeto no EAS, senão o build é recusado.
+    slug: 'bubble-app',
+    owner: 'mteusg',
     scheme: appId,
     version,
     runtimeVersion: version, // must be set to use hot-updater "appVersion" update strategy
@@ -164,7 +172,8 @@ export default {
     ],
     extra: {
       eas: {
-        projectId: '9c6754b4-4688-4f51-8c28-55f0b018bc32',
+        // projeto do EAS deste app. O anterior era o da Tamagui, herdado do template.
+        projectId: 'ba0451c6-fee0-496e-866d-ff29aa72ab66',
       },
     },
   } satisfies ExpoConfig,
