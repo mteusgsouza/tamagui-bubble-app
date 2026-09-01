@@ -23,7 +23,17 @@ Requisitos:
 
 ## Passos
 
-**1. DNS.** Aponte um subdomínio para o IP da máquina, antes de subir — o Caddy tenta
+**1. Crie os dois bancos auxiliares no Neon.** O zero-cache guarda o estado de sync
+fora do banco da aplicação, e **não cria os bancos sozinho** — ele só cria os schemas
+dentro deles. Sem isso o boot falha com erro de conexão:
+
+```sql
+CREATE DATABASE zero_cvr; CREATE DATABASE zero_cdb;
+```
+
+Rode no SQL Editor do Neon, no mesmo projeto/branch do `neondb`.
+
+**2. DNS.** Aponte um subdomínio para o IP da máquina, antes de subir — o Caddy tenta
 emitir o certificado no primeiro boot e falha se o nome não resolver:
 
 ```
@@ -33,7 +43,7 @@ A  zero.mateusgsouza.com.br → <IP da máquina>
 Se o domínio estiver na Cloudflare, deixe a nuvem **cinza** (DNS only). Com a laranja, a
 Cloudflare responde pelo certificado e o desafio do Caddy não completa.
 
-**2. Copie esta pasta para a máquina** e preencha o ambiente:
+**3. Copie esta pasta para a máquina** e preencha o ambiente:
 
 ```bash
 cp .env.example .env && nano .env
@@ -42,20 +52,20 @@ cp .env.example .env && nano .env
 🔴 As três URLs do Neon precisam ser a conexão **direta**, sem `-pooler`. Replicação
 lógica não passa por PgBouncer.
 
-**3. Suba:**
+**4. Suba:**
 
 ```bash
 docker compose up -d
 ```
 
-**4. Acompanhe o primeiro boot.** Ele monta o replica a partir do Postgres, o que demora
+**5. Acompanhe o primeiro boot.** Ele monta o replica a partir do Postgres, o que demora
 proporcionalmente ao tamanho do banco:
 
 ```bash
 docker compose logs -f zero
 ```
 
-**5. Confirme de fora:**
+**6. Confirme de fora:**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" https://zero.mateusgsouza.com.br/
