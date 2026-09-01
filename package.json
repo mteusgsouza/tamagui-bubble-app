@@ -1,6 +1,6 @@
 {
   "name": "my-bubble-app",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "resolutions": {
     "sharp": "npm:@tamagui/proxy-worm@1.123.14",

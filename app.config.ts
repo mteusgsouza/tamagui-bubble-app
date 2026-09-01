@@ -1,3 +1,5 @@
+import { APP_VERSION } from './src/constants/app'
+
 import type { ExpoConfig } from 'expo/config'
 
 const appName = 'Bubble'
@@ -31,7 +33,8 @@ const getAppIcon = () => {
   return './assets/icon.png'
 }
 
-const version = '0.0.1'
+// fonte única em src/constants/app.ts, compartilhada com a tela de Perfil
+const version = APP_VERSION
 
 export default {
   expo: {

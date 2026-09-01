@@ -2,7 +2,7 @@ import { Link, type Href } from 'one'
 import { Linking } from 'react-native'
 import { isWeb, ScrollView, SizableText, View, XStack, YStack } from 'tamagui'
 
-import { APP_NAME_LOWERCASE, DOMAIN } from '~/constants/app'
+import { APP_NAME_LOWERCASE, APP_VERSION, DOMAIN } from '~/constants/app'
 import { canManage } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
 import { Avatar } from '~/interface/avatars/Avatar'
@@ -200,7 +200,7 @@ function LogoAndVersion() {
         </SizableText>
       </XStack>
       <SizableText size="$1" color="$color10" mt="$2">
-        v1.0.0
+        v{APP_VERSION}
       </SizableText>
     </YStack>
   )

@@ -1,5 +1,16 @@
 // Brand
 export const APP_NAME = 'Bubble'
+
+/**
+ * A versão do app — **fonte única**.
+ *
+ * Lida pelo `app.config.ts` (vira `version` e `runtimeVersion` no build nativo) e pela
+ * tela de Perfil. Antes eram três lugares soltos e já divergiam: o `package.json` e o
+ * `app.config.ts` diziam 0.0.1 enquanto a tela mostrava v1.0.0 escrito à mão.
+ *
+ * Ao subir, mexa aqui **e** no `package.json`, que não consegue importar daqui.
+ */
+export const APP_VERSION = '1.0.0'
 export const APP_NAME_LOWERCASE = 'bubble'
 
 // Domain
