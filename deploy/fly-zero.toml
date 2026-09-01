@@ -1,3 +1,8 @@
+# 🗄️ **NÃO EM USO.** O zero-cache foi para a AWS (`deploy/aws/`): o trial do Fly exige
+# cartão para volume e máquina sempre ligada, que é exatamente o que este arquivo pede.
+# Mantido porque o mapa de variáveis abaixo é o mesmo lá, e para o dia em que o Fly
+# voltar a ser a opção mais simples.
+#
 # ⚠️ Este arquivo é do **zero-cache**, não do app.
 #
 # O app server (site + `app/api/*`) roda em `fly-app.toml`. Aqui é só o servidor de sync

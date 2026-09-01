@@ -12,6 +12,9 @@ Stack: Takeout Free v2-beta (Tamagui 2.0-rc) · One (rotas por arquivo, `app/api
 pendências. `INDEX.md` mapeia as 10 fases; `handoffs/NN-*.md` conta o que cada uma
 entregou e por quê. Este arquivo é só o essencial que se repete; o detalhe está lá.
 
+`deploy/` — produção. `fly-app.toml` (app server), `aws/` (zero-cache). Topologia e as
+armadilhas de deploy estão em **`STATE.md` → Produção**.
+
 ## Ambiente
 
 O projeto vive em `F:\apps\bubble-app\mobile-bubble-app` e **roda da WSL**

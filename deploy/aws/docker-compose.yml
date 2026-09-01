@@ -1,0 +1,71 @@
+# zero-cache numa máquina AWS (EC2 ou Lightsail), com TLS automático.
+#
+# Por que o zero-cache não cabe em plano gratuito: ele mantém um slot de replicação
+# aberto no Postgres e um replica SQLite em disco. Serverless e free tiers desligam por
+# inatividade e não têm disco — as duas coisas o quebram.
+#
+# O app server continua no Fly: ele é sem estado, dorme quando ocioso e já está no ar.
+# Se um dia quiser trazê-lo para cá também, veja o fim do README desta pasta.
+#
+# Passos completos: README.md nesta pasta.
+
+services:
+  # TLS automático via Let's Encrypt. O cliente conecta no zero-cache por WSS, então
+  # certificado válido não é opcional — sem ele o app não sincroniza.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificados; perder isto refaz a emissão
+      - caddy_config:/config
+    depends_on:
+      - zero
+
+  zero:
+    # A versão TEM que casar com `@rocicorp/zero` do package.json e com `ZERO_VERSION`
+    # do app server: cliente e servidor precisam falar o mesmo protocolo.
+    image: rocicorp/zero:0.26.2
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - zero_data:/data
+    environment:
+      ZERO_LOG_LEVEL: ${ZERO_LOG_LEVEL:-info}
+
+      # o replica vive no volume; sem isso ele é reconstruído do Postgres a cada restart
+      ZERO_REPLICA_FILE: /data/replica.db
+
+      # tem que bater com a publicação que `src/database/migrate.ts` cria
+      ZERO_APP_PUBLICATIONS: ${ZERO_APP_PUBLICATIONS:-zero_takeout}
+
+      # o zero-cache chama estas rotas no app server para validar permissão e aplicar
+      # mutation. Apontando errado, o sync sobe e não autoriza nada.
+      ZERO_MUTATE_URL: ${ZERO_MUTATE_URL}
+      ZERO_QUERY_URL: ${ZERO_QUERY_URL}
+
+      # a sessão do usuário viaja por cookie até o app server, que é quem decide
+      ZERO_MUTATE_FORWARD_COOKIES: 'true'
+      ZERO_QUERY_FORWARD_COOKIES: 'true'
+
+      # limite de mutations por usuário. O throttle do progresso de aula
+      # (`useLessonProgress`) foi dimensionado contra este número.
+      ZERO_PER_USER_MUTATION_LIMIT_MAX: '30'
+      ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS: '60000'
+
+      # conexões no Neon: some ao que o app server usa antes de aumentar
+      ZERO_UPSTREAM_MAX_CONNS: '10'
+      ZERO_CVR_MAX_CONNS: '4'
+      ZERO_NUM_SYNC_WORKERS: '2'
+
+    # não publica porta no host: quem fala com a internet é o Caddy
+    expose:
+      - '4848'
+
+volumes:
+  zero_data:
+  caddy_data:
+  caddy_config:

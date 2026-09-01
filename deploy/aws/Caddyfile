@@ -1,0 +1,9 @@
+# TLS automático (Let's Encrypt) para o zero-cache.
+#
+# Troque o domínio se usar outro. O e-mail é para onde a Let's Encrypt avisa de
+# expiração — não é opcional em produção.
+
+zero.mateusgsouza.com.br {
+	# o zero-cache escuta em 4848 dentro da rede do compose
+	reverse_proxy zero:4848
+}

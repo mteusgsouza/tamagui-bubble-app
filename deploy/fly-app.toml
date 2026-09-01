@@ -10,7 +10,7 @@
 # vai junto. E as variáveis `VITE_*` são **embutidas no build**, não lidas em runtime —
 # por isso precisam dos valores de produção na hora de construir:
 #
-#   VITE_ZERO_HOSTNAME=bubble-zero.fly.dev \
+#   VITE_ZERO_HOSTNAME=zero.mateusgsouza.com.br \
 #   VITE_WEB_HOSTNAME=bubble.mateusgsouza.com.br \
 #   VITE_MASTER_USER_ID=<id do criador> \
 #   ONE_SERVER_URL=https://bubble.mateusgsouza.com.br \
@@ -33,7 +33,7 @@
 # `AbortError: No string no ZERO_UPSTREAM_DB`.
 #
 # Aqui as duas levam a URL **com pooler** — o app abre muitas conexões curtas. A direta,
-# sem pooler, é só do zero-cache (`fly-zero.toml`).
+# sem pooler, é só do zero-cache, que roda na AWS (`deploy/aws/`).
 #
 #   fly secrets set -a bubble-app \
 #     BETTER_AUTH_SECRET="..." \
