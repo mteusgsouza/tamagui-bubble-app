@@ -33,6 +33,24 @@ export const GOOGLE_CLIENT_SECRET = ensureEnv('GOOGLE_CLIENT_SECRET', "")
 
 // database urls set conditionally based on deployment
 // use bracket notation to prevent build-time inlining
-export const ZERO_UPSTREAM_DB = process.env['ZERO_UPSTREAM_DB'] || ''
+
+/**
+ * A conexão do **app server** com o Postgres — apesar do nome, que veio do starter.
+ * É a que `src/database/database.ts` usa.
+ *
+ * `DATABASE_URL` é o fallback porque a integração Neon↔Vercel injeta as variáveis com
+ * os nomes dela, e `ZERO_UPSTREAM_DB` não está entre eles. Ler o nome padrão evita
+ * copiar o valor à mão para um segundo campo — cópia que ficaria velha na primeira
+ * rotação de credencial feita pelo Neon.
+ *
+ * ⚠️ **Na Vercel isto tem que ser a URL COM pooler** (é o que `DATABASE_URL` traz):
+ * cada função serverless abre conexão própria, e sem o PgBouncer o Neon esgota.
+ * O oposto vale para o zero-cache e para as migrations, que precisam da direta
+ * (`DATABASE_URL_UNPOOLED`) porque replicação lógica não passa por pooler.
+ */
+export const ZERO_UPSTREAM_DB =
+  process.env['ZERO_UPSTREAM_DB'] || process.env['DATABASE_URL'] || ''
+
+// usados só pelo zero-cache, que roda no Fly com env próprio
 export const ZERO_CVR_DB = process.env['ZERO_CVR_DB'] || ''
 export const ZERO_CHANGE_DB = process.env['ZERO_CHANGE_DB'] || ''
