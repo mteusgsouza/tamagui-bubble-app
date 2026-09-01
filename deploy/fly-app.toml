@@ -20,12 +20,20 @@
 #
 # O resto das variáveis é lido em runtime e vai como secret.
 #
-# ℹ️ **A conexão do banco vai como `DATABASE_URL`**, não `ZERO_UPSTREAM_DB`. As duas
-# funcionam (`src/server/env-server.ts` aceita as duas), mas `ZERO_UPSTREAM_DB` é nome
-# herdado do template e mente: quem o lê é o app, não o Zero. Aqui vale a URL **com
-# pooler** — o app abre muitas conexões curtas. A direta, sem pooler, é do zero-cache em
-# `fly-zero.toml`, e lá o nome `ZERO_UPSTREAM_DB` é obrigatório porque é o binário da
-# Rocicorp que o lê.
+# 🔴 **A URL do banco vai em DUAS variáveis, com o mesmo valor.** Parece redundante e
+# não é:
+#
+#   DATABASE_URL       lido por `src/server/env-server.ts` → `src/database/*`
+#   ZERO_UPSTREAM_DB   lido por `src/zero/server.ts` com `process.env` **direto**,
+#                      sem passar pelo env-server — o fallback de lá não o alcança
+#
+# Faltando a segunda, `~/zero/server` estoura na carga e `/api/zero/pull` e
+# `/api/zero/push` respondem **404** (não 500): o One não registra rota cujo módulo não
+# carrega. Foi assim que apareceu em produção, e o log da máquina dizia
+# `AbortError: No string no ZERO_UPSTREAM_DB`.
+#
+# Aqui as duas levam a URL **com pooler** — o app abre muitas conexões curtas. A direta,
+# sem pooler, é só do zero-cache (`fly-zero.toml`).
 #
 #   fly secrets set -a bubble-app \
 #     BETTER_AUTH_SECRET="..." \
@@ -33,7 +41,7 @@
 #     ONE_SERVER_URL="https://bubble.mateusgsouza.com.br" \
 #     ZERO_VERSION="0.26.2" \
 #     ZERO_APP_PUBLICATIONS="zero_takeout" \
-#     DATABASE_URL="<neon COM pooler>" \
+#     DATABASE_URL="<neon COM pooler>" #     ZERO_UPSTREAM_DB="<a MESMA url acima>" \
 #     CLOUDFLARE_R2_ENDPOINT="..." CLOUDFLARE_R2_BUCKET="..." \
 #     CLOUDFLARE_R2_ACCESS_KEY="..." CLOUDFLARE_R2_SECRET_KEY="..." \
 #     GOOGLE_CLIENT_ID="..." GOOGLE_CLIENT_SECRET="..." \
