@@ -1,19 +1,19 @@
 # ⚠️ Este arquivo é do **zero-cache**, não do app.
 #
-# O app server (site + `app/api/*`) vai para a Vercel. Aqui roda só o servidor de sync
-# do Zero, que a Vercel não comporta: ele mantém um slot de replicação aberto no
-# Postgres e um replica SQLite em disco.
+# O app server (site + `app/api/*`) roda em `fly-app.toml`. Aqui é só o servidor de sync
+# do Zero, que é separado porque mantém um slot de replicação aberto no Postgres e um
+# replica SQLite em disco — por isso não pode dormir nem virar serverless.
 #
 # Não se constrói do nosso repositório — é a imagem oficial da Rocicorp. Por isso
-# **não** use "Launch an App from GitHub" no painel do Fly: aquilo tentaria construir o
-# `Dockerfile` da raiz, que empacota o app server e ainda falha, porque exige um `dist/`
+# **não** use "Launch an App from GitHub" no painel do Fly: aquilo construiria o
+# `Dockerfile` da raiz, que é do **app server**, e ainda falharia por exigir um `dist/`
 # que é gitignored.
 #
 # Subir:
 #   fly apps create bubble-zero
 #   fly volumes create zero_data --size 10 --region gru -a bubble-zero
 #   fly secrets set -a bubble-zero \
-#     ZERO_UPSTREAM_DB="postgresql://...neon.tech/postgres?sslmode=require" \
+#     ZERO_UPSTREAM_DB="postgresql://...neon.tech/neondb?sslmode=require" \
 #     ZERO_CVR_DB="postgresql://...neon.tech/zero_cvr?sslmode=require" \
 #     ZERO_CHANGE_DB="postgresql://...neon.tech/zero_cdb?sslmode=require" \
 #     ZERO_ADMIN_PASSWORD="<uma senha forte>"
@@ -40,8 +40,8 @@ primary_region = 'gru'
   # tem que bater com o que `src/database/migrate.ts` cria no Postgres
   ZERO_APP_PUBLICATIONS = 'zero_takeout'
 
-  # O app server na Vercel. É o zero-cache que chama estas rotas para validar permissão
-  # e aplicar mutation — apontando errado, o sync sobe e nada é autorizado.
+  # O app server. É o zero-cache que chama estas rotas para validar permissão e aplicar
+  # mutation — apontando errado, o sync sobe e nada é autorizado.
   ZERO_MUTATE_URL = 'https://bubble.mateusgsouza.com.br/api/zero/push'
   ZERO_QUERY_URL = 'https://bubble.mateusgsouza.com.br/api/zero/pull'
 
