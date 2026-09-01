@@ -15,33 +15,58 @@ const REQUIRED = [
 /**
  * Health check — e diagnóstico de configuração.
  *
- * ⚠️ **Esta rota não importa `env-server` nem `database` de propósito.** Ela precisa
- * responder mesmo quando a configuração está quebrada; é justamente aí que ela serve.
- * Foi assim que descobrimos, no primeiro deploy, que todas as outras rotas davam 500
- * enquanto esta devolvia 200: o problema era carga de módulo, não roteamento.
+ * ⚠️ **Esta rota não importa `env-server` nem `database` no topo, de propósito.** Ela
+ * precisa responder mesmo quando a configuração está quebrada; é justamente aí que
+ * serve. No primeiro deploy em produção todas as outras rotas devolviam 500 com
+ * `FUNCTION_INVOCATION_FAILED` e nenhuma pista, enquanto esta respondia 200 — foi o que
+ * mostrou que a falha era carga de módulo, não roteamento.
  *
- * Reporta só **nomes** de variáveis ausentes, nunca valores.
+ * `?diag=<CRON_SECRET>` importa os módulos do servidor dentro de `try/catch` e devolve a
+ * mensagem do erro. Fica atrás do segredo porque mensagem de erro interna não é coisa
+ * para expor a qualquer um.
  */
-export const GET: Endpoint = () => {
+export const GET: Endpoint = async (request) => {
   const missing = REQUIRED.filter((name) => !process.env[name])
 
   // o app aceita qualquer um dos dois: `DATABASE_URL` é o nome que a integração
   // Neon↔Vercel injeta (ver `src/server/env-server.ts`)
   const hasDatabase = Boolean(process.env.ZERO_UPSTREAM_DB || process.env.DATABASE_URL)
-
   const ok = missing.length === 0 && hasDatabase
 
-  return Response.json(
-    {
-      status: ok ? 'ok' : 'config-incompleta',
-      sha: process.env.GIT_SHA || 'dev',
-      env: process.env.NODE_ENV || 'unknown',
-      timestamp: new Date().toISOString(),
-      config: {
-        faltando: missing,
-        banco: hasDatabase ? 'configurado' : 'AUSENTE (ZERO_UPSTREAM_DB ou DATABASE_URL)',
-      },
+  const body: Record<string, unknown> = {
+    status: ok ? 'ok' : 'config-incompleta',
+    sha: process.env.GIT_SHA || 'dev',
+    env: process.env.NODE_ENV || 'unknown',
+    timestamp: new Date().toISOString(),
+    config: {
+      faltando: missing,
+      banco: hasDatabase ? 'configurado' : 'AUSENTE (ZERO_UPSTREAM_DB ou DATABASE_URL)',
     },
-    { status: ok ? 200 : 503 }
-  )
+  }
+
+  const secret = process.env.CRON_SECRET
+  if (secret && new URL(request.url).searchParams.get('diag') === secret) {
+    body.diagnostico = {
+      envServer: await probe(() => import('~/server/env-server')),
+      database: await probe(() => import('~/database')),
+      authServer: await probe(() => import('~/features/auth/server/authServer')),
+    }
+  }
+
+  return Response.json(body, { status: ok ? 200 : 503 })
+}
+
+/** Importa um módulo e devolve `'ok'` ou a mensagem do erro, sem derrubar a rota. */
+async function probe(load: () => Promise<unknown>) {
+  try {
+    await load()
+    return 'ok'
+  } catch (error) {
+    return {
+      erro: error instanceof Error ? error.message : String(error),
+      tipo: error instanceof Error ? error.name : typeof error,
+      // a primeira linha de stack costuma dizer qual require faltou
+      origem: error instanceof Error ? error.stack?.split('\n')[1]?.trim() : undefined,
+    }
+  }
 }
