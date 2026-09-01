@@ -63,6 +63,19 @@ export default {
       },
 
       web: {
+        /**
+         * Alvo do build de produção: funções serverless da Vercel.
+         *
+         * O `one build` passa a escrever `.vercel/output` (Build Output API v3), que a
+         * Vercel detecta sozinha — por isso o campo "Output Directory" do projeto fica
+         * **vazio**.
+         *
+         * ⚠️ Isto vale só para o **app server** (site + `app/api/*`). O zero-cache não
+         * cabe em serverless: ele segura um slot de replicação e um replica em disco.
+         * Vive no Fly — ver `deploy/fly-zero.toml`.
+         */
+        deploy: 'vercel',
+
         experimental_scriptLoading: 'after-lcp-aggressive',
         inlineLayoutCSS: true,
         defaultRenderMode: 'spa',
