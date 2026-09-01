@@ -1,0 +1,82 @@
+# ⚠️ Este arquivo é do **zero-cache**, não do app.
+#
+# O app server (site + `app/api/*`) vai para a Vercel. Aqui roda só o servidor de sync
+# do Zero, que a Vercel não comporta: ele mantém um slot de replicação aberto no
+# Postgres e um replica SQLite em disco.
+#
+# Não se constrói do nosso repositório — é a imagem oficial da Rocicorp. Por isso
+# **não** use "Launch an App from GitHub" no painel do Fly: aquilo tentaria construir o
+# `Dockerfile` da raiz, que empacota o app server e ainda falha, porque exige um `dist/`
+# que é gitignored.
+#
+# Subir:
+#   fly apps create bubble-zero
+#   fly volumes create zero_data --size 10 --region gru -a bubble-zero
+#   fly secrets set -a bubble-zero \
+#     ZERO_UPSTREAM_DB="postgresql://...neon.tech/postgres?sslmode=require" \
+#     ZERO_CVR_DB="postgresql://...neon.tech/zero_cvr?sslmode=require" \
+#     ZERO_CHANGE_DB="postgresql://...neon.tech/zero_cdb?sslmode=require" \
+#     ZERO_ADMIN_PASSWORD="<uma senha forte>"
+#   fly deploy -c deploy/fly-zero.toml -a bubble-zero
+#
+# 🔴 As três URLs do Neon precisam ser a conexão **direta**, SEM `-pooler` no host.
+# O pooler do Neon é PgBouncer em modo transação e não suporta replicação lógica —
+# o zero-cache falha de um jeito que parece erro de permissão.
+
+app = 'bubble-zero'
+primary_region = 'gru'
+
+[build]
+  # a versão tem que casar com `ZERO_VERSION` do .env, que é a mesma do pacote
+  # `@rocicorp/zero` no package.json — cliente e servidor precisam falar o mesmo protocolo
+  image = 'rocicorp/zero:0.26.2'
+
+[env]
+  ZERO_LOG_LEVEL = 'info'
+
+  # o replica SQLite mora no volume; sem isso ele reconstrói do zero a cada restart
+  ZERO_REPLICA_FILE = '/data/replica.db'
+
+  # tem que bater com o que `src/database/migrate.ts` cria no Postgres
+  ZERO_APP_PUBLICATIONS = 'zero_takeout'
+
+  # ⚠️ Trocar pelo domínio do app server na Vercel. É o zero-cache que chama estas
+  # rotas para validar permissão e aplicar mutation — se apontarem para o lugar errado,
+  # o sync sobe mas nada é autorizado.
+  ZERO_MUTATE_URL = 'https://SEU-APP.vercel.app/api/zero/push'
+  ZERO_QUERY_URL = 'https://SEU-APP.vercel.app/api/zero/pull'
+
+  # a sessão do usuário viaja por cookie até o app server, que é quem decide
+  ZERO_MUTATE_FORWARD_COOKIES = 'true'
+  ZERO_QUERY_FORWARD_COOKIES = 'true'
+
+  # limite de mutations por usuário. O throttle do progresso de aula
+  # (`useLessonProgress`) foi dimensionado contra este número — mudar aqui exige
+  # revisitar lá.
+  ZERO_PER_USER_MUTATION_LIMIT_MAX = '30'
+  ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS = '60000'
+
+  # conexões no Neon: some ao que o app server usa antes de subir estes números
+  ZERO_UPSTREAM_MAX_CONNS = '10'
+  ZERO_CVR_MAX_CONNS = '4'
+  ZERO_NUM_SYNC_WORKERS = '2'
+
+[[mounts]]
+  source = 'zero_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 4848
+  force_https = true
+
+  # 🔴 **Não deixe dormir.** O zero-cache segura um slot de replicação no Postgres;
+  # máquina parada acumula WAL no Neon e o sync volta furado. Isto custa uma máquina
+  # ligada o mês inteiro — é o preço de ter sync reativo.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  # 256MB (o padrão do painel) é pouco: ele carrega o replica e roda os sync workers.
+  memory = '1gb'
