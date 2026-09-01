@@ -4,9 +4,15 @@
  * @description Aplica a política de CORS no bucket R2 — sem isso o upload pelo navegador
  * é bloqueado.
  *
- *   bun run:dev scripts/r2-cors.ts                    # aplica em http://localhost:8081
+ *   bun run:dev scripts/r2-cors.ts                    # garante http://localhost:8081
  *   bun run:dev scripts/r2-cors.ts --get              # só mostra a política atual
- *   bun run:dev scripts/r2-cors.ts https://meuapp.com # aplica noutra origem também
+ *   bun run:dev scripts/r2-cors.ts https://meuapp.com # acrescenta outra origem
+ *   bun run:dev scripts/r2-cors.ts --replace https://so-essa.com   # descarta as atuais
+ *
+ * ⚠️ **Ele soma, não substitui.** O R2 aceita uma política por bucket, então um PUT
+ * simples apagaria as origens que já estavam lá — rodar isto para consertar o dev
+ * derrubaria o upload em produção, sem aviso. Por isso o padrão é ler a política atual e
+ * unir. Para limpar de propósito, `--replace`.
  *
  * ⚠️ **Por que isto existe:** o `media-smoke.ts` sobe arquivo pelo Node, que não tem
  * CORS — então ele passa mesmo com o bucket fechado. O navegador não: o PUT assinado é
@@ -38,10 +44,19 @@ if (!ENDPOINT || !BUCKET || !ACCESS_KEY || !SECRET_KEY) {
 
 const argv = process.argv.slice(2)
 const onlyGet = argv.includes('--get')
+const replace = argv.includes('--replace')
 const extraOrigins = argv.filter((a) => !a.startsWith('--'))
 
-// a origem de dev sempre entra; produção vem por argumento
-const ORIGINS = ['http://localhost:8081', ...extraOrigins]
+/** A origem pública, quando o ambiente souber qual é. */
+const publicOrigin = process.env.VITE_WEB_HOSTNAME
+  ? `https://${process.env.VITE_WEB_HOSTNAME}`
+  : null
+
+const wanted = [
+  'http://localhost:8081',
+  ...(publicOrigin ? [publicOrigin] : []),
+  ...extraOrigins,
+]
 
 const sha256Hex = (data: string) =>
   createHash('sha256').update(data, 'utf8').digest('hex')
@@ -101,9 +116,9 @@ function signedRequest(method: 'PUT' | 'GET', query: string, body: string) {
   }
 }
 
-const corsXml = () => {
+const corsXml = (origins: string[]) => {
   const rule = [
-    ...ORIGINS.map((o) => `    <AllowedOrigin>${o}</AllowedOrigin>`),
+    ...origins.map((o) => `    <AllowedOrigin>${o}</AllowedOrigin>`),
     // PUT sobe o arquivo; GET e HEAD servem playback e a confirmação de upload
     '    <AllowedMethod>PUT</AllowedMethod>',
     '    <AllowedMethod>GET</AllowedMethod>',
@@ -129,8 +144,8 @@ async function getCors() {
   return { status: res.status, text }
 }
 
-async function putCors() {
-  const body = corsXml()
+async function putCors(origins: string[]) {
+  const body = corsXml(origins)
   const { url, headers } = signedRequest('PUT', 'cors=', body)
   const res = await fetch(url, { method: 'PUT', headers, body })
   return { status: res.status, text: res.ok ? '' : await res.text() }
@@ -143,8 +158,24 @@ if (onlyGet) {
   process.exit(current.status < 400 ? 0 : 1)
 }
 
-console.info(`→ PUT /${BUCKET}?cors`)
-const result = await putCors()
+// une com o que já está no bucket, senão consertar uma origem apaga as outras
+const existing = replace ? { status: 200, text: '' } : await getCors()
+const already = [...existing.text.matchAll(/<AllowedOrigin>([^<]+)<\/AllowedOrigin>/g)].map(
+  (m) => m[1]!
+)
+const ORIGINS = [...new Set([...already, ...wanted])]
+
+const novas = ORIGINS.filter((o) => !already.includes(o))
+if (already.length) {
+  console.info(`política atual: ${already.join(', ')}`)
+}
+if (!novas.length && !replace) {
+  console.info('✅ nada a fazer: as origens desejadas já estão no bucket')
+  process.exit(0)
+}
+
+console.info(`→ PUT /${BUCKET}?cors  (acrescentando: ${novas.join(', ') || 'nenhuma'})`)
+const result = await putCors(ORIGINS)
 
 if (result.status >= 400) {
   console.error(`❌ o R2 recusou (${result.status}):`)
