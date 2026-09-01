@@ -4,14 +4,17 @@ import { Slot, Stack } from 'one'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { isWeb, YStack } from 'tamagui'
 
+import { APP_NAME } from '~/constants/app'
 import { PlatformSpecificRootProvider } from '~/interface/platform/PlatformSpecificRootProvider'
 import { TamaguiRootProvider } from '~/tamagui/TamaguiRootProvider'
 
 export function Layout() {
   return (
-    <html lang="en-US">
+    <html lang="pt-BR">
       <head>
         <meta charSet="utf-8" />
+        {/* sem isto a aba do navegador mostra "localhost:8081" */}
+        <title>{APP_NAME}</title>
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta property="og:image" content={`${process.env.ONE_SERVER_URL}/og.jpg`} />
         <meta property="og:image:width" content="1200" />

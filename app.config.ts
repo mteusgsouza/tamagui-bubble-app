@@ -1,6 +1,6 @@
 import type { ExpoConfig } from 'expo/config'
 
-const appName = 'Takeout'
+const appName = 'Bubble'
 const appId = appName.toLowerCase()
 
 const { APP_VARIANT = 'development' } = process.env
@@ -16,13 +16,15 @@ if (
 const IS_DEV = APP_VARIANT === 'development'
 
 const getBundleId = () => {
-  // use tamagui bundle ids for production/preview, takeout for dev
+  // ⚠️ Era `dev.tamagui.takeout` — o identificador do template. Publicar com ele é
+  // impossível: o pacote pertence à Tamagui. Se você registrar um domínio próprio,
+  // troque para o reverso dele (ex.: `br.com.seudominio.bubble`).
   if (APP_VARIANT === 'development') {
-    return 'dev.tamagui.takeout.dev'
+    return 'com.mteusgsouza.bubble.dev'
   } else if (APP_VARIANT === 'preview') {
-    return 'dev.tamagui.takeout.preview'
+    return 'com.mteusgsouza.bubble.preview'
   }
-  return 'dev.tamagui.takeout'
+  return 'com.mteusgsouza.bubble'
 }
 
 const getAppIcon = () => {
@@ -43,8 +45,9 @@ export default {
           return ''
       }
     })()}`,
-    slug: 'takeout',
-    owner: 'takeout',
+    slug: 'bubble',
+    // `owner` removido de propósito: era `takeout`, a conta da Tamagui no EAS, e o build
+    // falharia por falta de permissão. Sem o campo, o EAS usa a conta que está logada.
     scheme: appId,
     version,
     runtimeVersion: version, // must be set to use hot-updater "appVersion" update strategy
@@ -75,12 +78,14 @@ export default {
       package: getBundleId().replaceAll('-', '_'),
       icon: getAppIcon(),
       adaptiveIcon: {
+        // o PNG tem só as bolhas, transparente; o âmbar entra por aqui. O Android
+        // recorta o primeiro plano, então a marca vive no centro (~55%) da imagem.
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#e6dac1',
+        backgroundColor: '#e5a33a',
       },
       permissions: ['android.permission.RECORD_AUDIO'],
     },
-    primaryColor: '#e6dac1',
+    primaryColor: '#e5a33a',
     plugins: [
       'vxrn/expo-plugin',
       'expo-web-browser',
@@ -139,10 +144,11 @@ export default {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#e6dac1',
+          // fundo escuro para a marca âmbar aparecer, como no app
+          backgroundColor: '#141414',
           image: './assets/logo.png',
-          imageWidth: 80,
-          imageHeight: 80,
+          imageWidth: 96,
+          imageHeight: 96,
         },
       ],
       // hot-updater for OTA updates - uncomment and configure if needed
