@@ -52,3 +52,6 @@ dist
 
 # permissões locais do Claude Code — máquina de quem roda, não do projeto
 .claude/settings.local.json
+
+# saída do build para a Vercel (Build Output API) e o link do projeto pelo CLI
+.vercel
