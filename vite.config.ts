@@ -64,17 +64,19 @@ export default {
 
       web: {
         /**
-         * Alvo do build de produção: funções serverless da Vercel.
+         * Alvo do build: servidor Node (o padrão do One).
          *
-         * O `one build` passa a escrever `.vercel/output` (Build Output API v3), que a
-         * Vercel detecta sozinha — por isso o campo "Output Directory" do projeto fica
-         * **vazio**.
+         * ⚠️ **Não troque para `'vercel'`.** As funções serverless que o One gera não
+         * levam `node_modules` — o builder copia só o `react`. Tudo que ficar externo
+         * quebra em runtime com `Cannot find package`. E `@rocicorp/zero` e `on-zero`
+         * **precisam** ser externos (ver a lista `ssr.external` acima: eles compartilham
+         * um Symbol que tem que ser a mesma instância).
          *
-         * ⚠️ Isto vale só para o **app server** (site + `app/api/*`). O zero-cache não
-         * cabe em serverless: ele segura um slot de replicação e um replica em disco.
-         * Vive no Fly — ver `deploy/fly-zero.toml`.
+         * Medido em produção: com alvo vercel, `/api/health` respondia 200 (não importa
+         * nada) e toda rota com auth ou banco dava 500 —
+         * `Cannot find package 'better-auth'`. O app roda em container, via o
+         * `Dockerfile` da raiz. Ver `deploy/fly-app.toml`.
          */
-        deploy: 'vercel',
 
         experimental_scriptLoading: 'after-lcp-aggressive',
         inlineLayoutCSS: true,

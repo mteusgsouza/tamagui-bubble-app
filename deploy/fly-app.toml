@@ -1,0 +1,63 @@
+# App server: o site e todas as rotas `app/api/*` (auth, mídia, billing, cron, zero).
+#
+# Roda o `Dockerfile` da raiz, que executa `bun one serve`. Container de verdade, com
+# `node_modules` — que é o que as funções serverless da Vercel não tinham: lá o builder
+# do One copia só o `react`, e tudo que fica externo quebra em runtime
+# (`Cannot find package 'better-auth'`). Ver o comentário em `vite.config.ts`.
+#
+# ⚠️ **Construa antes de subir.** O `Dockerfile` exige um `dist/` pronto e falha sem ele.
+# O `fly deploy` envia o diretório local como contexto, então o `dist/` construído aqui
+# vai junto. E as variáveis `VITE_*` são **embutidas no build**, não lidas em runtime —
+# por isso precisam dos valores de produção na hora de construir:
+#
+#   VITE_ZERO_HOSTNAME=bubble-zero.fly.dev \
+#   VITE_WEB_HOSTNAME=bubble.mateusgsouza.com.br \
+#   VITE_MASTER_USER_ID=<id do criador> \
+#   ONE_SERVER_URL=https://bubble.mateusgsouza.com.br \
+#   bun run build
+#
+#   fly deploy -c deploy/fly-app.toml -a bubble-app
+#
+# O resto das variáveis é lido em runtime e vai como secret:
+#
+#   fly secrets set -a bubble-app \
+#     BETTER_AUTH_SECRET="..." \
+#     BETTER_AUTH_URL="https://bubble.mateusgsouza.com.br" \
+#     ONE_SERVER_URL="https://bubble.mateusgsouza.com.br" \
+#     ZERO_VERSION="0.26.2" \
+#     ZERO_APP_PUBLICATIONS="zero_takeout" \
+#     ZERO_UPSTREAM_DB="<neon COM pooler>" \
+#     CLOUDFLARE_R2_ENDPOINT="..." CLOUDFLARE_R2_BUCKET="..." \
+#     CLOUDFLARE_R2_ACCESS_KEY="..." CLOUDFLARE_R2_SECRET_KEY="..." \
+#     GOOGLE_CLIENT_ID="..." GOOGLE_CLIENT_SECRET="..." \
+#     BILLING_PROVIDER="manual" BILLING_WEBHOOK_SECRET="..." CRON_SECRET="..."
+
+app = 'bubble-app'
+primary_region = 'gru'
+
+[build]
+  dockerfile = '../Dockerfile'
+
+[http_service]
+  # a porta que o `CMD` do Dockerfile abre
+  internal_port = 8092
+  force_https = true
+
+  # Diferente do zero-cache, este pode dormir: não segura slot de replicação, não tem
+  # disco. Dormir economiza; o custo é alguns segundos no primeiro acesso depois da
+  # ociosidade.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.checks]
+    [http_service.checks.health]
+      type = 'http'
+      path = '/api/health'
+      interval = '30s'
+      timeout = '5s'
+      grace_period = '20s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
