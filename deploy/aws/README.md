@@ -41,7 +41,11 @@ Rode no SQL Editor do Neon, no mesmo projeto/branch do `neondb`.
 **E ligue a replicação lógica**, que vem desligada: *Settings → Logical Replication →
 Enable* (reinicia o compute). Sem isso o zero-cache morre no boot com
 `Postgres must be configured with "wal_level = logical" (currently: "replica")`.
-Confirme com `SHOW wal_level;` — tem que dizer `logical`.
+Confirme no SQL Editor — tem que responder `logical`. (`SHOW` não funciona lá.)
+
+```sql
+SELECT current_setting('wal_level');
+```
 
 **2. DNS.** Aponte um subdomínio para o IP da máquina, antes de subir — o Caddy tenta
 emitir o certificado no primeiro boot e falha se o nome não resolver:
