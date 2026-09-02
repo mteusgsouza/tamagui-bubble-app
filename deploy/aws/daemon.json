@@ -1,0 +1,18 @@
+{
+  "comment": [
+    "Copie para /etc/docker/daemon.json e reinicie o Docker.",
+    "",
+    "Obrigatório numa máquina IPv6-only. A bridge padrão do Docker é IPv4-only: o",
+    "container recebe um IPv4 privado e sai por NAT. Sem IPv4 no host esse NAT não",
+    "tem para onde ir, e o container fica sem internet -- o zero-cache não alcança o",
+    "Neon e o Caddy não alcança a Let's Encrypt.",
+    "",
+    "fixed-cidr-v6 é uma faixa ULA (privada, fd00::/8): o container recebe um IPv6",
+    "interno e o ip6tables faz NAT66 para o IPv6 público da máquina.",
+    "",
+    "O `docker pull` NÃO precisa disto -- ele roda no host, não no container."
+  ],
+  "ipv6": true,
+  "ip6tables": true,
+  "fixed-cidr-v6": "fd00:bbb1::/64"
+}

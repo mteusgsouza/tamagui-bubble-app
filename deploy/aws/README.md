@@ -20,6 +20,11 @@ Requisitos:
   por ele antes de emitir o certificado)
 - **IP estático** — em EC2 é um Elastic IP; sem isso o IP muda a cada reinício e o DNS
   aponta para o vazio
+- 🔴 **Numa máquina IPv6-only**, três coisas mudam e nenhuma é o padrão: o registro DNS é
+  `AAAA`, o Docker precisa do `daemon.json` desta pasta, e as portas do compose são
+  publicadas em `[::]`. As duas últimas já estão nos arquivos. Vale saber o que se perde:
+  quem estiver numa rede sem IPv6 não alcança o zero-cache — o app abre e autentica (o
+  app server está no Fly, que tem os dois) mas **não sincroniza**.
 
 ## Passos
 
@@ -37,13 +42,34 @@ Rode no SQL Editor do Neon, no mesmo projeto/branch do `neondb`.
 emitir o certificado no primeiro boot e falha se o nome não resolver:
 
 ```
-A  zero.mateusgsouza.com.br → <IP da máquina>
+AAAA  zero.mateusgsouza.com.br → <IPv6 da máquina>
 ```
+
+(Numa máquina dual-stack é um `A` com o IPv4; numa IPv6-only, `AAAA`. A Let's Encrypt
+valida por IPv6 sem problema.) O Caddy fica **tentando em loop** enquanto o nome não
+resolver, e isso não impede o zero-cache de subir — dá para deixar o DNS para depois.
 
 Se o domínio estiver na Cloudflare, deixe a nuvem **cinza** (DNS only). Com a laranja, a
 Cloudflare responde pelo certificado e o desafio do Caddy não completa.
 
-**3. Copie esta pasta para a máquina** e preencha o ambiente:
+**3. Docker.** A imagem "OS Only" da Lightsail não traz Docker:
+
+```bash
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && exit
+```
+
+Reconecte depois do `exit` — o grupo `docker` só passa a valer em sessão nova.
+
+🔴 **Se a máquina for IPv6-only**, o Docker precisa do `daemon.json` desta pasta antes de
+qualquer container. A bridge padrão é IPv4-only: o container sai por NAT para um IPv4 que
+ali não existe, e fica sem internet — o zero-cache não alcança o Neon e o Caddy não
+alcança a Let's Encrypt. (O `docker pull` funciona mesmo assim: ele roda no host.)
+
+```bash
+sudo cp daemon.json /etc/docker/daemon.json && sudo systemctl restart docker
+```
+
+**4. Copie esta pasta para a máquina** e preencha o ambiente:
 
 ```bash
 cp .env.example .env && nano .env
@@ -52,20 +78,20 @@ cp .env.example .env && nano .env
 🔴 As três URLs do Neon precisam ser a conexão **direta**, sem `-pooler`. Replicação
 lógica não passa por PgBouncer.
 
-**4. Suba:**
+**5. Suba:**
 
 ```bash
 docker compose up -d
 ```
 
-**5. Acompanhe o primeiro boot.** Ele monta o replica a partir do Postgres, o que demora
+**6. Acompanhe o primeiro boot.** Ele monta o replica a partir do Postgres, o que demora
 proporcionalmente ao tamanho do banco:
 
 ```bash
 docker compose logs -f zero
 ```
 
-**6. Confirme de fora:**
+**7. Confirme de fora:**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" https://zero.mateusgsouza.com.br/

@@ -7,7 +7,8 @@
 # O app server continua no Fly: ele é sem estado, dorme quando ocioso e já está no ar.
 # Se um dia quiser trazê-lo para cá também, veja o fim do README desta pasta.
 #
-# Passos completos: README.md nesta pasta.
+# 🔴 Numa máquina IPv6-only o Docker precisa do `daemon.json` desta pasta, senão os
+# containers ficam sem rede. Passos completos: README.md nesta pasta.
 
 services:
   # TLS automático via Let's Encrypt. O cliente conecta no zero-cache por WSS, então
@@ -15,9 +16,11 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # `[::]` explícito porque a máquina é IPv6-only: a forma curta (`'80:80'`) publica
+    # em 0.0.0.0, que ali não recebe nada. O socket em `::` no Linux atende os dois.
     ports:
-      - '80:80'
-      - '443:443'
+      - '[::]:80:80'
+      - '[::]:443:443'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data # certificados; perder isto refaz a emissão
