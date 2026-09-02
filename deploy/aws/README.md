@@ -22,7 +22,9 @@ Lightsail com Docker, plano de **1 GB** ou mais. Requisitos:
   máquina só-IPv6, quem abrir o site de uma rede sem IPv6 não vê nada — que num
   portfólio é justamente o caso que mais importa.
 
-Com 1 GB, três containers cabem apertado. Uma swap resolve:
+Com 1 GB, três containers cabem apertado — medido: 493 MB somados, e **30 MiB
+disponíveis** na máquina. Olhe a coluna `available` do `free -h`, não a `free`. Ligue
+swap antes de subir:
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile

@@ -73,6 +73,10 @@ services:
       # conexões no Neon: some ao que o app server usa antes de aumentar
       ZERO_UPSTREAM_MAX_CONNS: '10'
       ZERO_CVR_MAX_CONNS: '4'
+
+      # ⚠️ Numa instância de 1 GB ponha '1'. Medido lá: com dois workers o container
+      # ficava em 376 MB e sobravam 30 MiB livres na máquina inteira — qualquer pico
+      # convidava o OOM killer. Um worker dá conta de um app de um criador só.
       ZERO_NUM_SYNC_WORKERS: '2'
 
     expose:
