@@ -59,3 +59,4 @@ dist
 # envs preenchidos do deploy (os *.example continuam versionados)
 deploy/**/app.env
 deploy/**/zero.env
+scripts/deploy.sh
