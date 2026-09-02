@@ -2,11 +2,14 @@ import { Link, usePathname } from 'one'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { BOTTOM_BAR_HEIGHT, TOP_BAR_HEIGHT } from '~/constants/navigation'
+import { canManage } from '~/features/admin/canManage'
+import { useAuth } from '~/features/auth/client/authClient'
 import { Logo } from '~/interface/app/Logo'
 import { Pressable } from '~/interface/buttons/Pressable'
 
-import { activeTab, APP_TABS } from './appTabs'
+import { activeTab, ADMIN_TAB, APP_TABS } from './appTabs'
 
+import type { AppTab } from './appTabs'
 import type { ReactNode } from 'react'
 
 /**
@@ -102,10 +105,42 @@ export const AppBottomBar = () => {
   )
 }
 
+/** Um item da coluna. Extraído para o Admin nascer idêntico aos vizinhos. */
+const SidebarItem = ({ tab, isActive }: { tab: AppTab; isActive: boolean }) => {
+  const Icon = tab.icon
+
+  return (
+    <Link href={tab.href}>
+      <Pressable
+        flexDirection="row"
+        items="center"
+        gap="$3"
+        px="$3"
+        py="$2.5"
+        rounded="$10"
+        bg={isActive ? '$color3' : 'transparent'}
+        hoverStyle={{ bg: isActive ? '$color3' : '$color2' }}
+        role="link"
+        aria-current={isActive ? 'page' : undefined}
+      >
+        <Icon size={24} color={isActive ? ACTIVE : INACTIVE} />
+        <SizableText
+          size="$5"
+          fontWeight={isActive ? '700' : '400'}
+          color={isActive ? ACTIVE : INACTIVE}
+        >
+          {tab.label}
+        </SizableText>
+      </Pressable>
+    </Link>
+  )
+}
+
 /** Coluna do desktop: logo em cima, abas embaixo. */
 export const AppSidebar = () => {
   const pathname = usePathname()
   const current = activeTab(pathname)
+  const { authData } = useAuth()
 
   return (
     <YStack
@@ -130,35 +165,24 @@ export const AppSidebar = () => {
         </XStack>
       </Link>
 
-      {APP_TABS.map((tab) => {
-        const Icon = tab.icon
-        const isActive = current === tab.name
-        return (
-          <Link key={tab.name} href={tab.href}>
-            <Pressable
-              flexDirection="row"
-              items="center"
-              gap="$3"
-              px="$3"
-              py="$2.5"
-              rounded="$10"
-              bg={isActive ? '$color3' : 'transparent'}
-              hoverStyle={{ bg: isActive ? '$color3' : '$color2' }}
-              role="link"
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <Icon size={24} color={isActive ? ACTIVE : INACTIVE} />
-              <SizableText
-                size="$5"
-                fontWeight={isActive ? '700' : '400'}
-                color={isActive ? ACTIVE : INACTIVE}
-              >
-                {tab.label}
-              </SizableText>
-            </Pressable>
-          </Link>
-        )
-      })}
+      {APP_TABS.map((tab) => (
+        <SidebarItem key={tab.name} tab={tab} isActive={current === tab.name} />
+      ))}
+
+      {/*
+        O Admin, para quem administra. Vem depois de um traço porque `/admin` **troca a
+        moldura inteira** (`AdminShell`): é uma saída do app, não uma quarta aba de dentro
+        dele. Por isso também nunca acende — o `AppShell` sequer é desenhado lá, então
+        `isActive` seria falso mesmo se o `activeTab` conhecesse esta rota.
+
+        `canManage` é o mesmo predicado do guard em `app/(app)/admin/_layout.tsx`: mostrar
+        aqui o que o guard recusaria seria oferecer uma porta que bate na cara.
+      */}
+      {canManage(authData) ? (
+        <YStack mt="$2" pt="$3" borderTopWidth={1} borderColor="$borderColor">
+          <SidebarItem tab={ADMIN_TAB} isActive={false} />
+        </YStack>
+      ) : null}
     </YStack>
   )
 }

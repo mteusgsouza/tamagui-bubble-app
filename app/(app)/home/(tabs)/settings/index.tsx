@@ -99,7 +99,9 @@ export function ProfileSettingsPage() {
   const { logout } = useLogout()
   const { authData, user } = useAuth()
 
-  // o admin saiu do header nesta reestruturação: agora o único caminho é por aqui
+  // segundo caminho para o admin: na web ele também é item da sidebar (`AppNav`), mas
+  // ali só no desktop. No celular — e no app nativo — este é o único acesso pela
+  // interface.
   const showAdmin = canManage(authData)
 
   const sections: SettingSection[] = [

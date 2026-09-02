@@ -3,8 +3,8 @@ import { SizableText, XStack, YStack } from 'tamagui'
 
 import { canManagePeople } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
+import { HeaderBackButton } from '~/interface/buttons/HeaderBackButton'
 import { Pressable } from '~/interface/buttons/Pressable'
-import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
 
 import type { ReactNode } from 'react'
 import type { Href } from 'one'
@@ -38,11 +38,13 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
     <YStack bg="$background" flex={1} {...({ minHeight: '100vh' } as any)}>
       <YStack width="100%" maxW={980} mx="auto" px="$4" pb="$8">
         <XStack items="center" gap="$3" py="$4">
-          <Link href="/home/feed" aria-label="Voltar ao app">
-            <Pressable role="button">
-              <CaretLeftIcon size={22} />
-            </Pressable>
-          </Link>
+          {/*
+            Volta no histórico, como todo caret do app. Antes era um `Link` fixo para
+            `/home/feed`: de `/admin/posts/<id>` ele pulava o `/admin/posts` inteiro e
+            jogava quem estava editando lá fora. O `fallbackHref` cobre quem abriu a URL
+            direto e não tem para onde voltar.
+          */}
+          <HeaderBackButton fallbackHref="/home/feed" ml="$-2" />
           <SizableText size="$7" fontWeight="700">
             Admin
           </SizableText>
