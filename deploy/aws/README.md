@@ -148,8 +148,10 @@ docker compose pull app && docker compose up -d app
 
 ## Manutenção
 
-- **atualizar o app**: rebuild na sua máquina → push → aqui `docker compose pull app` e
-  `docker compose up -d app`
+- **atualizar o app**: `bash scripts/deploy.sh` do Git Bash faz os quatro passos —
+  build pela WSL (o bun não roda no Windows), imagem, troca do container por SSH e
+  confere o 200. Precisa da chave da Lightsail em `~/.ssh/lightsail-bubble.pem`; sem
+  ela o script imprime o comando para colar no terminal do navegador.
 - **atualizar o zero-cache**: a versão da imagem tem que continuar casando com
   `@rocicorp/zero` do `package.json` e com `ZERO_VERSION` do `app.env`
 - **backup**: o volume `zero_data` é descartável — é um replica derivado do Postgres, e
