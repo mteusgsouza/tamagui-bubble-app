@@ -44,8 +44,15 @@ type PostSeed = {
   requiredPlanId?: string
   /** dias atrás; o feed ordena por isto e assim nasce sempre recente */
   daysAgo: number
+  /**
+   * Curtidas de vitrine. Sobrevivem porque nenhuma tela lista quem curtiu — o número
+   * sozinho não se contradiz, e reagir de verdade continua somando em cima.
+   *
+   * ⚠️ Não existe `commentCount` aqui de propósito. Semear o contador sem semear as
+   * linhas de `comment` faz o post anunciar "6 comentários" e a lista responder
+   * "Ninguém comentou ainda" — foi o que apareceu na primeira ida a produção.
+   */
   likeCount: number
-  commentCount: number
 }
 
 const POSTS: PostSeed[] = [
@@ -61,7 +68,6 @@ const POSTS: PostSeed[] = [
     requiredPlanId: 'plan-anual',
     daysAgo: 7,
     likeCount: 72,
-    commentCount: 0,
   },
   {
     id: 'p-preco',
@@ -71,7 +77,6 @@ const POSTS: PostSeed[] = [
     visibility: 'public',
     daysAgo: 6,
     likeCount: 94,
-    commentCount: 0,
   },
   {
     id: 'p-anuncio',
@@ -81,7 +86,6 @@ const POSTS: PostSeed[] = [
     visibility: 'subscribers',
     daysAgo: 5,
     likeCount: 206,
-    commentCount: 0,
   },
   {
     id: 'p-funil',
@@ -91,7 +95,6 @@ const POSTS: PostSeed[] = [
     visibility: 'subscribers',
     daysAgo: 4,
     likeCount: 342,
-    commentCount: 0,
   },
   {
     id: 'p-landing',
@@ -105,7 +108,6 @@ const POSTS: PostSeed[] = [
     visibility: 'public',
     daysAgo: 3,
     likeCount: 129,
-    commentCount: 6,
   },
 ]
 
@@ -144,8 +146,8 @@ async function seed() {
       await client.query(
         `INSERT INTO post (id, "feedOwnerId", kind, title, body, visibility,
                            "requiredPlanId", published, "publishedAt",
-                           "likeCount", "commentCount", deleted, "createdAt")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, false, $8)
+                           "likeCount", deleted, "createdAt")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, false, $8)
          ON CONFLICT (id) DO NOTHING`,
         [
           post.id,
@@ -157,7 +159,6 @@ async function seed() {
           post.requiredPlanId ?? null,
           at,
           post.likeCount,
-          post.commentCount,
         ],
       )
     }
