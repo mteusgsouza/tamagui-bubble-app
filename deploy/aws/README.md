@@ -69,6 +69,10 @@ alcança a Let's Encrypt. (O `docker pull` funciona mesmo assim: ele roda no hos
 sudo cp daemon.json /etc/docker/daemon.json && sudo systemctl restart docker
 ```
 
+⚠️ O `daemon.json` **não basta sozinho**: ele cobre a bridge padrão, e o Compose cria uma
+rede própria. Por isso o `docker-compose.yml` declara `enable_ipv6` no bloco `networks`.
+Rede já criada não muda de configuração — se subiu antes, `docker compose down` primeiro.
+
 **4. Copie esta pasta para a máquina** e preencha o ambiente:
 
 ```bash

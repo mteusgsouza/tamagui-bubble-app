@@ -72,3 +72,19 @@ volumes:
   zero_data:
   caddy_data:
   caddy_config:
+
+# 🔴 Numa máquina IPv6-only isto é obrigatório, e o `daemon.json` sozinho NÃO cobre:
+# `"ipv6": true` lá vale para a bridge padrão (`docker0`), enquanto o Compose cria uma
+# rede própria — que nasce IPv4-only e deixa o container sem rota.
+#
+# O sintoma é o zero-cache morrendo no boot com `ENETUNREACH` no endereço IPv6 do Neon
+# (e `ETIMEDOUT` nos IPv4, que ali não existem mesmo).
+#
+# A faixa é ULA (privada); o ip6tables do daemon faz NAT66 para o IPv6 público da máquina.
+# Trocar de faixa exige `docker compose down` — rede existente não muda de configuração.
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:bbb2::/64
