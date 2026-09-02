@@ -499,9 +499,13 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - **Contas existentes hoje:** `demo@takeout.tamagui.dev` / `demopassword123`
   (id `demo-user-id`, é o criador) e `teste@bubble.local` / `teste123456`
   (id `test-user-b`, cobaia do teste de paywall, criada à mão no banco).
-- **Seed: metade resolvida.** `scripts/seed-courses.ts` (Fase 7) recria planos, curso,
-  módulos e aulas de forma idempotente. **Os 5 posts continuam sem script** — foram
-  criados à mão e somem num `bun backend:clean`.
+- ~~**Seed: metade resolvida.**~~ **Fechado.** `scripts/seed-courses.ts` recria planos,
+  curso, módulos e aulas; `scripts/seed-posts.ts` recria os 5 posts. Os dois são
+  idempotentes e leem o dono de `VITE_MASTER_USER_ID`, o que é o ponto: em produção o
+  criador é outra conta, e copiar as linhas do dev com `feedOwnerId = demo-user-id`
+  deixaria o feed vazio. Ordem: `seed-courses` antes, que `p-cac` referencia `plan-anual`.
+  ⚠️ A foto do `p-funil` é uma linha de `media` apontando para uma `storageKey` no R2 —
+  se o objeto não estiver no bucket, o post aparece sem imagem e o resto não é afetado.
 - **`exists` dentro de `exists` não foi validado em runtime** (`canAccessLesson`,
   `canAccessComment`). Se o zero-cache reclamar, o plano B é desnormalizar
   `feedOwnerId`/`visibility` na `lesson`.
