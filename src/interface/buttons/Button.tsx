@@ -46,6 +46,12 @@ export const Button = styled(TamaguiButton, {
        * `$accentBackground`/`$accentColor`, que já é definido nos dois temas.
        *
        * Use **um por tela**: se tudo é destaque, nada é.
+       *
+       * ⚠️ O `fontWeight` daqui **não chega ao rótulo** quando o filho é string: o
+       * `Button.Text` do Tamagui aplica a própria classe de peso (derivada do `size`) e
+       * ela ganha. O `color` chega, o peso não. Quem quer negrito põe o texto num
+       * `<SizableText fontWeight="600">` filho — é por isso que as telas de admin fazem
+       * assim, e não por descuido.
        */
       accent: {
         bg: '$accentBackground',
@@ -53,6 +59,26 @@ export const Button = styled(TamaguiButton, {
         fontWeight: '600',
         hoverStyle: { bg: '$accent10' },
         pressStyle: { bg: '$accent8', opacity: 0.9 },
+      },
+      /**
+       * A ação destrutiva — apagar, remover, cancelar de vez.
+       *
+       * Fica discreta em repouso (contorno vermelho, fundo transparente) e só ganha
+       * peso quando o ponteiro chega nela. O vermelho está ali para avisar, não para
+       * competir com o `accent`: quem decide o que a tela quer que aconteça é o
+       * destaque, e destruir nunca é o caminho principal.
+       *
+       * Sem `fontWeight`: pelo motivo descrito no `accent`, ele não chegaria ao rótulo —
+       * e aqui peso normal é o que se quer mesmo.
+       */
+      danger: {
+        bg: 'transparent',
+        color: '$red10',
+        borderWidth: 1,
+        borderColor: '$red7',
+        hoverStyle: { bg: '$red3', borderColor: '$red8', color: '$red11' },
+        pressStyle: { bg: '$red4', borderColor: '$red8', opacity: 0.9 },
+        focusVisibleStyle: { outlineColor: '$red8' },
       },
     },
   } as const,

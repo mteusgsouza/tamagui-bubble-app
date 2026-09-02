@@ -33,12 +33,7 @@ export const AdminPostsPage = memo(() => {
       title="Posts"
       detail={`${rows.length} no total, incluindo rascunhos e apagados`}
       action={
-        <Button
-          size="$3"
-          bg="$accentBackground"
-          onPress={startNew}
-          data-testid="new-post"
-        >
+        <Button size="$3" variant="accent" onPress={startNew} data-testid="new-post">
           <SizableText size="$3" fontWeight="600" color="$accentColor">
             Novo post
           </SizableText>

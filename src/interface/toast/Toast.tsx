@@ -51,8 +51,11 @@ const ToastDisplay = () => {
     if (val.type === 'hide') {
       controller.hide()
     } else {
-      const { toast } = val
-      controller.show(toast.title, toast.options)
+      // `showToast` achata tudo num objeto só (`{ title, ...opções }`), então não existe
+      // `toast.options` — ler essa chave entregava `undefined` ao controller e todo
+      // `message` era descartado em silêncio. O título aparecia, o detalhe nunca.
+      const { title, ...options } = val.toast
+      controller.show(title ?? '', options)
     }
   })
 
@@ -74,7 +77,7 @@ const ToastDisplay = () => {
       opacity={1}
       scale={1}
       transition="quick"
-      maxW={250}
+      maxW={340}
       overflow="hidden"
       viewportName={currentToast?.viewportName}
       bg="$color2"
@@ -96,12 +99,14 @@ const ToastDisplay = () => {
       boxShadow="0 4px 8px var(--shadow2), 0 16px 40px var(--shadow4)"
       rounded="$8"
     >
-      <YStack>
-        <Toast.Title numberOfLines={1} size="$3" color="$color12">
+      <YStack gap="$1">
+        <Toast.Title numberOfLines={2} size="$3" fontWeight="600" color="$color12">
           {currentToast?.title ?? ''}
         </Toast.Title>
+        {/* `$color11`, não `$color1`: o fundo do toast é `$color2`, então o detalhe
+            estava sendo escrito com a própria cor do fundo — invisível */}
         {!!currentToast?.message && (
-          <Toast.Description size="$2" color="$color1">
+          <Toast.Description size="$2" color="$color11">
             {currentToast.message}
           </Toast.Description>
         )}

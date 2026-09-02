@@ -146,7 +146,7 @@ export const AdminCourseEditPage = memo(() => {
             ) : null}
             <Button
               size="$3"
-              bg="$accentBackground"
+              variant="accent"
               onPress={save}
               disabled={saving || !draft.title.trim()}
               data-testid="save-course"

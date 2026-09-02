@@ -11,9 +11,12 @@ import { PostMediaField } from '~/features/admin/PostMediaField'
 import { deriveKind } from '~/features/admin/postMediaRules'
 import { useAuth } from '~/features/auth/client/authClient'
 import { Button } from '~/interface/buttons/Button'
+import { showToast } from '~/interface/toast/helpers'
 import { useQuery, zero } from '~/zero/client'
+import { awaitMutation } from '~/zero/helpers/awaitMutation'
 
 import type { PostKind, Visibility } from '~/data/types'
+import type { MutationOutcome } from '~/zero/helpers/awaitMutation'
 
 const route = createRoute<'/(app)/admin/posts/[postId]'>()
 
@@ -21,6 +24,23 @@ const VISIBILITIES: { id: Visibility; label: string }[] = [
   { id: 'subscribers', label: 'Assinantes' },
   { id: 'public', label: 'Aberto a todos' },
 ]
+
+/**
+ * Transforma o desfecho de uma mutation em toast.
+ *
+ * `pending` fica de fora do ramo de erro de propósito: nada se perdeu, o Zero só ainda
+ * não conseguiu falar com o servidor. Chamar isso de falha faria quem publica salvar
+ * de novo — e o texto voltaria a subir duas vezes.
+ */
+const reportOutcome = (outcome: MutationOutcome, done: string, failed: string) => {
+  if (outcome.ok) {
+    showToast(done, { type: 'success' })
+  } else if (outcome.pending) {
+    showToast('Ainda não confirmado', { type: 'warn', message: outcome.message })
+  } else {
+    showToast(failed, { type: 'error', message: outcome.message })
+  }
+}
 
 export const AdminPostEditPage = memo(() => {
   const router = useRouter()
@@ -47,6 +67,9 @@ export const AdminPostEditPage = memo(() => {
   })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+  // publicar e apagar agora esperam o servidor responder, então dá tempo de clicar duas
+  // vezes — este `busy` é o que impede o segundo clique
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (loaded || isNew || !post) return
@@ -70,6 +93,10 @@ export const AdminPostEditPage = memo(() => {
   // anexar mídia já é mutation imediata, então o `kind` do banco tem que acompanhar na
   // hora — esperar o "Salvar" deixaria o card do feed com o rótulo errado nesse meio.
   const createdRef = useRef(false)
+  // o ack do servidor da criação. O "Salvar" espera por ele para saber o que dizer; o
+  // anexo de mídia não espera nada — para ele basta a linha existir localmente, e as
+  // mutations chegam ao servidor na ordem em que saíram.
+  const createAckRef = useRef<Promise<MutationOutcome> | null>(null)
   const savedKindRef = useRef<PostKind | null>(null)
   const onKindChange = useCallback(
     (next: PostKind) => {
@@ -112,7 +139,7 @@ export const AdminPostEditPage = memo(() => {
     createdRef.current = true
     try {
       // `newId()` e `Date.now()` na tela, nunca dentro da mutation
-      await zero.mutate.post.insert({
+      const created = zero.mutate.post.insert({
         id: postId,
         feedOwnerId: MASTER_USER_ID,
         published: false,
@@ -123,11 +150,16 @@ export const AdminPostEditPage = memo(() => {
         createdAt: Date.now(),
         ...fields(),
       })
+      // guarda o ack para o "Salvar", mas só espera o lado otimista aqui
+      createAckRef.current = awaitMutation(created)
+      const applied = await created.client
+      if (applied.type === 'error') throw new Error(applied.error.message)
       // sai do modo "novo": daqui pra frente a tela edita em vez de recriar
       router.replace(`/admin/posts/${postId}`)
       return true
     } catch {
       createdRef.current = false
+      createAckRef.current = null
       return false
     }
   }
@@ -136,29 +168,53 @@ export const AdminPostEditPage = memo(() => {
     if (!postId || !userId || saving) return
     setSaving(true)
     try {
+      let outcome: MutationOutcome
       if (exists || createdRef.current) {
-        await zero.mutate.post.update({ id: postId, ...fields() })
+        outcome = await awaitMutation(zero.mutate.post.update({ id: postId, ...fields() }))
+      } else if (await ensurePost()) {
+        outcome = (await createAckRef.current) ?? { ok: true }
       } else {
-        await ensurePost()
+        outcome = { ok: false, pending: false, message: 'A criação do post foi recusada.' }
       }
+      reportOutcome(outcome, 'Post salvo', 'Não deu para salvar')
     } finally {
       setSaving(false)
     }
   }
 
   const togglePublish = async () => {
-    if (!postId || !exists) return
-    if (row.published) {
-      await zero.mutate.post.update({ id: postId, published: false })
-    } else {
-      await zero.mutate.post.publish({ id: postId, publishedAt: Date.now() })
+    if (!postId || !exists || busy) return
+    setBusy(true)
+    const wasPublished = Boolean(row.published)
+    try {
+      const outcome = await awaitMutation(
+        wasPublished
+          ? zero.mutate.post.update({ id: postId, published: false })
+          : zero.mutate.post.publish({ id: postId, publishedAt: Date.now() }),
+      )
+      reportOutcome(
+        outcome,
+        wasPublished ? 'Post despublicado' : 'Post publicado',
+        wasPublished ? 'Não deu para despublicar' : 'Não deu para publicar',
+      )
+    } finally {
+      setBusy(false)
     }
   }
 
   const remove = async () => {
-    if (!postId || !exists) return
-    await zero.mutate.post.softDelete({ id: postId })
-    router.replace('/admin/posts')
+    if (!postId || !exists || busy) return
+    setBusy(true)
+    let outcome: MutationOutcome
+    try {
+      outcome = await awaitMutation(zero.mutate.post.softDelete({ id: postId }))
+    } finally {
+      setBusy(false)
+    }
+    reportOutcome(outcome, 'Post apagado', 'Não deu para apagar')
+    // sai da tela de qualquer jeito que não seja recusa do servidor: em `pending` o
+    // post já sumiu do feed localmente, ficar aqui só confundiria.
+    if (outcome.ok || outcome.pending) router.replace('/admin/posts')
   }
 
   if (isLoading) {
@@ -197,13 +253,18 @@ export const AdminPostEditPage = memo(() => {
       action={
         <XStack gap="$2">
           {exists ? (
-            <Button size="$3" variant="outlined" onPress={togglePublish}>
+            <Button
+              size="$3"
+              variant="outlined"
+              onPress={togglePublish}
+              disabled={busy}
+            >
               {row.published ? 'Despublicar' : 'Publicar'}
             </Button>
           ) : null}
           <Button
             size="$3"
-            bg="$accentBackground"
+            variant="accent"
             onPress={save}
             disabled={saving}
             data-testid="save-post"
@@ -277,14 +338,27 @@ export const AdminPostEditPage = memo(() => {
           ) : null}
         </YStack>
 
+        {/* apagar é a única ação da tela que tira conteúdo do ar: ganha uma faixa
+            própria, separada por linha, com o que acontece escrito antes do botão */}
         {exists && !row.deleted ? (
-          <XStack>
-            <Button size="$2" variant="outlined" onPress={remove}>
-              <SizableText size="$2" color="$red10">
+          <YStack gap="$2" pt="$4" borderTopWidth={1} borderColor="$borderColor">
+            <SizableText size="$2" color="$color10">
+              Apagar tira o post do feed e dos assinantes. Ele continua aqui, visível só
+              para você.
+            </SizableText>
+            {/* o XStack impede o botão de esticar na largura toda */}
+            <XStack>
+              <Button
+                size="$3"
+                variant="danger"
+                onPress={remove}
+                disabled={busy}
+                data-testid="delete-post"
+              >
                 Apagar post
-              </SizableText>
-            </Button>
-          </XStack>
+              </Button>
+            </XStack>
+          </YStack>
         ) : null}
       </YStack>
     </AdminSection>

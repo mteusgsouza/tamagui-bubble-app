@@ -122,12 +122,12 @@ const CourseBody = ({ course }: { course: Course }) => {
       {next ? (
         <Button
           size="$4"
-          bg="$accentBackground"
-          hoverStyle={{ bg: '$accent10' }}
+          variant="accent"
           onPress={() => router.push(`/home/courses/${course.slug}/${next.id}`)}
           data-testid="continue-course"
         >
-          {/* o texto vai num filho: o `Button` deste repo não expõe `color` */}
+          {/* o rótulo vai num filho: o `fontWeight` do variant não chega ao
+              `Button.Text`, que aplica a própria classe de peso e ganha */}
           <SizableText size="$4" fontWeight="600" color="$accentColor">
             {stats.completedCount > 0 ? `Continuar: ${next.title}` : 'Começar o curso'}
           </SizableText>

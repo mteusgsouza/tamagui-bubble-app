@@ -30,7 +30,7 @@ export const AdminCoursesPage = memo(() => {
       action={
         <Button
           size="$3"
-          bg="$accentBackground"
+          variant="accent"
           onPress={() => router.push(`/admin/courses/${newId()}?novo=1`)}
           data-testid="new-course"
         >
