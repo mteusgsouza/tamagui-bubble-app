@@ -72,8 +72,11 @@ navegador faz `PUT` direto no R2, sem passar pelo servidor. Use `scripts/r2-cors
 ## A imagem do app
 
 O `Dockerfile` roda `bun install`, que não cabe na RAM da instância. Então a imagem é
-construída **na sua máquina** e puxada de um registry. O `ghcr.io` é grátis e usa a conta
-do GitHub.
+construída **na sua máquina** e puxada de um registry.
+
+🔴 **Docker Hub, não ghcr.io.** O ghcr.io não publica registro `AAAA` — numa máquina
+IPv6-only o pull morre com `i/o timeout` num endereço IPv4 e não existe configuração que
+resolva. O Docker Hub tem IPv6 no registry, no auth e no CDN.
 
 ⚠️ As variáveis `VITE_*` são **embutidas no build**, não lidas em runtime. Trocar
 qualquer uma delas depois exige reconstruir e republicar — mexer no `app.env` não adianta.
@@ -85,15 +88,15 @@ VITE_ZERO_HOSTNAME=zero.mateusgsouza.com.br VITE_WEB_HOSTNAME=bubble.mateusgsouz
 ```
 
 ```bash
-echo $GITHUB_TOKEN | docker login ghcr.io -u SEU_USUARIO --password-stdin
+docker login
 ```
 
 ```bash
-docker build -t ghcr.io/SEU_USUARIO/bubble-app:latest . && docker push ghcr.io/SEU_USUARIO/bubble-app:latest
+docker build -t SEU_USUARIO/bubble-app:latest . && docker push SEU_USUARIO/bubble-app:latest
 ```
 
-O token é um PAT clássico com escopo `write:packages`. Publicando o pacote como público,
-a instância só puxa; privado, ela também precisa de `docker login`.
+Confira em *hub.docker.com → Repositories → bubble-app → Settings* que o repositório
+ficou **público**; privado, a instância também precisa de `docker login`.
 
 ## Na máquina
 
@@ -106,7 +109,8 @@ curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && exit
 Reconecte depois do `exit`: o grupo `docker` só passa a valer em sessão nova.
 
 **2. Os arquivos.** Copie `docker-compose.yml` e `Caddyfile` desta pasta para
-`~/bubble-app/`, troque `SEU_USUARIO` no compose, e crie os dois envs:
+`~/bubble-app/`, troque `SEU_USUARIO` no compose pelo seu usuário do Docker Hub, e crie
+os dois envs:
 
 ```bash
 cp zero.env.example zero.env && nano zero.env

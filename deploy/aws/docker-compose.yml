@@ -28,8 +28,11 @@ services:
   #
   # ⚠️ A imagem é construída na SUA máquina e publicada num registry — o `Dockerfile`
   # roda `bun install`, que não cabe na RAM daqui. Ver o README.
+  #
+  # Docker Hub e não ghcr.io: o ghcr.io não publica AAAA, então numa máquina IPv6-only
+  # o pull morre com `i/o timeout` num endereço IPv4 e não há o que configurar.
   app:
-    image: ghcr.io/SEU_USUARIO/bubble-app:latest
+    image: SEU_USUARIO/bubble-app:latest
     restart: unless-stopped
     env_file: app.env
     expose:
