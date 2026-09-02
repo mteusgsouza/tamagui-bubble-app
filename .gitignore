@@ -55,3 +55,7 @@ dist
 
 # saída do build para a Vercel (Build Output API) e o link do projeto pelo CLI
 .vercel
+
+# envs preenchidos do deploy (os *.example continuam versionados)
+deploy/**/app.env
+deploy/**/zero.env

@@ -1,23 +1,18 @@
-# zero-cache numa máquina AWS (EC2 ou Lightsail), com TLS automático.
+# Bubble App inteiro numa máquina só: site, API e sync.
 #
-# Por que o zero-cache não cabe em plano gratuito: ele mantém um slot de replicação
-# aberto no Postgres e um replica SQLite em disco. Serverless e free tiers desligam por
-# inatividade e não têm disco — as duas coisas o quebram.
+# Foi para cá porque o Fly em trial dura 7 dias e não deixa cadastrar domínio próprio —
+# e sem domínio não há login com Google. Fora daqui ficam só o Neon (Postgres) e o
+# Cloudflare R2 (mídia), que têm free tier de verdade.
 #
-# O app server continua no Fly: ele é sem estado, dorme quando ocioso e já está no ar.
-# Se um dia quiser trazê-lo para cá também, veja o fim do README desta pasta.
-#
-# 🔴 Numa máquina IPv6-only o Docker precisa do `daemon.json` desta pasta, senão os
-# containers ficam sem rede. Passos completos: README.md nesta pasta.
+# Passos completos: README.md nesta pasta.
 
 services:
-  # TLS automático via Let's Encrypt. O cliente conecta no zero-cache por WSS, então
-  # certificado válido não é opcional — sem ele o app não sincroniza.
+  # Único container exposto à internet. Emite e renova o certificado sozinho.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    # `[::]` explícito porque a máquina é IPv6-only: a forma curta (`'80:80'`) publica
-    # em 0.0.0.0, que ali não recebe nada. O socket em `::` no Linux atende os dois.
+    # `[::]` explícito: numa máquina IPv6-only a forma curta (`'80:80'`) publica em
+    # 0.0.0.0, que ali não recebe nada. Em dual-stack este socket atende os dois.
     ports:
       - '[::]:80:80'
       - '[::]:443:443'
@@ -26,14 +21,26 @@ services:
       - caddy_data:/data # certificados; perder isto refaz a emissão
       - caddy_config:/config
     depends_on:
+      - app
       - zero
+
+  # O site e todas as rotas `app/api/*` (auth, mídia, billing, cron, zero).
+  #
+  # ⚠️ A imagem é construída na SUA máquina e publicada num registry — o `Dockerfile`
+  # roda `bun install`, que não cabe na RAM daqui. Ver o README.
+  app:
+    image: ghcr.io/SEU_USUARIO/bubble-app:latest
+    restart: unless-stopped
+    env_file: app.env
+    expose:
+      - '8092'
 
   zero:
     # A versão TEM que casar com `@rocicorp/zero` do package.json e com `ZERO_VERSION`
-    # do app server: cliente e servidor precisam falar o mesmo protocolo.
+    # do app: cliente e servidor precisam falar o mesmo protocolo.
     image: rocicorp/zero:0.26.2
     restart: unless-stopped
-    env_file: .env
+    env_file: zero.env
     volumes:
       - zero_data:/data
     environment:
@@ -45,10 +52,11 @@ services:
       # tem que bater com a publicação que `src/database/migrate.ts` cria
       ZERO_APP_PUBLICATIONS: ${ZERO_APP_PUBLICATIONS:-zero_takeout}
 
-      # o zero-cache chama estas rotas no app server para validar permissão e aplicar
-      # mutation. Apontando errado, o sync sobe e não autoriza nada.
-      ZERO_MUTATE_URL: ${ZERO_MUTATE_URL}
-      ZERO_QUERY_URL: ${ZERO_QUERY_URL}
+      # Endereço INTERNO do app server — é ele quem decide o que cada usuário pode ver.
+      # Interno de propósito: não sai para a internet, não depende de DNS nem de TLS, e
+      # não paga a volta pelo Caddy.
+      ZERO_MUTATE_URL: http://app:8092/api/zero/push
+      ZERO_QUERY_URL: http://app:8092/api/zero/pull
 
       # a sessão do usuário viaja por cookie até o app server, que é quem decide
       ZERO_MUTATE_FORWARD_COOKIES: 'true'
@@ -64,7 +72,6 @@ services:
       ZERO_CVR_MAX_CONNS: '4'
       ZERO_NUM_SYNC_WORKERS: '2'
 
-    # não publica porta no host: quem fala com a internet é o Caddy
     expose:
       - '4848'
 
@@ -80,8 +87,7 @@ volumes:
 # O sintoma é o zero-cache morrendo no boot com `ENETUNREACH` no endereço IPv6 do Neon
 # (e `ETIMEDOUT` nos IPv4, que ali não existem mesmo).
 #
-# A faixa é ULA (privada); o ip6tables do daemon faz NAT66 para o IPv6 público da máquina.
-# Trocar de faixa exige `docker compose down` — rede existente não muda de configuração.
+# Em dual-stack não atrapalha: fica sobrando.
 networks:
   default:
     enable_ipv6: true

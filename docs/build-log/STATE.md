@@ -368,10 +368,12 @@ Três provedores, porque cada peça tem uma exigência diferente:
 
 | peça | onde | por quê |
 |---|---|---|
-| Postgres | **Neon** (`sa-east-1`) | free tier serve; a URL vem em duas formas — ver abaixo |
-| app server (site + `app/api/*`) | **Fly** (`bubble-app`, gru) | sem estado, dorme quando ocioso |
-| zero-cache | **AWS** (`deploy/aws/`) | slot de replicação + replica em disco: não pode dormir |
+| app server + zero-cache | **AWS Lightsail** (`deploy/aws/`) | uma máquina, um Caddy, dois subdomínios |
+| Postgres | **Neon** (`sa-east-1`) | free tier serve |
 | mídia | **Cloudflare R2** | PUT direto do navegador, com CORS por origem |
+
+- 🔴 **O Fly saiu.** O trial dura 7 dias e não deixa cadastrar domínio próprio — e sem
+  domínio não existe login com Google. `deploy/fly-*.toml` ficam no repo como referência.
 
 - 🔴 **A Vercel não serve para o app server.** As funções serverless que o One gera não
   levam `node_modules` — o builder copia só o `react`, e tudo externo estoura em runtime
@@ -379,16 +381,23 @@ Três provedores, porque cada peça tem uma exigência diferente:
   200 (não importa nada) e toda rota com auth ou banco dava 500. E `@rocicorp/zero` e
   `on-zero` **precisam** ser externos (compartilham um Symbol que tem que ser a mesma
   instância). Por isso `vite.config.ts` fica no alvo Node e o app roda em container.
-- 🔴 **A URL do Neon tem duas formas e as duas são usadas.** Com `-pooler` no app server
-  (muitas conexões curtas); **sem** `-pooler` no zero-cache — o pooler é PgBouncer em
-  modo transação e não suporta replicação lógica. Errar aqui falha parecendo permissão.
+- 🔴 **A URL do Neon: use a direta, sem `-pooler`, nos dois.** O pooler é PgBouncer em
+  modo transação e não suporta replicação lógica — o zero-cache falha parecendo erro de
+  permissão. E o app aqui é um container único e duradouro, com pool próprio: o pooler só
+  fazia falta em serverless, onde cada função abria conexão nova.
+- 🔴 **A replicação lógica vem desligada no Neon** (*Settings → Logical Replication*).
+  Sem ela o zero-cache morre no boot com `wal_level = logical (currently: replica)`, que
+  não diz onde se resolve. E os bancos `zero_cvr` e `zero_cdb` precisam ser criados à mão:
+  o zero-cache cria os schemas dentro deles, não os bancos.
 - 🔴 **No app server a URL vai em DUAS variáveis com o mesmo valor:** `DATABASE_URL` e
   `ZERO_UPSTREAM_DB`. Parece redundante e não é — `src/zero/server.ts` lê `process.env`
   **direto**, sem passar pelo `env-server.ts`, então o fallback de lá não o alcança.
   Faltando a segunda, `/api/zero/pull` e `/api/zero/push` respondem **404** (não 500): o
   One não registra rota cujo módulo não carrega.
 - ⚠️ **As `VITE_*` são embutidas no build**, não lidas em runtime. Trocar o host do
-  zero-cache exige reconstruir **e** reimplantar o app server, não só mexer em secret.
+  zero-cache exige reconstruir **e** republicar a imagem, não só mexer no `app.env`.
+- ⚠️ **A imagem do app é construída na máquina de desenvolvimento**, não na instância: o
+  `Dockerfile` roda `bun install`, que não cabe em 1 GB de RAM. Vai por registry (ghcr.io).
 - Diagnóstico em produção: `GET /api/health?diag=<CRON_SECRET>` — devolve ping real no
   banco e o estado de cada variável, com timeout de 4s para não pendurar o health check.
 - Migrations contra o Neon: `bun migrate` **não funciona** (`import.meta.glob is not a
@@ -461,14 +470,16 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - **Produção: o que falta para o app funcionar de ponta a ponta.**
   1. **Rotar a senha do Neon** — ela foi exposta em texto. Trocar no painel e atualizar
      `DATABASE_URL` + `ZERO_UPSTREAM_DB` no `bubble-app` e as três URLs no zero-cache.
-  2. **Subir a máquina do zero-cache na AWS** (`deploy/aws/README.md`). Enquanto ela não
-     estiver no ar, o app abre e autentica, mas **não sincroniza nada** — o feed fica
-     vazio e nenhuma mutation persiste.
-  3. **DNS de `bubble.mateusgsouza.com.br` → Fly** (A `66.241.125.32`,
-     AAAA `2a09:8280:1::180:c9e6:0`). Hoje ainda aponta para a Vercel.
-  4. **`VITE_MASTER_USER_ID` de produção está vazio.** O id só existe depois do primeiro
+  2. **Ligar a replicação lógica no Neon** — sem isso o zero-cache não sobe.
+  3. **Trocar a instância da Lightsail para dual-stack.** Ela nasceu IPv6-only; assim,
+     quem abrir o site de uma rede sem IPv6 não vê nada.
+  4. **Subir os três containers** (`deploy/aws/README.md`), o que inclui construir e
+     publicar a imagem do app no ghcr.io.
+  5. **Registro `A` para os dois subdomínios** na Vercel, depois do dual-stack. O `AAAA`
+     de `bubble.` já está no ar; falta o de `zero.`.
+  6. **`VITE_MASTER_USER_ID` de produção está vazio.** O id só existe depois do primeiro
      login real do criador; com ele vazio **o feed de produção abre vazio**. Capturar o
-     id no banco e reconstruir o app server (é `VITE_*`: vai no build, não em secret).
+     id no banco, reconstruir e republicar a imagem.
 - ~~**`VITE_MASTER_USER_ID` está vazio.**~~ **Preenchido** em `.env.development`
   (`demo-user-id`) desde a Fase 4 — a pendência estava obsoleta. Fica o aviso: **com ele
   vazio o feed abre vazio**, e isso é o comportamento correto, não bug.

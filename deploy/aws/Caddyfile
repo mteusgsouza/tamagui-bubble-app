@@ -1,9 +1,11 @@
-# TLS automático (Let's Encrypt) para o zero-cache.
-#
-# Troque o domínio se usar outro. O e-mail é para onde a Let's Encrypt avisa de
-# expiração — não é opcional em produção.
+# Um bloco por subdomínio. O Caddy emite e renova os certificados sozinho; o único
+# requisito é que os dois nomes já resolvam para esta máquina antes de subir.
+
+bubble.mateusgsouza.com.br {
+	reverse_proxy app:8092
+}
 
 zero.mateusgsouza.com.br {
-	# o zero-cache escuta em 4848 dentro da rede do compose
+	# WebSocket é o transporte do sync — o Caddy repassa upgrade sem configuração extra
 	reverse_proxy zero:4848
 }

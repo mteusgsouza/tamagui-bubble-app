@@ -1,149 +1,172 @@
-# zero-cache na AWS
+# Bubble App na AWS
 
-O que roda aqui: **só o zero-cache**, com Caddy na frente para TLS.
+Tudo numa máquina só: site, API e sync, com Caddy na frente cuidando do TLS.
 
-O app server continua no Fly (`deploy/fly-app.toml`) — ele é sem estado, dorme quando
-ocioso e já está funcionando. O zero-cache é que não cabe em plano gratuito nenhum,
-porque mantém um slot de replicação aberto no Postgres e um replica em disco: qualquer
-serviço que desliga por inatividade o quebra.
+Fora daqui ficam **Neon** (Postgres) e **Cloudflare R2** (mídia), que têm free tier de
+verdade. O Fly saiu de cena: o trial dura 7 dias e não deixa cadastrar domínio próprio —
+e sem domínio não existe login com Google.
+
+| container | o que é | exposto? |
+|---|---|---|
+| `caddy` | TLS e roteamento por subdomínio | sim, 80 e 443 |
+| `app` | site + `app/api/*` (auth, mídia, billing, cron, zero) | não, só pelo Caddy |
+| `zero` | zero-cache: o sync reativo | não, só pelo Caddy |
 
 ## Máquina
 
-Serve qualquer instância pequena com Docker. **Lightsail** é a de menos peça móvel
-(disco incluído, IP fixo, sem security group para configurar). Em EC2, uma `t3.micro`
-dá conta.
+Lightsail com Docker, plano de **1 GB** ou mais. Requisitos:
 
-Requisitos:
+- portas **80 e 443** abertas (o 80 é obrigatório: a Let's Encrypt valida por ele)
+- **IP estático**, senão o endereço muda no reboot e o DNS aponta para o vazio
+- **dual-stack**, não IPv6-only. Em *Instances → sua instância → aba Networking*. Numa
+  máquina só-IPv6, quem abrir o site de uma rede sem IPv6 não vê nada — que num
+  portfólio é justamente o caso que mais importa.
 
-- Docker e o plugin `compose`
-- portas **80 e 443** abertas para a internet (o 80 é obrigatório: a Let's Encrypt valida
-  por ele antes de emitir o certificado)
-- **IP estático** — em EC2 é um Elastic IP; sem isso o IP muda a cada reinício e o DNS
-  aponta para o vazio
-- 🔴 **Numa máquina IPv6-only**, três coisas mudam e nenhuma é o padrão: o registro DNS é
-  `AAAA`, o Docker precisa do `daemon.json` desta pasta, e as portas do compose são
-  publicadas em `[::]`. As duas últimas já estão nos arquivos. Vale saber o que se perde:
-  quem estiver numa rede sem IPv6 não alcança o zero-cache — o app abre e autentica (o
-  app server está no Fly, que tem os dois) mas **não sincroniza**.
+Com 1 GB, três containers cabem apertado. Uma swap resolve:
 
-## Passos
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+```
 
-**1. Crie os dois bancos auxiliares no Neon.** O zero-cache guarda o estado de sync
-fora do banco da aplicação, e **não cria os bancos sozinho** — ele só cria os schemas
-dentro deles. Sem isso o boot falha com erro de conexão:
+```bash
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+## Antes: o que não é na máquina
+
+**1. Neon.** Crie os dois bancos auxiliares — o zero-cache cria os schemas dentro deles,
+mas não cria os bancos:
 
 ```sql
 CREATE DATABASE zero_cvr; CREATE DATABASE zero_cdb;
 ```
 
-Rode no SQL Editor do Neon, no mesmo projeto/branch do `neondb`.
-
-**E ligue a replicação lógica**, que vem desligada: *Settings → Logical Replication →
-Enable* (reinicia o compute). Sem isso o zero-cache morre no boot com
-`Postgres must be configured with "wal_level = logical" (currently: "replica")`.
-Confirme no SQL Editor — tem que responder `logical`. (`SHOW` não funciona lá.)
+E **ligue a replicação lógica**, que vem desligada: *Settings → Logical Replication →
+Enable*. Isso reinicia o compute. Sem ela o zero-cache morre no boot com
+`Postgres must be configured with "wal_level = logical"`. Confirme (`SHOW` não funciona
+no SQL Editor do Neon):
 
 ```sql
 SELECT current_setting('wal_level');
 ```
 
-**2. DNS.** Aponte um subdomínio para o IP da máquina, antes de subir — o Caddy tenta
-emitir o certificado no primeiro boot e falha se o nome não resolver:
+**2. DNS.** Dois nomes, ambos para esta máquina, **antes** de subir — o Caddy tenta
+emitir os certificados no primeiro boot e falha se os nomes não resolverem:
 
 ```
-AAAA  zero.mateusgsouza.com.br → <IPv6 da máquina>
+AAAA  bubble.mateusgsouza.com.br → <IPv6 da máquina>
+AAAA  zero.mateusgsouza.com.br   → <IPv6 da máquina>
+A     (os mesmos dois nomes)     → <IPv4 estático>
 ```
 
-(Numa máquina dual-stack é um `A` com o IPv4; numa IPv6-only, `AAAA`. A Let's Encrypt
-valida por IPv6 sem problema.) O Caddy fica **tentando em loop** enquanto o nome não
-resolver, e isso não impede o zero-cache de subir — dá para deixar o DNS para depois.
+Crie no provedor que hospeda o DNS do domínio hoje (é a Vercel; o site principal continua
+lá, subdomínio não interfere). Criar uma zona DNS na Lightsail **não funciona** sem
+delegar `NS` do pai para ela — é caminho mais longo para o mesmo lugar.
 
-Se o domínio estiver na Cloudflare, deixe a nuvem **cinza** (DNS only). Com a laranja, a
-Cloudflare responde pelo certificado e o desafio do Caddy não completa.
+**3. Google.** No Cloud Console, a URI de redirecionamento autorizada tem que ser
+exatamente `https://bubble.mateusgsouza.com.br/api/auth/callback/google`.
 
-**3. Docker.** A imagem "OS Only" da Lightsail não traz Docker:
+**4. R2.** O CORS do bucket precisa listar `https://bubble.mateusgsouza.com.br` — o
+navegador faz `PUT` direto no R2, sem passar pelo servidor. Use `scripts/r2-cors.ts`.
 
-```bash
-curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && exit
-```
+## A imagem do app
 
-Reconecte depois do `exit` — o grupo `docker` só passa a valer em sessão nova.
+O `Dockerfile` roda `bun install`, que não cabe na RAM da instância. Então a imagem é
+construída **na sua máquina** e puxada de um registry. O `ghcr.io` é grátis e usa a conta
+do GitHub.
 
-🔴 **Se a máquina for IPv6-only**, o Docker precisa do `daemon.json` desta pasta antes de
-qualquer container. A bridge padrão é IPv4-only: o container sai por NAT para um IPv4 que
-ali não existe, e fica sem internet — o zero-cache não alcança o Neon e o Caddy não
-alcança a Let's Encrypt. (O `docker pull` funciona mesmo assim: ele roda no host.)
+⚠️ As variáveis `VITE_*` são **embutidas no build**, não lidas em runtime. Trocar
+qualquer uma delas depois exige reconstruir e republicar — mexer no `app.env` não adianta.
 
-```bash
-sudo cp daemon.json /etc/docker/daemon.json && sudo systemctl restart docker
-```
-
-⚠️ O `daemon.json` **não basta sozinho**: ele cobre a bridge padrão, e o Compose cria uma
-rede própria. Por isso o `docker-compose.yml` declara `enable_ipv6` no bloco `networks`.
-Rede já criada não muda de configuração — se subiu antes, `docker compose down` primeiro.
-
-**4. Copie esta pasta para a máquina** e preencha o ambiente:
-
-```bash
-cp .env.example .env && nano .env
-```
-
-🔴 As três URLs do Neon precisam ser a conexão **direta**, sem `-pooler`. Replicação
-lógica não passa por PgBouncer.
-
-**5. Suba:**
-
-```bash
-docker compose up -d
-```
-
-**6. Acompanhe o primeiro boot.** Ele monta o replica a partir do Postgres, o que demora
-proporcionalmente ao tamanho do banco:
-
-```bash
-docker compose logs -f zero
-```
-
-**7. Confirme de fora:**
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://zero.mateusgsouza.com.br/
-```
-
-## Depois: apontar o app para cá
-
-O endereço do zero-cache é **embutido no build** do app (`VITE_ZERO_HOSTNAME`), não lido
-em runtime. Então trocar de host exige reconstruir e reimplantar o app server:
+Na raiz do repo, na sua máquina:
 
 ```bash
 VITE_ZERO_HOSTNAME=zero.mateusgsouza.com.br VITE_WEB_HOSTNAME=bubble.mateusgsouza.com.br ONE_SERVER_URL=https://bubble.mateusgsouza.com.br bun run build
 ```
 
 ```bash
-fly deploy -c deploy/fly-app.toml -a bubble-app
+echo $GITHUB_TOKEN | docker login ghcr.io -u SEU_USUARIO --password-stdin
 ```
 
-E o app do zero no Fly pode ser destruído:
+```bash
+docker build -t ghcr.io/SEU_USUARIO/bubble-app:latest . && docker push ghcr.io/SEU_USUARIO/bubble-app:latest
+```
+
+O token é um PAT clássico com escopo `write:packages`. Publicando o pacote como público,
+a instância só puxa; privado, ela também precisa de `docker login`.
+
+## Na máquina
+
+**1. Docker** — a imagem "OS Only" da Lightsail não traz:
 
 ```bash
-fly apps destroy bubble-zero
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER && exit
+```
+
+Reconecte depois do `exit`: o grupo `docker` só passa a valer em sessão nova.
+
+**2. Os arquivos.** Copie `docker-compose.yml` e `Caddyfile` desta pasta para
+`~/bubble-app/`, troque `SEU_USUARIO` no compose, e crie os dois envs:
+
+```bash
+cp zero.env.example zero.env && nano zero.env
+```
+
+```bash
+cp app.env.example app.env && nano app.env
+```
+
+**3. Suba:**
+
+```bash
+docker compose up -d && docker compose logs -f zero
+```
+
+O primeiro boot do zero-cache demora: ele copia o banco do Neon para o replica local.
+
+**4. Confirme de fora:**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://bubble.mateusgsouza.com.br/
+```
+
+## Depois do primeiro login
+
+`VITE_MASTER_USER_ID` nasce vazio, e **com ele vazio o feed abre vazio** — comportamento
+correto, não bug. O id só existe depois que o criador entrar de verdade. Pegue no banco,
+refaça o build com a variável, republique a imagem e:
+
+```bash
+docker compose pull app && docker compose up -d app
 ```
 
 ## Manutenção
 
-O que você assume ao sair do Fly:
+- **atualizar o app**: rebuild na sua máquina → push → aqui `docker compose pull app` e
+  `docker compose up -d app`
+- **atualizar o zero-cache**: a versão da imagem tem que continuar casando com
+  `@rocicorp/zero` do `package.json` e com `ZERO_VERSION` do `app.env`
+- **backup**: o volume `zero_data` é descartável — é um replica derivado do Postgres, e
+  se sumir o zero-cache reconstrói. O que não pode se perder é o Neon.
+- **reboot**: o `restart: unless-stopped` cobre, desde que o Docker suba no boot
+  (`sudo systemctl enable docker`)
 
-- **atualizar a imagem**: `docker compose pull && docker compose up -d` — e a versão tem
-  que continuar casando com `@rocicorp/zero` do `package.json`
-- **reiniciar depois de queda**: o `restart: unless-stopped` cobre reboot da máquina,
-  desde que o Docker suba no boot (`systemctl enable docker`)
-- **backup**: o volume `zero_data` é descartável — é um replica derivado do Postgres. Se
-  perder, o zero-cache reconstrói. O que não pode perder é o Neon.
+## Se a máquina for IPv6-only
 
-## Se um dia quiser trazer o app server também
+Não é o recomendado (ver *Máquina*), mas se for, duas coisas que o padrão do Docker não
+faz — e que já estão nos arquivos desta pasta:
 
-Ele roda pelo `Dockerfile` da raiz, mas exige um `dist/` já construído — o build precisa
-das variáveis `VITE_*` de produção, então não dá para construir na máquina sem passá-las.
-O caminho é construir onde você desenvolve e publicar a imagem num registry (ECR ou
-Docker Hub), acrescentando um serviço `app` a este compose e uma entrada no `Caddyfile`.
-Enquanto o Fly der conta, não vale o trabalho.
+- **`daemon.json`**: a bridge padrão é IPv4-only. O container sai por NAT para um IPv4
+  que ali não existe e fica sem internet — o zero-cache não alcança o Neon, o Caddy não
+  alcança a Let's Encrypt. (O `docker pull` funciona: roda no host.)
+
+  ```bash
+  sudo cp daemon.json /etc/docker/daemon.json && sudo systemctl restart docker
+  ```
+
+- **`enable_ipv6` no bloco `networks`** do compose: o `daemon.json` cobre só a bridge
+  padrão, e o Compose cria uma rede própria. Rede já criada não muda de configuração —
+  se subiu antes, `docker compose down` primeiro.
+
+O sintoma de faltar qualquer um dos dois é `ENETUNREACH` no endereço IPv6 do Neon, com
+`ETIMEDOUT` nos IPv4 junto.
