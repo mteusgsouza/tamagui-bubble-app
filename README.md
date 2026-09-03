@@ -24,8 +24,8 @@ não existe feed de terceiros, nem seguir, nem publicar de quem entra. Existe o 
 
 A regra que organiza o produto inteiro é uma só: **cada peça de conteúdo é `public` ou
 `subscribers`** — e, quando é de assinante, pode ainda exigir um **plano específico**
-(ex.: um curso só no plano anual). O gate é resolvido no servidor, num join, nunca numa
-flag do cliente.
+(ex.: um curso só no plano anual). Quem tem direito a quê é resolvido no servidor, por
+join entre o conteúdo e a assinatura.
 
 ## Marca
 
@@ -77,7 +77,8 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
 
 ### Conta
 
-- **Cadastro e login por e-mail e senha**, em caminhos separados e deliberados
+- **Cadastro e login por e-mail e senha**, cada um no seu fluxo: entrar pede senha, criar
+  conta pede nome e senha
 - Login **Google** (OAuth 2.0), configurado por `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`
 - Conta demo de um clique (só em desenvolvimento ou com `VITE_DEMO_MODE=1`)
 - Perfil editável, tema **claro / escuro / sistema**, sair
@@ -88,8 +89,8 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
   visibilidade, plano exigido, apagar
 - **Cursos**: editor de currículo — criar e reordenar módulos e aulas, anexar mídia,
   marcar `freePreview`
-- **Planos**: CRUD; plano nunca é apagado, só sai de venda (é `requiredPlanId` de posts
-  antigos e `planId` de assinaturas já vendidas)
+- **Planos**: criar, editar e tirar de venda — o plano sai do catálogo mas continua
+  existindo, porque é referência de posts antigos e de assinaturas já vendidas
 - **Pessoas**: usuários, assinaturas e faturamento — a única área que **não** usa Zero,
   porque `payment` é tabela privada
 - Dois níveis: `canManage` (criador ou admin) abre o admin de conteúdo; `canManagePeople`
@@ -101,8 +102,9 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
   atravessa o servidor do app
 - Leitura por **302** para URL assinada, com o gate de assinatura refeito antes de assinar
 - Limites por tipo: foto 25 MB · áudio 200 MB · vídeo 1 GB; allowlist de mime explícita
-- TTL da assinatura por uso: 5 min para imagem, **4 h para vídeo/áudio** (o player
-  revalida a cada `Range`; trocar o `src` no meio reiniciaria a reprodução)
+- TTL da assinatura conforme o uso: 5 min para imagem, **4 h para vídeo e áudio** — a
+  janela cobre uma sessão inteira de reprodução, já que o player revalida a assinatura a
+  cada `Range`. A renovação acontece quando o player pede, não por relógio
 
 ## Ainda não pronto (mas no escopo)
 
@@ -134,17 +136,17 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 ### As quatro decisões que explicam o resto
 
 1. **Mutation do Zero roda duas vezes** — otimista no cliente, autoritativa no servidor.
-   Por isso `newId()` e `Date.now()` saem da **tela**, nunca de dentro da mutation: senão
-   cliente e servidor geram valores diferentes e o dado diverge.
-2. **O paywall é join no servidor, não claim de JWT.** O token dura 3 anos; qualquer
-   entitlement embutido nele ficaria congelado. As permissions de leitura vivem em
+   Como as duas execuções precisam chegar ao mesmo resultado, tudo que varia — `newId()`,
+   `Date.now()` — é decidido na **tela** e entra na mutation como argumento.
+2. **O paywall é join no servidor.** As permissions de leitura vivem em
    [`src/data/where/canAccessContent.ts`](src/data/where/canAccessContent.ts) e rodam
-   server-side — o cliente nunca recebe a linha que não passa.
-3. **Bytes de mídia não passam pelo servidor do app.** Ele só assina URL e decide quem
-   pode. Corolário: **a tela nunca monta URL de R2**; tudo vai por `<MediaView>` ou
-   `/api/media/[id]/play`.
-4. **Defaults fecham, não abrem**: `visibility = 'subscribers'`, `published = false`.
-   Conteúdo esquecido no default fica trancado, não vazado.
+   server-side: o direito de ver é consultado no banco a cada sync, e o cliente recebe só
+   as linhas que passam. O JWT carrega identidade, não entitlement.
+3. **Bytes de mídia não passam pelo servidor do app.** Ele assina a URL e decide quem
+   pode; o R2 entrega. Por consequência, a tela nunca monta URL de R2 — tudo vai por
+   `<MediaView>` ou `/api/media/[id]/play`.
+4. **Os defaults fecham**: `visibility = 'subscribers'`, `published = false`. Publicar e
+   abrir são atos explícitos, feitos no admin.
 
 ## Modelo de dados
 
@@ -155,9 +157,9 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 **Privado** (fora da publication, [`schema-private.ts`](src/database/schema-private.ts)):
 `user` · `account` · `session` · `jwks` · `verification` · **`payment`**
 
-FKs de conteúdo apontam para **`userPublic`**, nunca para `user` — `user` é privada e não
-é replicada, então uma FK para ela seria invisível no cliente. Só `payment` referencia
-`user`.
+A divisão é o que define o que o cliente enxerga: as FKs de conteúdo apontam para
+**`userPublic`**, que é replicada e chega ao app; `user` fica do lado privado, com e-mail,
+senha e papel, e só o `payment` a referencia.
 
 ## Estrutura
 
@@ -228,8 +230,8 @@ convivem no mesmo aparelho.
 
 A versão do app é **1.0.0**, declarada em [`package.json`](package.json) — de onde o
 `app.config.ts` lê — e em [`src/constants/app.ts`](src/constants/app.ts), de onde a tela
-de Perfil lê. Ao subir a versão, mexa nos dois; o teste
-`src/test/unit/app-version.test.ts` garante que não divirjam. Ela também vira o
+de Perfil lê. Ao subir a versão, mexa nos dois — o teste
+`src/test/unit/app-version.test.ts` mantém os dois em sincronia. Ela também vira o
 `runtimeVersion` do build nativo.
 
 | | |
