@@ -78,7 +78,8 @@ documentada é o `tabBarActiveTintColor` do react-navigation, que não lê token
 ### Conta
 
 - **Cadastro e login por e-mail e senha**, em caminhos separados e deliberados
-- Login **Google** (código pronto; o provider só é registrado quando as credenciais existem)
+- Login **Google** (OAuth 2.0). O provider só é registrado quando `GOOGLE_CLIENT_ID` e
+  `GOOGLE_CLIENT_SECRET` existem — sem elas o botão avisa em vez de quebrar
 - Conta demo de um clique (só em desenvolvimento ou com `VITE_DEMO_MODE=1`)
 - Perfil editável, tema **claro / escuro / sistema**, sair
 
@@ -112,9 +113,7 @@ documentada é o `tabBarActiveTintColor` do react-navigation, que não lê token
 | **Gateway de pagamento real** | ⏳ `BILLING_PROVIDER=manual`. O adapter e o webhook estão prontos; falta escolher Stripe/Asaas/Pagar.me e escrever `providers/<nome>.ts` seguindo o `generic.ts`. `POST /api/billing/checkout` devolve **501** de propósito enquanto o provider for o manual |
 | **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`, mas nada a chama sozinha — assinatura vencida segue liberando conteúdo |
 | **Recuperar senha / verificar e-mail** | ⏳ `magicLink` já está ligado no servidor; falta a UI. `emailVerified` nasce `false` e ninguém olha |
-| **Google OAuth** | ⚠️ Escrito, nunca exercido — faltam `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` |
-| **Build nativo** | ⚠️ Nunca validado. Só a web subiu até hoje |
-| **i18n** | ⬜ Decisão em aberto. A UI está em português; sobrou inglês no que veio do template |
+| **Inglês (i18n)** | ⬜ Está no escopo, sem prioridade hoje. A UI é em português e ainda não há camada de tradução |
 
 Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.md).
 
@@ -201,6 +200,18 @@ bun run:dev scripts/seed-courses.ts && bun run:dev scripts/seed-posts.ts
 Contas de desenvolvimento: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador,
 `role = admin`) e `teste@bubble.local` / `teste123456`.
 
+### Nativo
+
+```bash
+bun ios          # simulador iOS
+bun android      # emulador Android
+```
+
+Builds pelo **EAS**, com três perfis em [`eas.json`](eas.json): `development`
+(dev client), `preview` (interno; APK no Android) e `production` (`autoIncrement`).
+O `app.config.ts` troca nome e bundle id por `APP_VARIANT`, então as três variantes
+convivem no mesmo aparelho.
+
 ### Comandos
 
 | | |
@@ -211,7 +222,7 @@ Contas de desenvolvimento: `demo@takeout.tamagui.dev` / `demopassword123` (é o 
 | `bun run:dev scripts/x.ts` | script com env — **sem um segundo `bun`** |
 | `bun zero:generate` | **obrigatório** ao criar query ou mutation nova |
 | `bun env:update` | propaga o bloco `env` do `package.json` |
-| ~~`bun check lint`~~ | quebrado: `panic: unknown rule` (versão do oxlint-tsgolint no starter) |
+| ~~`bun check lint`~~ | quebrado: `panic: unknown rule` — `.oxlintrc.json` liga uma regra que o `oxlint-tsgolint` instalado não conhece |
 
 🔴 **File watching não funciona** — o projeto vive em `/mnt/f` (disco Windows visto da
 WSL). Toda edição exige reiniciar o `bun dev`, e o processo se chama `Onejs:dev`, não
@@ -268,10 +279,11 @@ Produção.
 
 ## Idioma
 
-Interface e comentários em **português**. O que veio do template ainda tem inglês em
-alguns cantos; ao mexer num arquivo, traduza o que tocar.
+Interface e comentários em **português**. Uma versão em inglês está no escopo, mas ainda
+não é prioridade — não há camada de i18n, e algumas telas mais antigas ainda têm texto em
+inglês. Ao mexer num arquivo, traduza o que tocar.
 
 ## Licença
 
-MIT — ver [LICENSE](LICENSE). Construído sobre o
-[Takeout Free v2-beta](https://tamagui.dev/takeout) da Tamagui.
+MIT — ver [LICENSE](LICENSE). O Tamagui entra como base de UI, não como andaime: o
+produto, o modelo de dados e as regras deste repo são próprios.
