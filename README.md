@@ -42,8 +42,8 @@ A marca é um quadrado arredondado no âmbar da casa com duas bolhas escuras den
 | Tinta sobre o âmbar | `#141414` — `$accentColor` |
 | Rampa completa | `$accent1`–`$accent12`, claro e escuro, em [`src/tamagui/brandAccent.ts`](src/tamagui/brandAccent.ts) |
 
-🔴 **Hex de acento dentro de componente é bug.** A cor é token; a única exceção
-documentada é o `tabBarActiveTintColor` do react-navigation, que não lê token.
+A cor da marca é **token**, definida num lugar só: todo componente referencia `$accent*`,
+nunca o hex. Trocar a marca inteira é mexer na rampa.
 
 ## Funcionalidades
 
@@ -78,8 +78,7 @@ documentada é o `tabBarActiveTintColor` do react-navigation, que não lê token
 ### Conta
 
 - **Cadastro e login por e-mail e senha**, em caminhos separados e deliberados
-- Login **Google** (OAuth 2.0). O provider só é registrado quando `GOOGLE_CLIENT_ID` e
-  `GOOGLE_CLIENT_SECRET` existem — sem elas o botão avisa em vez de quebrar
+- Login **Google** (OAuth 2.0), configurado por `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`
 - Conta demo de um clique (só em desenvolvimento ou com `VITE_DEMO_MODE=1`)
 - Perfil editável, tema **claro / escuro / sistema**, sair
 
@@ -110,9 +109,9 @@ documentada é o `tabBarActiveTintColor` do react-navigation, que não lê token
 | | Estado |
 |---|---|
 | **Tela de assinar** | ⏳ Os planos existem e o gate funciona, mas **não há tela onde o usuário clique para assinar**. Hoje a assinatura é concedida pelo admin |
-| **Gateway de pagamento real** | ⏳ `BILLING_PROVIDER=manual`. O adapter e o webhook estão prontos; falta escolher Stripe/Asaas/Pagar.me e escrever `providers/<nome>.ts` seguindo o `generic.ts`. `POST /api/billing/checkout` devolve **501** de propósito enquanto o provider for o manual |
-| **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`, mas nada a chama sozinha — assinatura vencida segue liberando conteúdo |
-| **Recuperar senha / verificar e-mail** | ⏳ `magicLink` já está ligado no servidor; falta a UI. `emailVerified` nasce `false` e ninguém olha |
+| **Gateway de pagamento real** | ⏳ `BILLING_PROVIDER=manual`. O adapter e o webhook estão prontos; falta escolher o gateway (Stripe/Asaas/Pagar.me) e escrever `providers/<nome>.ts` seguindo o `generic.ts` |
+| **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`; falta apontar um agendador para ela, uma vez por dia |
+| **Recuperar senha / verificar e-mail** | ⏳ `magicLink` já está ligado no servidor; falta a UI |
 | **Inglês (i18n)** | ⬜ Está no escopo, sem prioridade hoje. A UI é em português e ainda não há camada de tradução |
 
 Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.md).
@@ -183,7 +182,7 @@ deploy/                          produção (AWS Lightsail, Caddy, Compose)
 
 ## Rodando
 
-Requer **Bun**, **Docker** e **Git**. O projeto roda da WSL.
+Requer **Bun**, **Docker** e **Git**.
 
 ```bash
 bun install
@@ -191,7 +190,8 @@ bun backend    # docker: postgres :5533 + zero-cache :4948 + migrate
 bun dev        # app em http://localhost:8081
 ```
 
-Depois, para ter conteúdo na tela — nesta ordem, que os posts referenciam um plano:
+Depois, para ter conteúdo na tela — nesta ordem, porque os posts referenciam um plano que
+o primeiro script cria:
 
 ```bash
 bun run:dev scripts/seed-courses.ts && bun run:dev scripts/seed-posts.ts
@@ -216,28 +216,21 @@ convivem no mesmo aparelho.
 
 | | |
 |---|---|
-| `bun check types` | typecheck (**`bun check` sozinho não roda nada**) |
+| `bun check types` | typecheck |
 | `bun test:unit` | 94 testes de unidade |
 | `bun test:integration` | Playwright |
-| `bun run:dev scripts/x.ts` | script com env — **sem um segundo `bun`** |
-| `bun zero:generate` | **obrigatório** ao criar query ou mutation nova |
+| `bun run:dev scripts/x.ts` | roda um script com as variáveis de ambiente carregadas |
+| `bun zero:generate` | regenera models, queries e mutations do Zero — obrigatório ao criar uma query ou mutation nova |
 | `bun env:update` | propaga o bloco `env` do `package.json` |
-| ~~`bun check lint`~~ | quebrado: `panic: unknown rule` — `.oxlintrc.json` liga uma regra que o `oxlint-tsgolint` instalado não conhece |
-
-🔴 **File watching não funciona** — o projeto vive em `/mnt/f` (disco Windows visto da
-WSL). Toda edição exige reiniciar o `bun dev`, e o processo se chama `Onejs:dev`, não
-`one dev`. As armadilhas completas estão em [`CLAUDE.md`](CLAUDE.md).
+| `bun migrate` | aplica as migrations |
 
 ## Versões
 
-A versão do app é **1.0.0** e mora em **dois arquivos por necessidade**:
-[`package.json`](package.json) — de onde o `app.config.ts` lê, com `require` de JSON,
-porque o carregador de config do Expo não resolve import de `src/` — e
-[`src/constants/app.ts`](src/constants/app.ts), de onde a tela de Perfil lê. O teste
-`src/test/unit/app-version.test.ts` falha se os dois divergirem; antes dele o build dizia
-0.0.1 enquanto a tela mostrava v1.0.0.
-
-Ao subir a versão, mexa nos dois. Ela também vira o `runtimeVersion` do build nativo.
+A versão do app é **1.0.0**, declarada em [`package.json`](package.json) — de onde o
+`app.config.ts` lê — e em [`src/constants/app.ts`](src/constants/app.ts), de onde a tela
+de Perfil lê. Ao subir a versão, mexa nos dois; o teste
+`src/test/unit/app-version.test.ts` garante que não divirjam. Ela também vira o
+`runtimeVersion` do build nativo.
 
 | | |
 |---|---|
@@ -260,22 +253,29 @@ Três provedores, porque cada peça exige uma coisa diferente:
 | Postgres | **Neon** (`sa-east-1`) | free tier serve |
 | Mídia | **Cloudflare R2** | PUT direto do navegador, com CORS por origem |
 
-Publicar: `bash scripts/deploy.sh`. Diagnóstico no ar:
-`GET /api/health?diag=<CRON_SECRET>`.
+O app roda em container: `Dockerfile` na raiz, Compose de produção em
+[`deploy/aws/`](deploy/aws/), e o Caddy na frente terminando o TLS.
 
-⚠️ **A Vercel não serve para o app server** (as funções serverless que o One gera não
-levam `node_modules`) e **o Fly saiu** (trial de 7 dias, sem domínio próprio). As demais
-armadilhas de deploy — replicação lógica desligada no Neon, URL sem `-pooler`, `VITE_*`
-embutidas no build — estão em [`docs/build-log/STATE.md`](docs/build-log/STATE.md) →
-Produção.
+Publicar é um comando — [`scripts/deploy.sh`](scripts/deploy.sh) constrói, publica a
+imagem, troca só o container do app (Caddy e zero-cache seguem de pé) e confere o digest
+no ar antes de dar por feito:
+
+```bash
+bash scripts/deploy.sh
+```
+
+Diagnóstico da instância: `GET /api/health?diag=<CRON_SECRET>` devolve um ping real no
+banco e o estado de cada variável. O passo a passo da infraestrutura está em
+[`deploy/aws/README.md`](deploy/aws/README.md).
 
 ## Documentação
 
-- [`docs/build-log/STATE.md`](docs/build-log/STATE.md) — **leia primeiro**: ambiente,
-  decisões acumuladas e pendências
+- [`docs/build-log/STATE.md`](docs/build-log/STATE.md) — **leia primeiro**: estado do
+  projeto e as decisões acumuladas
 - [`docs/build-log/INDEX.md`](docs/build-log/INDEX.md) — as 10 fases de construção
 - [`docs/build-log/handoffs/`](docs/build-log/handoffs/) — o que cada fase entregou e por quê
-- [`CLAUDE.md`](CLAUDE.md) — invariantes e armadilhas do ambiente
+- [`deploy/aws/README.md`](deploy/aws/README.md) — a infraestrutura de produção
+- [`CLAUDE.md`](CLAUDE.md) — as invariantes do projeto
 
 ## Idioma
 
