@@ -5,7 +5,7 @@ import { SizableText, Spinner, useEvent, XStack, YStack } from 'tamagui'
 import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { showError } from '~/interface/dialogs/actions'
-import { Input } from '~/interface/forms/Input'
+import { Field } from '~/interface/forms/Field'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
 import { UserCircleIcon } from '~/interface/icons/phosphor/UserCircleIcon'
 import { StepPageLayout } from '~/interface/pages/StepPageLayout'
@@ -103,10 +103,13 @@ export const SignupPage = memo(() => {
         </Button>
       }
     >
-      <Input
+      {/* rótulo em cima, como na tela seguinte: placeholder some ao digitar e deixa a
+          caixa sem nome */}
+      <Field
+        label="Seu e-mail"
         data-testid="email-input"
         ref={inputRef}
-        placeholder="seu@email.com"
+        placeholder="voce@exemplo.com"
         value={inputValue}
         onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
         autoCapitalize="none"

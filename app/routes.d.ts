@@ -21,7 +21,6 @@ declare module 'one' {
         | `/(app)/auth/login`
         | `/(app)/auth/login/password`
         | `/(app)/home`
-        | `/(app)/home/assinar`
         | `/(app)/home/(tabs)`
         | `/(app)/home/(tabs)/courses`
         | `/(app)/home/(tabs)/courses/`
@@ -31,6 +30,7 @@ declare module 'one' {
         | `/(app)/home/(tabs)/settings/`
         | `/(app)/home/(tabs)/settings/blocked-users`
         | `/(app)/home/(tabs)/settings/edit-profile`
+        | `/(app)/home/assinar`
         | `/(app)/home/courses`
         | `/(app)/home/courses/`
         | `/(app)/home/feed`
@@ -52,7 +52,6 @@ declare module 'one' {
         | `/auth/login`
         | `/auth/login/password`
         | `/home`
-        | `/home/assinar`
         | `/home/(tabs)`
         | `/home/(tabs)/courses`
         | `/home/(tabs)/courses/`
@@ -62,6 +61,7 @@ declare module 'one' {
         | `/home/(tabs)/settings/`
         | `/home/(tabs)/settings/blocked-users`
         | `/home/(tabs)/settings/edit-profile`
+        | `/home/assinar`
         | `/home/courses`
         | `/home/courses/`
         | `/home/feed`

@@ -1,6 +1,7 @@
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { Pressable } from '~/interface/buttons/Pressable'
+import { FieldLabel } from '~/interface/forms/Field'
 import { Input } from '~/interface/forms/Input'
 import { TextArea } from '~/interface/forms/TextArea'
 
@@ -102,15 +103,3 @@ export function OptionRow<T extends string>({
   )
 }
 
-const FieldLabel = ({ label, hint }: { label: string; hint?: string }) => (
-  <YStack gap="$0.5">
-    <SizableText size="$2" fontWeight="600" color="$color11">
-      {label}
-    </SizableText>
-    {hint ? (
-      <SizableText size="$1" color="$color10">
-        {hint}
-      </SizableText>
-    ) : null}
-  </YStack>
-)

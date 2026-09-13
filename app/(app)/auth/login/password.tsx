@@ -1,7 +1,7 @@
 import { router, useParams } from 'one'
 import { useState } from 'react'
 import { Keyboard } from 'react-native'
-import { SizableText, YStack } from 'tamagui'
+import { SizableText, XStack, YStack } from 'tamagui'
 
 import { passwordLogin } from '~/features/auth/client/passwordLogin'
 import {
@@ -9,18 +9,24 @@ import {
   passwordSignup,
 } from '~/features/auth/client/passwordSignup'
 import { Button } from '~/interface/buttons/Button'
+import { Pressable } from '~/interface/buttons/Pressable'
 import { showError } from '~/interface/dialogs/actions'
-import { Input } from '~/interface/forms/Input'
+import { Field } from '~/interface/forms/Field'
 import { PasswordIcon } from '~/interface/icons/phosphor/PasswordIcon'
 import { KeyboardStickyFooter } from '~/interface/keyboard/KeyboardStickyFooter'
 import { StepPageLayout } from '~/interface/pages/StepPageLayout'
 
 /**
- * Última etapa: senha.
+ * Última etapa: senha (e nome, no cadastro).
  *
  * Serve às duas intenções. Com `intent=signup` pede **nome** também e chama
  * `passwordSignup`; senão chama `passwordLogin`. Quem decide é a tela anterior — ver o
  * comentário em `signup/[method].tsx` sobre não perguntar ao servidor se a conta existe.
+ *
+ * 🔴 **Rótulo em cima de cada campo, não placeholder.** A primeira versão desta tela tinha
+ * duas caixas sem nome: o placeholder some ao digitar, e "Ao menos 8 caracteres" nem dizia
+ * que aquele campo era a senha. Pior, o título dizia "Criar sua senha" enquanto o primeiro
+ * campo pedia o nome.
  */
 export const PasswordPage = () => {
   const params = useParams<{ value?: string; intent?: 'login' | 'signup' }>()
@@ -31,11 +37,12 @@ export const PasswordPage = () => {
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  // com exigência de tamanho, esconder o que se digita só aumenta a chance de errar
+  const [reveal, setReveal] = useState(false)
 
+  const longEnough = password.length >= MIN_PASSWORD_LENGTH
   const canSubmit =
-    Boolean(password) &&
-    !loading &&
-    (!isSignup || (name.trim().length > 0 && password.length >= MIN_PASSWORD_LENGTH))
+    Boolean(password) && !loading && (!isSignup || (name.trim().length > 0 && longEnough))
 
   const handleContinue = async () => {
     if (!params.value) {
@@ -64,9 +71,20 @@ export const PasswordPage = () => {
     }
   }
 
+  const revealToggle = (
+    <Pressable onPress={() => setReveal((v) => !v)} role="button" hitSlop={8}>
+      <SizableText size="$2" fontWeight="600" color="$accent11">
+        {reveal ? 'Ocultar' : 'Mostrar'}
+      </SizableText>
+    </Pressable>
+  )
+
   return (
     <StepPageLayout
-      title={isSignup ? 'Criar sua senha' : 'Digite sua senha'}
+      // O título diz **o que há nesta tela**, não a meta. "Criar sua senha" mentia (o
+      // primeiro campo é o nome) e "Criar conta" repetiria o título do passo anterior,
+      // fazendo os dois passos parecerem o mesmo.
+      title={isSignup ? 'Nome e senha' : 'Digite sua senha'}
       Icon={PasswordIcon}
       description={isSignup ? 'Você vai entrar com' : 'Senha da conta'}
       descriptionSecondLine={displayValue}
@@ -90,34 +108,49 @@ export const PasswordPage = () => {
         </KeyboardStickyFooter>
       }
     >
-      <YStack gap="$3">
+      <YStack gap="$4">
         {isSignup ? (
-          <Input
+          <Field
+            label="Seu nome"
+            hint="É como você vai aparecer nos comentários."
             data-testid="name-input"
-            placeholder="Seu nome"
+            placeholder="Maria Silva"
             value={name}
+            autoFocus
             onChange={(e) => setName((e.target as HTMLInputElement).value)}
             autoComplete="name"
             name="name"
           />
         ) : null}
 
-        <Input
+        <Field
+          label="Senha"
+          // a exigência fica visível ANTES de errar, e não some quando a pessoa digita
+          hint={isSignup ? `Ao menos ${MIN_PASSWORD_LENGTH} caracteres.` : undefined}
+          action={password ? revealToggle : undefined}
           data-testid="password-input"
-          type="password"
+          secureTextEntry={!reveal}
           autoFocus={!isSignup}
-          placeholder={isSignup ? `Ao menos ${MIN_PASSWORD_LENGTH} caracteres` : undefined}
           value={password}
           onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
           onSubmitEditing={handleContinue}
           autoComplete={isSignup ? 'new-password' : 'current-password'}
+          footer={
+            isSignup && password ? (
+              <XStack items="center" gap="$1.5">
+                <SizableText size="$2" color={longEnough ? '$accent11' : '$color10'}>
+                  {longEnough
+                    ? 'Tamanho suficiente'
+                    : `Faltam ${MIN_PASSWORD_LENGTH - password.length} ${
+                        MIN_PASSWORD_LENGTH - password.length === 1
+                          ? 'caractere'
+                          : 'caracteres'
+                      }`}
+                </SizableText>
+              </XStack>
+            ) : null
+          }
         />
-
-        {isSignup && password && password.length < MIN_PASSWORD_LENGTH ? (
-          <SizableText size="$2" color="$color10">
-            Faltam {MIN_PASSWORD_LENGTH - password.length} caractere(s).
-          </SizableText>
-        ) : null}
       </YStack>
     </StepPageLayout>
   )
