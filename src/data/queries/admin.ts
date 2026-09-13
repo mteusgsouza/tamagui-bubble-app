@@ -39,6 +39,8 @@ export const adminPost = (props: { postId: string; userId: string }) => {
     .where(canAccessPost)
     .where('id', props.postId)
     .one()
+    // o dono do feed sempre passa em `canAccessPostContent`, então aqui o texto chega
+    .related('content', (q) => q.one())
     .related('requiredPlan', (q) => q.one())
     .related('media', (q) =>
       q.orderBy('position', 'asc').related('media', (m) => m.one()),

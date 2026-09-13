@@ -27,6 +27,8 @@ export const feedPosts = (props: {
       .orderBy('id', 'desc')
       .limit(props.limit ?? 20)
       .related('feedOwner', (q) => q.one())
+      // o texto. Só chega para quem tem direito — ausência dele É o estado bloqueado
+      .related('content', (q) => q.one())
       .related('media', (q) =>
         q.orderBy('position', 'asc').related('media', (m) => m.one()),
       )
@@ -50,6 +52,7 @@ export const postDetail = (props: { postId: string; userId: string }) => {
     .where('deleted', false)
     .one()
     .related('feedOwner', (q) => q.one())
+    .related('content', (q) => q.one())
     .related('media', (q) =>
       q.orderBy('position', 'asc').related('media', (m) => m.one()),
     )
@@ -88,6 +91,7 @@ export const feedPostsPage = (props: {
     .orderBy('id', 'desc')
     .limit(props.pageSize)
     .related('feedOwner', (q) => q.one())
+    .related('content', (q) => q.one())
     .related('media', (q) =>
       q.orderBy('position', 'asc').related('media', (m) => m.one()),
     )

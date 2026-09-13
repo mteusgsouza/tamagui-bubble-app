@@ -20,13 +20,40 @@ import type { Condition, ExpressionBuilder } from '@rocicorp/zero'
 const ACTIVE = [...ACTIVE_SUBSCRIPTION_STATUSES]
 
 /**
- * "Este post está liberado para `userId`?"
+ * "Este post **existe** para `userId`?" — só visibilidade, sem tier.
  *
- * Reaproveitado dentro de `exists('post', ...)` pelas tabelas penduradas no post
- * (comment, reaction, postMedia) — o overload `where(expressionFactory)` entrega o
- * mesmo `ExpressionBuilder<'post'>` que o `serverWhere('post')` recebe.
+ * 🔓 **Deliberadamente frouxo, e é o ponto da Fase 12.** Todo post publicado sincroniza
+ * para todo usuário logado, com título, tipo, data, contadores e `teaser`. Antes o gate
+ * filtrava a linha inteira, e quem não assinava via feed vazio — sem nenhum motivo para
+ * pagar.
+ *
+ * 🔴 **Isto NÃO libera o conteúdo.** O texto está em `postContent` e a mídia em
+ * `postMedia`, as duas atrás de `hasFullAccessToPost`. Se você for usar este helper em
+ * alguma tabela nova, pergunte primeiro: essa linha é vitrine ou é produto?
  */
-export const postGate = (
+export const postVisibilityGate = (
+  _: ExpressionBuilder<'post', Schema>,
+  userId: string,
+): Condition => {
+  return _.or(
+    // dono do feed vê tudo que é dele, inclusive rascunho e apagado
+    _.cmp('feedOwnerId', userId),
+    _.and(_.cmp('published', true), _.cmp('deleted', false)),
+  )
+}
+
+/**
+ * "Este post está **liberado** para `userId`?" — visibilidade **mais** o tier.
+ *
+ * Era o `postGate`. O nome mudou porque agora existem dois gates e confundi-los vaza
+ * conteúdo pago: este é o que vale para tudo que é produto (`postContent`, `postMedia`,
+ * `comment`, `reaction`).
+ *
+ * Reaproveitado dentro de `exists('post', ...)` pelas tabelas penduradas no post — o
+ * overload `where(expressionFactory)` entrega o mesmo `ExpressionBuilder<'post'>` que o
+ * `serverWhere('post')` recebe.
+ */
+export const hasFullAccessToPost = (
   _: ExpressionBuilder<'post', Schema>,
   userId: string,
 ): Condition => {
@@ -85,9 +112,27 @@ export const courseGate = (
   )
 }
 
+/**
+ * 🔓 O post como **vitrine**: chega a todo usuário logado, bloqueado ou não.
+ *
+ * A tela distingue os dois estados pela ausência de `content` — ver `postContent.ts`.
+ */
 export const canAccessPost = serverWhere('post', (_, auth) => {
   if (!auth?.id) return false
-  return postGate(_, auth.id)
+  return postVisibilityGate(_, auth.id)
+})
+
+/**
+ * 🔒 O post como **produto**. É aqui que o paywall passa a morar.
+ *
+ * `postContent` não tem `feedOwnerId` nem `visibility` — tudo isso está em `post`, então
+ * a checagem sobe pela relação. É o mesmo `exists` dentro de `exists` que
+ * `canAccessLesson` já usa.
+ */
+export const canAccessPostContent = serverWhere('postContent', (_, auth) => {
+  if (!auth?.id) return false
+  const userId = auth.id
+  return _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId)))
 })
 
 export const canAccessCourse = serverWhere('course', (_, auth) => {
@@ -129,20 +174,20 @@ export const canAccessComment = serverWhere('comment', (_, auth) => {
   const userId = auth.id
   return _.and(
     _.cmp('deleted', false),
-    _.exists('post', (q) => q.where((pq) => postGate(pq, userId))),
+    _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId))),
   )
 })
 
 export const canAccessReaction = serverWhere('reaction', (_, auth) => {
   if (!auth?.id) return false
   const userId = auth.id
-  return _.exists('post', (q) => q.where((pq) => postGate(pq, userId)))
+  return _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId)))
 })
 
 export const canAccessPostMedia = serverWhere('postMedia', (_, auth) => {
   if (!auth?.id) return false
   const userId = auth.id
-  return _.exists('post', (q) => q.where((pq) => postGate(pq, userId)))
+  return _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId)))
 })
 
 /**

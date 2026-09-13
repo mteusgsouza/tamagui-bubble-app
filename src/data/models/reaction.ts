@@ -1,6 +1,8 @@
 import { number, string, table } from '@rocicorp/zero'
 import { mutations, serverWhere, zql } from 'on-zero'
 
+import { hasFullAccessToPost } from '~/data/where/canAccessContent'
+
 import type { TableInsertRow } from 'on-zero'
 
 export type Reaction = TableInsertRow<typeof schema>
@@ -25,9 +27,16 @@ export const schema = table('reaction')
   })
   .primaryKey('id')
 
+// 🔴 O `exists` entrou na Fase 12 e é obrigatório: `canAccessPost` passou a ser frouxo
+// para o card bloqueado existir, então sem isto qualquer logado curtiria post que não pode
+// ler. Antes a proteção era acidental — a linha do post não chegava.
 const canWrite = serverWhere('reaction', (_, auth) => {
   if (!auth?.id) return false
-  return _.cmp('userId', auth.id)
+  const userId = auth.id
+  return _.and(
+    _.cmp('userId', userId),
+    _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId))),
+  )
 })
 
 export const mutate = mutations(schema, canWrite, {

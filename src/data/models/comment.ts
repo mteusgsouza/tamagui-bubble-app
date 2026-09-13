@@ -1,6 +1,8 @@
 import { boolean, number, string, table } from '@rocicorp/zero'
 import { mutations, serverWhere, zql } from 'on-zero'
 
+import { hasFullAccessToPost } from '~/data/where/canAccessContent'
+
 import type { TableInsertRow } from 'on-zero'
 
 export type Comment = TableInsertRow<typeof schema>
@@ -20,11 +22,20 @@ export const schema = table('comment')
   })
   .primaryKey('id')
 
-// Cada um escreve e apaga só o próprio comentário. O dono do feed modera pelo admin
-// (role admin passa por cima via `defaultAllowAdminRole`).
+// Cada um escreve e apaga só o próprio comentário — **e só em post a que tem direito**.
+//
+// 🔴 A segunda metade não é redundante, virou obrigatória na Fase 12. Antes, o post pago
+// nem chegava a quem não assinava, então "não conseguir comentar" era efeito colateral do
+// sync, não uma regra. Agora `canAccessPost` é frouxo de propósito (o card bloqueado
+// precisa existir para converter), e sem este `exists` qualquer logado comentaria em post
+// que não pode ler. **Permission de leitura ≠ permission de escrita** (invariante 9).
 const canWrite = serverWhere('comment', (_, auth) => {
   if (!auth?.id) return false
-  return _.cmp('userId', auth.id)
+  const userId = auth.id
+  return _.and(
+    _.cmp('userId', userId),
+    _.exists('post', (q) => q.where((pq) => hasFullAccessToPost(pq, userId))),
+  )
 })
 
 export const mutate = mutations(schema, canWrite, {

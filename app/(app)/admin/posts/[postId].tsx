@@ -61,7 +61,10 @@ export const AdminPostEditPage = memo(() => {
   // `kind` NÃO entra aqui — ele é deduzido da mídia, nunca escolhido.
   const [draft, setDraft] = useState({
     title: '',
+    // vai para `postContent`, atrás do paywall — não é coluna de `post`
     body: '',
+    // vai para `post`, e é **público**: é o que o não-assinante vê no card bloqueado
+    teaser: '',
     visibility: 'subscribers' as Visibility,
     requiredPlanId: null as string | null,
   })
@@ -76,7 +79,8 @@ export const AdminPostEditPage = memo(() => {
     const row = post as any
     setDraft({
       title: row.title || '',
-      body: row.body || '',
+      body: row.content?.body || '',
+      teaser: row.teaser || '',
       visibility: row.visibility,
       requiredPlanId: row.requiredPlanId ?? null,
     })
@@ -115,7 +119,7 @@ export const AdminPostEditPage = memo(() => {
   const fields = () => ({
     kind,
     title: draft.title.trim() || undefined,
-    body: draft.body.trim() || undefined,
+    teaser: draft.teaser.trim() || undefined,
     visibility: draft.visibility,
     // plano só faz sentido em post de assinante
     requiredPlanId:
@@ -154,6 +158,14 @@ export const AdminPostEditPage = memo(() => {
       createAckRef.current = awaitMutation(created)
       const applied = await created.client
       if (applied.type === 'error') throw new Error(applied.error.message)
+
+      // 🔴 **A linha de `postContent` nasce SEMPRE, mesmo vazia.** Ausência de `content` é
+      // o sinal de "bloqueado" que a tela lê (`isPostLocked`) — post sem essa linha
+      // apareceria bloqueado até para o próprio criador.
+      void zero.mutate.postContent.insert({
+        postId,
+        body: draft.body.trim() || undefined,
+      })
       // sai do modo "novo": daqui pra frente a tela edita em vez de recriar
       router.replace(`/admin/posts/${postId}`)
       return true
@@ -171,6 +183,16 @@ export const AdminPostEditPage = memo(() => {
       let outcome: MutationOutcome
       if (exists || createdRef.current) {
         outcome = await awaitMutation(zero.mutate.post.update({ id: postId, ...fields() }))
+        // o corpo vive em outra tabela desde a Fase 12. Não há `upsert` no CRUD gerado,
+        // então o `insert` cobre post criado antes dela, que não tem a linha ainda.
+        const body = draft.body.trim() || undefined
+        const contentOutcome = await awaitMutation(
+          row?.content
+            ? zero.mutate.postContent.update({ postId, body })
+            : zero.mutate.postContent.insert({ postId, body }),
+        )
+        // salvar o post e perder o texto seria o pior resultado: reporta a falha real
+        if (outcome.ok && !contentOutcome.ok) outcome = contentOutcome
       } else if (await ensurePost()) {
         outcome = (await createAckRef.current) ?? { ok: true }
       } else {
@@ -303,6 +325,19 @@ export const AdminPostEditPage = memo(() => {
           multiline
           testID="post-body"
         />
+
+        {/* Só faz diferença em post de assinante: no post público não há o que bloquear,
+            e o texto inteiro já aparece. */}
+        {draft.visibility === 'subscribers' ? (
+          <TextField
+            label="Isca (quem não assina vê isto)"
+            value={draft.teaser}
+            onChange={(teaser) => setDraft((d) => ({ ...d, teaser }))}
+            placeholder="Uma ou duas linhas que dão vontade de assinar."
+            multiline
+            testID="post-teaser"
+          />
+        ) : null}
 
         <YStack
           gap="$4"

@@ -40,6 +40,8 @@ type PostSeed = {
   kind: 'text' | 'photo' | 'video' | 'audio'
   title: string
   body: string
+  /** A isca do card bloqueado. Ignorada em post público, que não tem o que bloquear. */
+  teaser?: string
   visibility: 'public' | 'subscribers'
   requiredPlanId?: string
   /** dias atrás; o feed ordena por isto e assim nasce sempre recente */
@@ -63,6 +65,8 @@ const POSTS: PostSeed[] = [
     body:
       'Três abas: aquisição, retenção e a conta que ninguém quer fazer.\n\n' +
       'Se o seu CAC paga em mais de 4 meses, o problema não é o anúncio.',
+    teaser:
+      'A conta que decide se o negócio fecha. Assinantes do Anual veem as três abas.',
     visibility: 'subscribers',
     // o único que exige plano específico — é ele que prova o join de duas colunas
     requiredPlanId: 'plan-anual',
@@ -83,6 +87,7 @@ const POSTS: PostSeed[] = [
     kind: 'video',
     title: 'Análise ao vivo: por que esse anúncio queimou R$ 6.400 em 11 dias',
     body: 'Peguei a conta de um aluno e abri o gerenciador junto com ele.',
+    teaser: 'R$ 6.400 em 11 dias. O erro aparece nos primeiros 40 segundos.',
     visibility: 'subscribers',
     daysAgo: 5,
     likeCount: 206,
@@ -92,6 +97,7 @@ const POSTS: PostSeed[] = [
     kind: 'photo',
     title: 'O funil que levou a Metrix de R$ 8k para R$ 47k/mês em 90 dias',
     body: 'Três slides: diagnóstico, oferta e o follow-up que quase ninguém faz.',
+    teaser: 'De R$ 8k para R$ 47k/mês em 90 dias. Os três slides estão aqui dentro.',
     visibility: 'subscribers',
     daysAgo: 4,
     likeCount: 342,
@@ -144,7 +150,7 @@ async function seed() {
     for (const post of POSTS) {
       const at = new Date(Date.now() - post.daysAgo * 86_400_000)
       await client.query(
-        `INSERT INTO post (id, "feedOwnerId", kind, title, body, visibility,
+        `INSERT INTO post (id, "feedOwnerId", kind, title, teaser, visibility,
                            "requiredPlanId", published, "publishedAt",
                            "likeCount", deleted, "createdAt")
          VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, false, $8)
@@ -154,12 +160,22 @@ async function seed() {
           CREATOR,
           post.kind,
           post.title,
-          post.body,
+          // sem isca em post público: não há nada bloqueado para provocar
+          post.visibility === 'public' ? null : post.teaser,
           post.visibility,
           post.requiredPlanId ?? null,
           at,
           post.likeCount,
         ],
+      )
+
+      // 🔴 A linha nasce **sempre**, mesmo com corpo vazio: ausência de `postContent` é o
+      // sinal de "bloqueado" que a tela lê, então post sem ela apareceria bloqueado até
+      // para o criador.
+      await client.query(
+        `INSERT INTO "postContent" ("postId", body)
+         VALUES ($1, $2) ON CONFLICT ("postId") DO UPDATE SET body = EXCLUDED.body`,
+        [post.id, post.body],
       )
     }
 

@@ -9,7 +9,7 @@ import { CreatorBadge } from './CreatorBadge'
 import { timeAgo, visibilityLabel } from './formatDate'
 import { LikeButton } from './LikeButton'
 import { PostMediaCarousel } from './PostMediaCarousel'
-import { postMediaItems } from './types'
+import { isPostLocked, postMediaItems } from './types'
 
 import type { FeedPost } from './types'
 
@@ -30,8 +30,11 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
   const media = postMediaItems(post)
   const href = `/home/feed/${post.id}` as const
 
-  const body = post.body ?? ''
-  const isLong = body.length > BODY_LIMIT
+  // bloqueado = o servidor não sincronizou `postContent`. Aí o que se mostra é o teaser,
+  // que é público de propósito — é ele que dá motivo para assinar.
+  const locked = isPostLocked(post)
+  const body = locked ? (post.teaser ?? '') : (post.content?.body ?? '')
+  const isLong = !locked && body.length > BODY_LIMIT
   const shownBody = isLong ? `${body.slice(0, BODY_LIMIT).trimEnd()}…` : body
 
   return (

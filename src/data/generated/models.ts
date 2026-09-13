@@ -7,6 +7,7 @@ import * as lessonProgress from '../models/lessonProgress'
 import * as media from '../models/media'
 import * as plan from '../models/plan'
 import * as post from '../models/post'
+import * as postContent from '../models/postContent'
 import * as postMedia from '../models/postMedia'
 import * as reaction from '../models/reaction'
 import * as subscription from '../models/subscription'
@@ -22,6 +23,7 @@ export const models = {
   media,
   plan,
   post,
+  postContent,
   postMedia,
   reaction,
   subscription,

@@ -90,6 +90,14 @@ export const postRelationships = relationships(tables.post, ({ one, many }) => (
     destSchema: tables.plan,
     destField: ['id'],
   }),
+  // O texto do post. Chega **só para quem tem direito** — é a relação que separa o card
+  // bloqueado do card aberto: `post` sem `content` é exatamente o sinal de bloqueado, e a
+  // tela não precisa perguntar nada ao servidor para saber disso.
+  content: one({
+    sourceField: ['id'],
+    destSchema: tables.postContent,
+    destField: ['postId'],
+  }),
   media: many({
     sourceField: ['id'],
     destSchema: tables.postMedia,
@@ -113,11 +121,19 @@ export const postRelationships = relationships(tables.post, ({ one, many }) => (
     destField: ['creatorId'],
   }),
   // assinatura ao dono do feed **naquele plano** — join de duas colunas, é o que
-  // permite ao `postGate` respeitar `requiredPlanId` sem comparar coluna com coluna
+  // permite ao `hasFullAccessToPost` respeitar `requiredPlanId` sem comparar coluna com coluna
   planSubscriptions: many({
     sourceField: ['feedOwnerId', 'requiredPlanId'],
     destSchema: tables.subscription,
     destField: ['creatorId', 'planId'],
+  }),
+}))
+
+export const postContentRelationships = relationships(tables.postContent, ({ one }) => ({
+  post: one({
+    sourceField: ['postId'],
+    destSchema: tables.post,
+    destField: ['id'],
   }),
 }))
 
@@ -271,6 +287,7 @@ export const allRelationships = [
   subscriptionRelationships,
   mediaRelationships,
   postRelationships,
+  postContentRelationships,
   postMediaRelationships,
   commentRelationships,
   reactionRelationships,

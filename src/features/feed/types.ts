@@ -37,7 +37,15 @@ export type FeedPost = {
   feedOwnerId: string
   kind: PostKind
   title?: string | null
-  body?: string | null
+  /** a isca do card bloqueado; pública, chega mesmo para quem não assina */
+  teaser?: string | null
+  /**
+   * O texto do post — **`null` quando o usuário não tem direito**.
+   *
+   * É o sinal de bloqueado, e não há flag além disto: o servidor simplesmente não
+   * sincroniza a linha de `postContent` de quem não pode ler. Ver `isPostLocked`.
+   */
+  content?: { body?: string | null } | null
   visibility: string
   publishedAt?: number | null
   likeCount: number
@@ -48,6 +56,20 @@ export type FeedPost = {
   /** só a reação do próprio usuário — array vazio significa "não curti" */
   reactions?: readonly { id: string }[]
 }
+
+/**
+ * "Este post está bloqueado para quem está olhando?"
+ *
+ * A resposta é a **ausência da linha de `postContent`** no que o Zero sincronizou — não
+ * há flag, e não se pergunta ao servidor. Quem decide é `canAccessPostContent`, no
+ * servidor; aqui só se lê o resultado.
+ *
+ * ⚠️ Post de texto pode legitimamente ter `body` vazio, então a checagem é sobre o
+ * **objeto `content`**, não sobre o conteúdo dele. Confundir os dois faria post sem texto
+ * aparecer como bloqueado.
+ */
+export const isPostLocked = (post: { content?: { body?: string | null } | null }) =>
+  post.content == null
 
 /** As mídias do post, já sem os vínculos órfãos, na ordem de `position`. */
 export const postMediaItems = (post: {

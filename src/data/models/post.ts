@@ -18,7 +18,9 @@ export const schema = table('post')
     feedOwnerId: string(),
     kind: enumeration<PostKind>(),
     title: string().optional(),
-    body: string().optional(),
+    // a isca do card bloqueado. Pública: sincroniza para quem NÃO assina — é o que dá
+    // motivo para assinar. O texto de verdade mora em `postContent`, atrás do gate.
+    teaser: string().optional(),
     visibility: enumeration<Visibility>(),
     requiredPlanId: string().optional(),
     published: boolean(),
@@ -39,7 +41,7 @@ const canWrite = serverWhere('post', (_, auth) => {
 export const mutate = mutations(schema, canWrite, {
   /**
    * Soft delete. A linha continua no banco (comentários e reações penduram nela), mas
-   * `postGate` filtra `deleted` no servidor, então ela some do sync de todo mundo
+   * `postVisibilityGate` filtra `deleted` no servidor, então ela some do sync de todo mundo
    * menos do dono do feed.
    */
   softDelete: async ({ tx, authData, can }, args: PostIdArgs) => {

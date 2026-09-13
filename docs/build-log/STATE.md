@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 11 — Stripe** ([handoff](./handoffs/11-stripe.md)) |
-| Próxima fase | **Fase 12 — Paywall visível** ([plano](./plan/12-paywall-visivel.md)) |
+| Última fase concluída | **Fase 12 — Paywall visível** ([handoff](./handoffs/12-paywall-visivel.md)) |
+| Próxima fase | **Fase 13 — Funil de assinatura** ([plano](./plan/13-funil-assinatura.md)) |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 
 **As fases 11–17 foram planejadas em 12/09/2026** a partir de uma varredura do código
@@ -17,6 +17,23 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 12:
+
+- ✅ `body` saiu de `post` para `postContent` (gated); `post` ganhou `teaser` e virou
+  vitrine pública. **O sinal de bloqueado é a ausência de `content`** — `isPostLocked`
+- ✅ o gate antigo virou `hasFullAccessToPost`; `canAccessPostMedia`, `canAccessComment` e
+  `canAccessReaction` foram repontadas para ele. Relaxar sem trocar as três teria vazado
+  `storageKey` e comentário de post pago
+- ✅ `canWrite` de `comment` e `reaction` passou a exigir entitlement — a proteção antes
+  era **acidental** (o post não chegava a quem não podia)
+- ✅ typecheck limpo; **114 testes**; publication com **14 tabelas**; replica reconstruído
+- 🔴 **O gate nunca rodou em runtime.** A prova é a CVR nos três estados, e falta cobaia:
+  o `backend:clean` apagou `test-user-b`, e o `demo` é o criador. Roteiro no handoff
+- ⚠️ **Curso não recebeu o mesmo tratamento** — `canAccessCourse` ainda filtra a linha
+  inteira, então curso pago segue invisível para quem não assina
+- ⚠️ Sem a Fase 13, o post bloqueado aparece mostrando só o teaser, **sem dizer que está
+  bloqueado e sem CTA**. A conversão ainda não existe
 
 Estado real da Fase 11:
 

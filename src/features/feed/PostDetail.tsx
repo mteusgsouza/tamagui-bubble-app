@@ -9,7 +9,7 @@ import { CreatorBadge } from './CreatorBadge'
 import { fullDate, visibilityLabel } from './formatDate'
 import { LikeButton } from './LikeButton'
 import { PostMediaCarousel } from './PostMediaCarousel'
-import { postMediaItems } from './types'
+import { isPostLocked, postMediaItems } from './types'
 
 import type { FeedPost } from './types'
 
@@ -24,8 +24,13 @@ export const PostDetail = memo(({ post }: { post: FeedPost }) => {
   const name = author?.name || 'Criador'
   const media = postMediaItems(post)
 
-  // parágrafos: o corpo é texto puro, quebra dupla separa blocos
-  const paragraphs = (post.body ?? '').split(/\n{2,}/).filter(Boolean)
+  const locked = isPostLocked(post)
+
+  // parágrafos: o corpo é texto puro, quebra dupla separa blocos. Bloqueado mostra o
+  // teaser — `postContent` não chegou, e não há o que revelar aqui.
+  const paragraphs = (locked ? (post.teaser ?? '') : (post.content?.body ?? ''))
+    .split(/\n{2,}/)
+    .filter(Boolean)
 
   return (
     <YStack data-testid="post-detail" gap="$4" py="$4">

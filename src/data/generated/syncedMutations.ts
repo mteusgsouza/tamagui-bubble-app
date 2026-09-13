@@ -205,7 +205,7 @@ export const mutationValidators = {
     feedOwnerId: v.string(),
     kind: v.string(),
     title: v.optional(v.nullable(v.string())),
-    body: v.optional(v.nullable(v.string())),
+    teaser: v.optional(v.nullable(v.string())),
     visibility: v.string(),
     requiredPlanId: v.optional(v.nullable(v.string())),
     published: v.boolean(),
@@ -220,7 +220,7 @@ export const mutationValidators = {
     feedOwnerId: v.optional(v.nullable(v.string())),
     kind: v.optional(v.nullable(v.string())),
     title: v.optional(v.nullable(v.string())),
-    body: v.optional(v.nullable(v.string())),
+    teaser: v.optional(v.nullable(v.string())),
     visibility: v.optional(v.nullable(v.string())),
     requiredPlanId: v.optional(v.nullable(v.string())),
     published: v.optional(v.nullable(v.boolean())),
@@ -239,6 +239,19 @@ export const mutationValidators = {
     publish: v.object({
     id: v.string(),
     publishedAt: v.number(),
+  }),
+  },
+  postContent: {
+    insert: v.object({
+    postId: v.string(),
+    body: v.optional(v.nullable(v.string())),
+  }),
+    update: v.object({
+    postId: v.string(),
+    body: v.optional(v.nullable(v.string())),
+  }),
+    delete: v.object({
+    postId: v.string(),
   }),
   },
   postMedia: {

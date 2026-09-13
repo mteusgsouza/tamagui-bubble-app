@@ -140,7 +140,15 @@ export const post = pgTable(
       .references(() => userPublic.id, { onDelete: 'cascade' }),
     kind: text('kind', { enum: ['text', 'photo', 'video', 'audio'] }).notNull(),
     title: text('title'),
-    body: text('body'),
+    /**
+     * A isca do post bloqueado. **Público de propósito** — sincroniza para quem não
+     * assina, que é o ponto todo: sem isso o não-assinante vê feed vazio e não tem por
+     * que pagar.
+     *
+     * ⚠️ Nunca gere isto cortando o `body`. Seria o `body` voltando à linha pública por
+     * outro caminho. É campo que o criador escreve.
+     */
+    teaser: text('teaser'),
     visibility: text('visibility', { enum: ['public', 'subscribers'] })
       .notNull()
       .default('subscribers'),
@@ -159,6 +167,25 @@ export const post = pgTable(
     index('post_requiredPlanId_idx').on(table.requiredPlanId),
   ],
 )
+
+/**
+ * O conteúdo do post, separado do post.
+ *
+ * **O paywall é sobre o conteúdo, não sobre a existência do conteúdo.** `post` é
+ * metadado público (título, tipo, data, contadores, `teaser`) e sincroniza para todo
+ * mundo; o que é o produto mora aqui e passa pelo gate de assinatura.
+ *
+ * 🔴 Por que tabela, e não uma coluna escondida na tela: as permissions do Zero são por
+ * **linha**, não por coluna. Não existe "sincroniza este post, menos o `body`" — deixar
+ * `body` em `post` e esconder no componente entregaria o texto no cache local do
+ * cliente, visível no devtools.
+ */
+export const postContent = pgTable('postContent', {
+  postId: text('postId')
+    .primaryKey()
+    .references(() => post.id, { onDelete: 'cascade' }),
+  body: text('body'),
+})
 
 export const postMedia = pgTable(
   'postMedia',

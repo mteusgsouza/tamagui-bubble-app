@@ -25,6 +25,9 @@ export type PlanUpdate = TableUpdateRow<typeof schema.plan>
 export type Post = TableInsertRow<typeof schema.post>
 export type PostUpdate = TableUpdateRow<typeof schema.post>
 
+export type PostContent = TableInsertRow<typeof schema.postContent>
+export type PostContentUpdate = TableUpdateRow<typeof schema.postContent>
+
 export type PostMedia = TableInsertRow<typeof schema.postMedia>
 export type PostMediaUpdate = TableUpdateRow<typeof schema.postMedia>
 
