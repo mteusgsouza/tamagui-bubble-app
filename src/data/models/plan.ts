@@ -12,7 +12,9 @@ export const schema = table('plan')
     name: string(),
     priceCents: number(),
     currency: string(),
-    interval: enumeration<'month' | 'year'>(),
+    // `once` = compra avulsa, não renova; o prazo vem de `accessDays`
+    interval: enumeration<'month' | 'year' | 'once'>(),
+    accessDays: number().optional(),
     active: boolean(),
     order: number(),
   })

@@ -1,7 +1,11 @@
 # Build log — Bubble App
 
-Plano de construção fatiado em 9 fases, uma por agente. Cada agente começa com contexto
+Plano de construção fatiado em fases, uma por agente. Cada agente começa com contexto
 limpo; o handoff é a única ponte entre eles.
+
+As fases 2–10 construíram a fundação (schema, sync, mídia, feed, cursos, admin, auth) e
+estão fechadas. As **11–17** levam o produto a faturar e a ser publicável — foram
+planejadas em 12/09/2026, a partir de uma varredura do código contra este build log.
 
 ## Se você é o agente da vez, leia nesta ordem
 
@@ -27,8 +31,23 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ✅ | 8 — Admin | [plano](./plan/08-admin.md) | [handoff](./handoffs/08-admin.md) | — |
 | ✅ | 9 — Billing | [plano](./plan/09-billing.md) | [handoff](./handoffs/09-billing.md) | — |
 | ✅ | 10 — Auth (cadastro + Google OAuth) | [plano](./plan/10-auth.md) | [handoff](./handoffs/10-auth.md) | ⚠️ credenciais Google Cloud (só para o Google; o cadastro por e-mail está pronto) |
+| ✅ | 11 — Stripe (gateway) | [plano](./plan/11-stripe.md) | [handoff](./handoffs/11-stripe.md) | ⚠️ conta Stripe (test mode basta para construir) |
+| ⬜ | 12 — Paywall visível (dados) | [plano](./plan/12-paywall-visivel.md) | — | — |
+| ⬜ | 13 — Funil de assinatura (UI) | [plano](./plan/13-funil-assinatura.md) | — | — |
+| ⬜ | 14 — E-mail transacional | [plano](./plan/14-email-transacional.md) | — | ⚠️ provedor de e-mail + domínio com SPF/DKIM |
+| ⬜ | 15 — Publicar (web + Android) | [plano](./plan/15-publicar.md) | — | ⚠️ Google Play, US$ 25 |
+| ⬜ | 16 — Operação do criador | [plano](./plan/16-operacao-criador.md) | — | ⚠️ projeto Firebase (push Android, gratuito) |
+| ⬜ | 17 — Higiene e observabilidade | [plano](./plan/17-higiene.md) | — | — |
 
 ✅ concluída · ⬜ pendente · ⏭️ pulada
+
+## Ordem e paralelismo das fases 11–17
+
+Não é uma fila única. **11 → 12 → 13** é o caminho crítico (é o que faz alguém conseguir
+pagar); **14** e **17** não dependem de ninguém e podem ir em paralelo; **15** exige
+11–13 prontas (não se publica app que não vende) e **16** exige 12 e 14.
+
+O ciclo de receita só fecha no fim da 13. Antes disso, o produto não tem como cobrar.
 
 ## Ao terminar sua fase
 

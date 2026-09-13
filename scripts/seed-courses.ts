@@ -98,9 +98,44 @@ const MODULES: ModuleSeed[] = [
   },
 ]
 
+// O catálogo real, espelhando o que existe no Stripe.
+//
+// ⚠️ `plan-anual` fica `active: false` — **não é apagado**. É a decisão 16 do `STATE`:
+// plano sai de venda, nunca some, porque `p-cac` (em `seed-posts.ts`) tem
+// `requiredPlanId = 'plan-anual'` e assinaturas antigas apontariam para o vazio.
 const PLANS = [
-  { id: 'plan-mensal', slug: 'mensal', name: 'Mensal', interval: 'month', order: 0 },
-  { id: 'plan-anual', slug: 'anual', name: 'Anual', interval: 'year', order: 1 },
+  {
+    id: 'plan-trial',
+    slug: 'trial',
+    name: 'Avulso',
+    interval: 'once',
+    priceCents: 1000,
+    // compra avulsa não renova; o acesso vence por aqui, e quem derruba é o
+    // /api/cron/expire-subscriptions
+    accessDays: 30,
+    order: 0,
+    active: true,
+  },
+  {
+    id: 'plan-mensal',
+    slug: 'mensal',
+    name: 'Mensal',
+    interval: 'month',
+    priceCents: 1000,
+    accessDays: null,
+    order: 1,
+    active: true,
+  },
+  {
+    id: 'plan-anual',
+    slug: 'anual',
+    name: 'Anual',
+    interval: 'year',
+    priceCents: 0,
+    accessDays: null,
+    order: 2,
+    active: false,
+  },
 ]
 
 async function seed() {
@@ -121,10 +156,31 @@ async function seed() {
     }
 
     for (const plan of PLANS) {
+      // `DO UPDATE`, e não `DO NOTHING`: o catálogo é declarado aqui, então rodar de novo
+      // tem que **convergir**. Com `DO NOTHING`, os planos que já existiam no banco
+      // ficariam para sempre com `priceCents = 0` — a tela mostraria R$ 0,00 enquanto o
+      // Stripe cobra R$ 10,00, e o erro só apareceria na fatura do cliente.
       await client.query(
-        `INSERT INTO plan (id, slug, name, interval, "order", active)
-         VALUES ($1, $2, $3, $4, $5, true) ON CONFLICT (id) DO NOTHING`,
-        [plan.id, plan.slug, plan.name, plan.interval, plan.order],
+        `INSERT INTO plan (id, slug, name, interval, "priceCents", "accessDays", "order", active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (id) DO UPDATE SET
+           slug = EXCLUDED.slug,
+           name = EXCLUDED.name,
+           interval = EXCLUDED.interval,
+           "priceCents" = EXCLUDED."priceCents",
+           "accessDays" = EXCLUDED."accessDays",
+           "order" = EXCLUDED."order",
+           active = EXCLUDED.active`,
+        [
+          plan.id,
+          plan.slug,
+          plan.name,
+          plan.interval,
+          plan.priceCents,
+          plan.accessDays,
+          plan.order,
+          plan.active,
+        ],
       )
     }
 

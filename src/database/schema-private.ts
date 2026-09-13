@@ -1,6 +1,6 @@
-import { index, pgTable } from 'drizzle-orm/pg-core'
+import { index, pgTable, uniqueIndex } from 'drizzle-orm/pg-core'
 
-import { subscription } from './schema-public'
+import { plan, subscription } from './schema-public'
 
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -103,3 +103,66 @@ export const payment = pgTable(
 )
 
 export type Payment = InferSelectModel<typeof payment>
+
+// --- ponte com o gateway ---
+//
+// As duas tabelas abaixo traduzem o nosso vocabulário para o do gateway, e por isso são
+// **privadas**: `customerId` e `providerPriceId` são encanamento de cobrança, que
+// nenhuma tela precisa ver. Ficando fora da publication do Zero, elas não geram model
+// novo, não exigem `zero:generate` e não obrigam a reconstruir o replica.
+
+/**
+ * O cliente de cada usuário no gateway.
+ *
+ * Sem isto, cada checkout cria um customer novo no Stripe e o histórico da pessoa se
+ * estilhaça — e o Customer Portal, que é por customer, deixa de fazer sentido.
+ */
+export const billingCustomer = pgTable(
+  'billingCustomer',
+  (t) => ({
+    userId: t
+      .text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    provider: t.text('provider').notNull(),
+    customerId: t.text('customerId').notNull(),
+    createdAt: t.timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
+  }),
+  (table) => [
+    uniqueIndex('billingCustomer_userId_provider_uidx').on(table.userId, table.provider),
+    index('billingCustomer_customerId_idx').on(table.customerId),
+  ],
+)
+
+/**
+ * O `price_id` de cada plano no gateway.
+ *
+ * **Tabela, e não uma coluna em `plan`, por três razões:**
+ *
+ * 1. `plan` é público e sincronizado pelo Zero; `price_id` não tem o que fazer lá.
+ * 2. A decisão 4 do `STATE` é pagamento abstraído — um `stripe_` no schema público
+ *    amarraria o catálogo a um gateway.
+ * 3. **Price no Stripe é imutável:** mudar o valor é criar um Price novo. Quem já assina
+ *    continua no antigo (o mesmo grandfathering da decisão 16, que nunca apaga plano) e o
+ *    novo vale para quem entra. Com uma coluna só, um dos dois se perderia; com `active`
+ *    na linha, os dois coexistem e a intenção fica legível.
+ */
+export const planProviderPrice = pgTable(
+  'planProviderPrice',
+  (t) => ({
+    id: t.text('id').primaryKey(),
+    planId: t
+      .text('planId')
+      .notNull()
+      .references(() => plan.id, { onDelete: 'cascade' }),
+    provider: t.text('provider').notNull(),
+    providerPriceId: t.text('providerPriceId').notNull(),
+    /** `false` = preço aposentado, mantido porque assinatura antiga ainda aponta pra ele */
+    active: t.boolean('active').notNull().default(true),
+    createdAt: t.timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
+  }),
+  (table) => [
+    uniqueIndex('planProviderPrice_providerPriceId_uidx').on(table.providerPriceId),
+    index('planProviderPrice_planId_provider_idx').on(table.planId, table.provider),
+  ],
+)

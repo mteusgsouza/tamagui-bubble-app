@@ -43,9 +43,17 @@ export const plan = pgTable(
     name: text('name').notNull(),
     priceCents: integer('priceCents').notNull().default(0),
     currency: text('currency').notNull().default('BRL'),
-    interval: text('interval', { enum: ['month', 'year'] })
+    /**
+     * `once` é compra avulsa: cobra uma vez e **não renova**.
+     *
+     * O acesso não deixa de ter prazo por isso — ele passa a vir de `accessDays`, e quem
+     * derruba é o job `expire-subscriptions`. Sem prazo, "avulso" viraria vitalício.
+     */
+    interval: text('interval', { enum: ['month', 'year', 'once'] })
       .notNull()
       .default('month'),
+    /** Dias de acesso de uma compra `once`. Nulo nos planos recorrentes, que renovam. */
+    accessDays: integer('accessDays'),
     active: boolean('active').notNull().default(true),
     order: integer('order').notNull().default(0),
   },

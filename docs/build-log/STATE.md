@@ -8,9 +8,36 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 10 — Auth** (cadastro validado contra o servidor) |
-| Próxima fase | — todas as fases planejadas foram executadas; ver "Pendências abertas" |
+| Última fase concluída | **Fase 11 — Stripe** ([handoff](./handoffs/11-stripe.md)) |
+| Próxima fase | **Fase 12 — Paywall visível** ([plano](./plan/12-paywall-visivel.md)) |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
+
+**As fases 11–17 foram planejadas em 12/09/2026** a partir de uma varredura do código
+contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a existir para
+quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
+como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
+[`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 11:
+
+- ✅ `providers/stripe.ts` no ar, `BILLING_PROVIDER=stripe`, `stripe@22.6.2`
+- ✅ typecheck limpo; **111 testes** (era 92); publication seguiu com 13 tabelas
+  (`billingCustomer` e `planProviderPrice` são privadas)
+- ✅ catálogo ligado ao sandbox: `plan-trial` (avulso, R$ 10, 30 dias) e `plan-mensal`
+  (R$ 10/mês). `plan-anual` saiu de venda
+- ✅ **o bug de dinheiro foi fechado**: revogar pelo admin cancela no Stripe antes de tocar
+  no banco (`revokeSubscription.ts`)
+- 🔴 **Nada foi exercido em runtime contra o Stripe.** Nenhuma compra, nenhum webhook
+  recebido, nenhum cancelamento real. Typecheck e teste de unidade não provam isso — é a
+  mesma classe de buraco que o CORS do R2 na Fase 5
+- 🔴 **O cron de expiração continua sem agendador**, e agora pesa mais: a compra avulsa
+  depende dele para vencer. Sem ele, R$ 10 avulsos viram acesso permanente
+- ⚠️ Customer Portal não foi escrito; a Fase 13 conta com ele
+- ⚠️ **`bun zero:generate` trava** no `--after 'bun lint:fix'` (o oxlint entra em panic na
+  regra da Fase 17). Use `bunx on-zero generate`
+
+⚠️ Este arquivo tem trechos vencidos — `APP_NAME` já é `'Bubble'`, e a seção "Pendências
+abertas" carrega itens fechados. Reconciliar é item da [Fase 17](./plan/17-higiene.md).
 
 Estado real da Fase 10:
 
@@ -463,6 +490,29 @@ Três provedores, porque cada peça tem uma exigência diferente:
 18. **Provider social só é registrado quando as credenciais existem.** Registrar sem
    `clientId` faz o Better Auth responder 500: botão que existe e quebra é pior que botão
    que avisa. Quem decide é o servidor, nunca uma flag duplicada no cliente.
+19. **O gateway é Stripe, e a web é o canal principal de venda** (decisão do usuário,
+   12/09/2026). Encerra a pendência "escolher o gateway" da decisão 4.
+   *Por que web e não IAP das lojas:* no Brasil, desde 18/06/2026, a Apple permite link
+   externo de pagamento — e cobra 10–15% mesmo assim; o Google Play cobra 15% em
+   assinatura recorrente. A web cobra só o gateway (~4%). Somando, IAP no iOS sai ~15% e
+   link externo ~14%: quase empate entre eles, e os dois perdem feio da web.
+   *Por que Stripe:* aceita pessoa física com **CPF** (sem CNPJ nem MEI), e o **test mode
+   funciona antes de qualquer verificação de conta** — a Fase 11 se constrói e se prova
+   com custo zero. ⚠️ O tipo de conta e o CPF/CNPJ **não podem ser trocados depois de
+   verificados**: abrir como empresa é decisão de agora, não de depois.
+   *Consequência:* iOS sai do caminho crítico (US$ 99/ano contra US$ 25 uma vez no
+   Android) e vira a Fase 15 → "Não é desta fase".
+20. ⬜ **O paywall é sobre o conteúdo, não sobre a existência do conteúdo** — decidido,
+   **ainda não executado** (é a [Fase 12](./plan/12-paywall-visivel.md); o código de hoje
+   ainda faz o contrário).
+   Hoje `canAccessPost` filtra a linha inteira, então quem não assina vê feed vazio e não
+   tem por que pagar. As permissions do Zero são por linha, não por coluna — não existe
+   "sincroniza sem o `body`". Então `body` sai de `post` para uma `postContent` gated,
+   `post` ganha `teaser` e passa a sincronizar para todo mundo.
+   ⚠️ Ao mexer em `canAccessContent.ts` antes da Fase 12, saiba que
+   `canAccessPostMedia`, `canAccessComment` e `canAccessReaction` **delegam ao
+   `postGate`** — relaxar o `postGate` sem trocar as três primeiro vaza `storageKey` e
+   comentário de post pago.
 
 
 ## Pendências abertas
@@ -520,9 +570,12 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - **Fase 1 (Repositório) não foi executada.** O app continua na subpasta
   `mobile-bubble-app/` e o `package.json` ainda se chama `my-bubble-app`. Nada depende
   disso para as fases seguintes, mas continua no plano.
-- **Auth: falta recuperação de senha e verificação de e-mail.** Quem esquecer a senha
-  não tem saída pela UI; o `magicLink` já está ligado no `authServer` e é o caminho mais
-  curto. `emailVerified` nasce `false` e ninguém olha.
+- **Auth: falta recuperação de senha e verificação de e-mail** → [Fase
+  14](./plan/14-email-transacional.md). ⚠️ E a causa raiz é mais funda do que "falta a
+  UI": **o projeto não envia e-mail nenhum**. O `sendMagicLink` do `authServer` é um
+  `console.info` e não há dependência de e-mail no `package.json` — o `magicLink` está
+  registrado e mudo, que é exatamente o que a decisão 18 proíbe. `emailVerified` nasce
+  `false` e ninguém olha.
 - **`APP_NAME` ainda é `'Takeout'`** (`src/constants/app.ts`), então a tela de login diz
   "Entrar no Takeout". Trocar é uma linha — mas **não mexa em `DOMAIN`** junto:
   `DEMO_EMAIL` deriva dele e a conta demo do banco é `demo@takeout.tamagui.dev`.
@@ -531,12 +584,17 @@ Três provedores, porque cada peça tem uma exigência diferente:
   o que veio do Takeout (auth, settings) segue em inglês. Ninguém decidiu entre traduzir
   o resto ou adotar i18n. **Cada fase de UI encarece essa decisão** — decidir antes da
   Fase 7 é mais barato que depois.
-- **Cobrança: falta o que depende de decisão humana.** Escolher o gateway
-  (Stripe/Asaas/Pagar.me/Iugu) e escrever `providers/<nome>.ts` seguindo o `generic.ts`;
-  renderizar a tabela de preços em algum lugar do app; agendar
-  `/api/cron/expire-subscriptions` (uma vez por dia basta); e chamar `provider.cancel()`
-  ao revogar, senão a cobrança segue no gateway.
-- **Build nativo nunca validado.** Só o web subiu até hoje.
+- ~~**Cobrança: falta escolher o gateway.**~~ **Decidido: Stripe** (decisão 19). O resto
+  virou plano: `providers/stripe.ts`, agendar `/api/cron/expire-subscriptions` e chamar
+  `provider.cancel()` ao revogar são a [Fase 11](./plan/11-stripe.md); a tabela de preços
+  e a tela de assinatura são a [Fase 13](./plan/13-funil-assinatura.md).
+  🔴 O `provider.cancel()` continua sendo o item mais urgente da lista: hoje
+  `cancelSubscription` só marca `canceled` no nosso banco, então no dia em que houver
+  gateway, revogar pelo admin **corta o acesso e segue cobrando o cliente**.
+- **Build nativo nunca validado em aparelho.** Empacota desde 07/09/2026 (os três commits
+  de `fix(eas)`/`fix(native)`), mas nunca rodou em device. Roteiro de validação e o que
+  falta para publicar — exclusão de conta, páginas legais, landing pública — na
+  [Fase 15](./plan/15-publicar.md).
 - ~~**Sintaxe de permission do Zero** (`q.or`, operador `IN`) não confirmada.~~
   **Resolvido na Fase 3:** o expression builder do `@rocicorp/zero` 0.26.2 tem
   `or`, `and`, `not`, `cmp`, `cmpLit` e `exists`, e os operadores `IN` / `NOT IN` são

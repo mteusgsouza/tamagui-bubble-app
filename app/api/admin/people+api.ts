@@ -18,10 +18,8 @@ import { getDb } from '~/database'
 import { payment, user } from '~/database/schema-private'
 import { plan, subscription } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
-import {
-  cancelSubscription,
-  grantSubscription,
-} from '~/features/billing/server/subscriptionActions'
+import { revokeSubscription } from '~/features/billing/server/revokeSubscription'
+import { grantSubscription } from '~/features/billing/server/subscriptionActions'
 
 import type { AuthData } from '~/features/auth/types'
 import type { Endpoint } from 'one'
@@ -166,9 +164,14 @@ export const POST: Endpoint = async (request) => {
     const subscriptionId = String(body.subscriptionId || '')
     if (!subscriptionId) return fail(400, 'missing-fields', 'Informe subscriptionId.')
 
-    // cancela em vez de apagar: o histórico importa para faturamento
-    await cancelSubscription(subscriptionId)
-    return Response.json({ ok: true })
+    // cancela em vez de apagar: o histórico importa para faturamento.
+    // 🔴 E cancela **no gateway antes** — marcar só aqui cortaria o acesso deixando a
+    // cobrança correr no cartão do cliente todo mês.
+    const result = await revokeSubscription(subscriptionId)
+    if (!result.ok) {
+      return fail(result.code === 'not-found' ? 404 : 502, result.code, result.message)
+    }
+    return Response.json({ ok: true, canceledAtGateway: result.canceledAtGateway })
   }
 
   if (action === 'setRole') {

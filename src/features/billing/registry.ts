@@ -5,6 +5,7 @@
 
 import { genericProvider } from './providers/generic'
 import { manualProvider } from './providers/manual'
+import { stripeProvider } from './providers/stripe'
 import { BILLING_PROVIDER } from '~/server/env-server'
 
 import type { BillingProvider } from './types'
@@ -12,6 +13,7 @@ import type { BillingProvider } from './types'
 const PROVIDERS: Record<string, BillingProvider> = {
   [manualProvider.id]: manualProvider,
   [genericProvider.id]: genericProvider,
+  [stripeProvider.id]: stripeProvider,
 }
 
 /** O provider configurado em `BILLING_PROVIDER`. Cai no manual quando não há gateway. */
