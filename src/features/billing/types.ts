@@ -74,6 +74,18 @@ export type BillingProvider = {
   }): Promise<void>
 
   /**
+   * URL do portal hospedado onde o assinante troca cartão, vê faturas e cancela.
+   *
+   * **Opcional de propósito:** o `manual` não tem portal, e reimplementar essas telas no
+   * app seria fazer pior o que o gateway já hospeda. Ausente = a tela não oferece o botão,
+   * em vez de oferecer um que quebra (decisão 18).
+   */
+  createPortalSession?(request: {
+    userId: string
+    returnUrl?: string
+  }): Promise<{ url: string }>
+
+  /**
    * Traduz o webhook do gateway. **Valida a assinatura** — devolver evento sem
    * conferir HMAC é entregar a base de assinaturas a quem souber a URL.
    *

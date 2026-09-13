@@ -1,8 +1,11 @@
+import { Link } from 'one'
 import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { Avatar } from '~/interface/avatars/Avatar'
+import { Button } from '~/interface/buttons/Button'
 import { ChatCircleIcon } from '~/interface/icons/phosphor/ChatCircleIcon'
+import { LockIcon } from '~/interface/icons/phosphor/LockIcon'
 
 import { CommentList } from './CommentList'
 import { CreatorBadge } from './CreatorBadge'
@@ -77,30 +80,91 @@ export const PostDetail = memo(({ post }: { post: FeedPost }) => {
         </YStack>
       ) : null}
 
-      <XStack gap="$5" items="center" py="$2">
-        <LikeButton
-          postId={post.id}
+      {/* bloqueado não tem o que curtir nem comentários para listar: o servidor não
+          sincroniza `comment` nem `reaction` de post pago (Fase 12). Mostrar a lista vazia
+          diria "ninguém comentou", que é mentira. */}
+      {locked ? (
+        <Paywall
           likeCount={post.likeCount}
-          liked={(post.reactions?.length ?? 0) > 0}
-          size={20}
+          commentCount={post.commentCount}
+          requiresPlan={Boolean(post.requiredPlanId)}
         />
+      ) : (
+        <>
+          <XStack gap="$5" items="center" py="$2">
+            <LikeButton
+              postId={post.id}
+              likeCount={post.likeCount}
+              liked={(post.reactions?.length ?? 0) > 0}
+              size={20}
+            />
 
-        <XStack gap="$1.5" items="center">
-          <ChatCircleIcon size={20} color="$color10" />
-          <SizableText size="$3" fontWeight="600" color="$color11">
-            {post.commentCount}
-          </SizableText>
-        </XStack>
-      </XStack>
+            <XStack gap="$1.5" items="center">
+              <ChatCircleIcon size={20} color="$color10" />
+              <SizableText size="$3" fontWeight="600" color="$color11">
+                {post.commentCount}
+              </SizableText>
+            </XStack>
+          </XStack>
 
-      <YStack height={1} bg="$borderColor" />
+          <YStack height={1} bg="$borderColor" />
 
-      <CommentList
-        postId={post.id}
-        feedOwnerId={post.feedOwnerId}
-        comments={post.comments ?? []}
-        commentCount={post.commentCount}
-      />
+          <CommentList
+            postId={post.id}
+            feedOwnerId={post.feedOwnerId}
+            comments={post.comments ?? []}
+            commentCount={post.commentCount}
+          />
+        </>
+      )}
     </YStack>
   )
 })
+
+/**
+ * O bloco que substitui o post inteiro quando ele está bloqueado.
+ *
+ * Os contadores continuam à mostra: são prova social, chegam em `post` (que é público
+ * desde a Fase 12) e não revelam nada do conteúdo.
+ */
+const Paywall = ({
+  likeCount,
+  commentCount,
+  requiresPlan,
+}: {
+  likeCount: number
+  commentCount: number
+  requiresPlan: boolean
+}) => (
+  <YStack
+    gap="$3"
+    p="$4"
+    rounded="$7"
+    bg="$accent2"
+    borderWidth={1}
+    borderColor="$accent6"
+    items="center"
+  >
+    <LockIcon size={26} color="$accent10" />
+
+    <SizableText size="$6" fontWeight="700" text="center">
+      Este post é para assinantes
+    </SizableText>
+
+    <SizableText size="$3" color="$color11" text="center" lineHeight={21}>
+      {requiresPlan
+        ? 'Ele faz parte de um plano específico. Veja qual libera este conteúdo.'
+        : 'Assine para ler o post inteiro, curtir e comentar.'}
+    </SizableText>
+
+    <SizableText size="$2" color="$color10">
+      {likeCount} curtidas · {commentCount} comentários
+    </SizableText>
+
+    <Link href="/home/assinar" data-testid="post-detail-cta" style={{ width: '100%' }} asChild>
+      <Button variant="accent" size="$4" width="100%">
+        Ver planos
+      </Button>
+    </Link>
+  </YStack>
+)

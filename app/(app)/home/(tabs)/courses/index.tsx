@@ -1,3 +1,4 @@
+import { Link } from 'one'
 import { memo, useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
@@ -7,6 +8,7 @@ import { courses } from '~/data/queries/course'
 import { useAuth } from '~/features/auth/client/authClient'
 import { CourseCard } from '~/features/courses/CourseCard'
 import { courseStats } from '~/features/courses/courseStats'
+import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { useQuery } from '~/zero/client'
 
@@ -88,13 +90,18 @@ export const CoursesPage = memo(() => {
           <Spinner size="small" color="$accent9" />
         </YStack>
       ) : visible.length === 0 ? (
+        // ⚠️ Curso ainda é filtrado por linha inteira: `canAccessCourse` não recebeu o
+        // tratamento da Fase 12, então curso de assinante é **invisível** para quem não
+        // assina. Dizer "nenhum curso ainda" seria mentira — a mesma que o feed contava
+        // antes. Enquanto o gate não mudar, o texto admite a possibilidade e oferece saída.
         <Empty
-          title={all.length === 0 ? 'Nenhum curso ainda' : 'Nada neste filtro'}
+          title={all.length === 0 ? 'Nenhum curso por aqui' : 'Nada neste filtro'}
           detail={
             all.length === 0
-              ? 'Quando o criador publicar um curso, ele aparece aqui.'
+              ? 'Pode haver cursos só para assinantes.'
               : 'Troque o filtro para ver os outros cursos.'
           }
+          cta={all.length === 0}
         />
       ) : (
         <YStack gap="$3" pb="$6">
@@ -122,7 +129,15 @@ export const CoursesPage = memo(() => {
   )
 })
 
-const Empty = ({ title, detail }: { title: string; detail: string }) => (
+const Empty = ({
+  title,
+  detail,
+  cta,
+}: {
+  title: string
+  detail: string
+  cta?: boolean
+}) => (
   <YStack flex={1} gap="$2" items="center" justify="center" py="$10">
     <SizableText size="$6" fontWeight="700">
       {title}
@@ -130,5 +145,12 @@ const Empty = ({ title, detail }: { title: string; detail: string }) => (
     <SizableText size="$4" color="$color10" text="center">
       {detail}
     </SizableText>
+    {cta ? (
+      <Link href="/home/assinar" asChild>
+        <Button mt="$3" variant="accent" size="$3">
+          Ver planos
+        </Button>
+      </Link>
+    ) : null}
   </YStack>
 )

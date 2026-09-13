@@ -47,6 +47,8 @@ export type FeedPost = {
    */
   content?: { body?: string | null } | null
   visibility: string
+  /** só para o texto do paywall dizer que o post exige um plano específico */
+  requiredPlanId?: string | null
   publishedAt?: number | null
   likeCount: number
   commentCount: number

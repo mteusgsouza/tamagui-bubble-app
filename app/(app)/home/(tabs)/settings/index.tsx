@@ -5,6 +5,7 @@ import { isWeb, ScrollView, SizableText, View, XStack, YStack } from 'tamagui'
 import { APP_NAME_LOWERCASE, APP_VERSION, DOMAIN } from '~/constants/app'
 import { canManage } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
+import { SubscriptionCard } from '~/features/billing/SubscriptionCard'
 import { Avatar } from '~/interface/avatars/Avatar'
 import { useLogout } from '~/features/auth/useLogout'
 import { CaretRightIcon } from '~/interface/icons/phosphor/CaretRightIcon'
@@ -168,6 +169,12 @@ export function ProfileSettingsPage() {
               </YStack>
             </XStack>
           ) : null}
+
+          {/* Assinatura antes de tudo: é o que o usuário vem conferir aqui, e é o único
+              lugar do app onde ele vê o que pagou e por quanto tempo. */}
+          <YStack pb="$5">
+            <SubscriptionCard />
+          </YStack>
 
           {/* o seletor de tema morava no header, que deixou de existir */}
           <XStack items="center" justify="space-between" px="$4" pb="$4">

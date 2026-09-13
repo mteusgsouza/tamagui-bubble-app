@@ -33,7 +33,7 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ✅ | 10 — Auth (cadastro + Google OAuth) | [plano](./plan/10-auth.md) | [handoff](./handoffs/10-auth.md) | ⚠️ credenciais Google Cloud (só para o Google; o cadastro por e-mail está pronto) |
 | ✅ | 11 — Stripe (gateway) | [plano](./plan/11-stripe.md) | [handoff](./handoffs/11-stripe.md) | ⚠️ conta Stripe (test mode basta para construir) |
 | ✅ | 12 — Paywall visível (dados) | [plano](./plan/12-paywall-visivel.md) | [handoff](./handoffs/12-paywall-visivel.md) | — |
-| ⬜ | 13 — Funil de assinatura (UI) | [plano](./plan/13-funil-assinatura.md) | — | — |
+| ✅ | 13 — Funil de assinatura (UI) | [plano](./plan/13-funil-assinatura.md) | [handoff](./handoffs/13-funil-assinatura.md) | — |
 | ⬜ | 14 — E-mail transacional | [plano](./plan/14-email-transacional.md) | — | ⚠️ provedor de e-mail + domínio com SPF/DKIM |
 | ⬜ | 15 — Publicar (web + Android) | [plano](./plan/15-publicar.md) | — | ⚠️ Google Play, US$ 25 |
 | ⬜ | 16 — Operação do criador | [plano](./plan/16-operacao-criador.md) | — | ⚠️ projeto Firebase (push Android, gratuito) |

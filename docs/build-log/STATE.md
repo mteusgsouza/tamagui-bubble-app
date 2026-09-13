@@ -8,8 +8,8 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 12 — Paywall visível** ([handoff](./handoffs/12-paywall-visivel.md)) |
-| Próxima fase | **Fase 13 — Funil de assinatura** ([plano](./plan/13-funil-assinatura.md)) |
+| Última fase concluída | **Fase 13 — Funil de assinatura** ([handoff](./handoffs/13-funil-assinatura.md)) |
+| Próxima fase | **Fase 14 — E-mail transacional** ([plano](./plan/14-email-transacional.md)) — mas antes vale **validar 11–13 no navegador**, que nunca foi feito |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 
 **As fases 11–17 foram planejadas em 12/09/2026** a partir de uma varredura do código
@@ -17,6 +17,20 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 13:
+
+- ✅ **o ciclo de receita fecha**: `/home/assinar` com a tabela de preços, card bloqueado
+  com CTA, estado da assinatura em Ajustes e Customer Portal (que era pendência da 11)
+- ✅ typecheck limpo; **121 testes**
+- ✅ `mediaApi` virou `~/helpers/apiFetch` — ele nunca foi só de mídia, e a cobrança
+  precisava do mesmo. `mediaApi.ts` ficou como apelido, então os 15 usos seguem valendo
+- 🔴 **Nada foi clicado.** Nenhuma tela desta fase foi aberta. Junto com a compra que a
+  Fase 11 nunca fez e a CVR que a 12 nunca leu, são três lacunas que o **mesmo roteiro**
+  fecha — está no [handoff 13](./handoffs/13-funil-assinatura.md)
+- ⚠️ `/home/assinar` foi acrescentada ao `app/routes.d.ts` **à mão** (o scanner de rotas
+  depende do watcher, que não funciona em `/mnt/f`). O próximo `bun dev` regenera
+- ⚠️ A tela não diz **qual** plano libera um post que exige plano específico
 
 Estado real da Fase 12:
 

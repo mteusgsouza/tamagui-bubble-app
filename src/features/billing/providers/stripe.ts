@@ -217,6 +217,39 @@ export const stripeProvider: BillingProvider = {
     await stripe().subscriptions.cancel(providerSubscriptionId)
   },
 
+  /**
+   * Portal hospedado: trocar cartão, ver faturas e cancelar.
+   *
+   * ⚠️ **Não cria Customer aqui.** Sem `billingCustomer` a pessoa nunca comprou, e abrir
+   * um portal vazio para ela é pior que não oferecer o botão. Quem não tem, recebe `null`
+   * do chamador e a tela some com a opção.
+   *
+   * O cancelamento feito lá volta como `customer.subscription.updated` — nenhuma escrita
+   * especial é necessária deste lado.
+   */
+  async createPortalSession({ userId, returnUrl }) {
+    const db = getDb()
+    const [row] = await db
+      .select({ customerId: billingCustomer.customerId })
+      .from(billingCustomer)
+      .where(
+        and(
+          eq(billingCustomer.userId, userId),
+          eq(billingCustomer.provider, PROVIDER_ID),
+        ),
+      )
+      .limit(1)
+
+    if (!row) throw new Error('Esse usuário ainda não tem cliente no Stripe.')
+
+    const session = await stripe().billingPortal.sessions.create({
+      customer: row.customerId,
+      ...(returnUrl ? { return_url: returnUrl } : null),
+    })
+
+    return { url: session.url }
+  },
+
   async parseWebhook({ rawBody, headers }) {
     const signature = headers.get('stripe-signature') || ''
 

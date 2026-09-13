@@ -21,6 +21,7 @@ declare module 'one' {
         | `/(app)/auth/login`
         | `/(app)/auth/login/password`
         | `/(app)/home`
+        | `/(app)/home/assinar`
         | `/(app)/home/(tabs)`
         | `/(app)/home/(tabs)/courses`
         | `/(app)/home/(tabs)/courses/`
@@ -51,6 +52,7 @@ declare module 'one' {
         | `/auth/login`
         | `/auth/login/password`
         | `/home`
+        | `/home/assinar`
         | `/home/(tabs)`
         | `/home/(tabs)/courses`
         | `/home/(tabs)/courses/`

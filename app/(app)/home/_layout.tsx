@@ -13,6 +13,9 @@ export function AppLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           {/* `settings` saiu daqui: virou aba, então mora dentro de `(tabs)` */}
           <Stack.Screen name="(tabs)" />
+          {/* `assinar` é irmã de `(tabs)`, não filha: é caminho de conversão e não deve
+              ter barra de abas embaixo convidando a sair no meio */}
+          <Stack.Screen name="assinar" />
         </Stack>
       )}
     </>

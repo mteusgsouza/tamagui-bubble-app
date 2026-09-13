@@ -3,7 +3,9 @@ import { memo } from 'react'
 import { Separator, SizableText, XStack, YStack } from 'tamagui'
 
 import { Avatar } from '~/interface/avatars/Avatar'
+import { Button } from '~/interface/buttons/Button'
 import { ChatCircleIcon } from '~/interface/icons/phosphor/ChatCircleIcon'
+import { LockIcon } from '~/interface/icons/phosphor/LockIcon'
 
 import { CreatorBadge } from './CreatorBadge'
 import { timeAgo, visibilityLabel } from './formatDate'
@@ -87,31 +89,87 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
         </YStack>
       </Link>
 
-      {media.length > 0 ? (
+      {/* bloqueado nunca monta mídia: sem `postMedia` não há `storageKey`, e a tela não
+          inventa URL de R2 (invariante 7) */}
+      {locked ? (
+        <LockedSlot kind={post.kind} />
+      ) : media.length > 0 ? (
         <PostMediaCarousel items={media} alt={post.title || KIND_LABEL[post.kind]} />
       ) : post.kind !== 'text' ? (
         <EmptyMediaSlot kind={post.kind} />
       ) : null}
 
-      <XStack gap="$5" items="center" pt="$1">
-        <LikeButton
-          postId={post.id}
-          likeCount={post.likeCount}
-          liked={(post.reactions?.length ?? 0) > 0}
-        />
+      {locked ? (
+        <LockedActions />
+      ) : (
+        <XStack gap="$5" items="center" pt="$1">
+          <LikeButton
+            postId={post.id}
+            likeCount={post.likeCount}
+            liked={(post.reactions?.length ?? 0) > 0}
+          />
 
-        <Link href={href}>
-          <XStack gap="$1.5" items="center">
-            <ChatCircleIcon size={18} color="$color10" />
-            <SizableText size="$3" fontWeight="600" color="$color11">
-              {post.commentCount}
-            </SizableText>
-          </XStack>
-        </Link>
-      </XStack>
+          <Link href={href}>
+            <XStack gap="$1.5" items="center">
+              <ChatCircleIcon size={18} color="$color10" />
+              <SizableText size="$3" fontWeight="600" color="$color11">
+                {post.commentCount}
+              </SizableText>
+            </XStack>
+          </Link>
+        </XStack>
+      )}
     </YStack>
   )
 })
+
+/**
+ * O lugar da mídia num post bloqueado.
+ *
+ * Não é a mídia borrada — é o lugar dela. Borrar exigiria receber o arquivo, e o servidor
+ * não manda: `canAccessPostMedia` barra a linha antes.
+ */
+const LockedSlot = ({ kind }: { kind: string }) => (
+  <YStack
+    height={kind === 'audio' ? 92 : 180}
+    rounded="$6"
+    bg="$accent2"
+    borderWidth={1}
+    borderColor="$accent6"
+    items="center"
+    justify="center"
+    gap="$2"
+  >
+    <LockIcon size={22} color="$accent10" />
+    <SizableText size="$2" color="$accent11" fontWeight="600">
+      {KIND_LABEL[kind] || 'Conteúdo'} para assinantes
+    </SizableText>
+  </YStack>
+)
+
+/**
+ * Curtir e comentar somem, e o "Assinar" toma o lugar deles.
+ *
+ * ⚠️ Não é botão desabilitado e mudo: sem dizer o motivo, o usuário conclui que o app
+ * quebrou. E a recusa de verdade está no servidor desde a Fase 12 — isto aqui é cortesia,
+ * não segurança.
+ */
+const LockedActions = () => (
+  <XStack gap="$3" items="center" justify="space-between" pt="$1" flexWrap="wrap">
+    <XStack gap="$1.5" items="center" flex={1}>
+      <LockIcon size={15} color="$color10" />
+      <SizableText size="$2" color="$color10">
+        Assine para ler, curtir e comentar
+      </SizableText>
+    </XStack>
+
+    <Link href="/home/assinar" data-testid="post-card-cta" asChild>
+      <Button variant="accent" size="$2">
+        Assinar
+      </Button>
+    </Link>
+  </XStack>
+)
 
 /**
  * Post que se diz de mídia mas não tem linha em `postMedia` — acontece entre criar o
