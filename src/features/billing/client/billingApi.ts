@@ -58,7 +58,10 @@ export function billingMessage(err: unknown, messages: Record<string, string>): 
  * tela atual e no nativo abre o navegador do sistema.
  */
 export async function startCheckout(planId: string): Promise<string> {
-  const res = await apiFetch<{ url?: string; kind?: string }>('/api/billing/checkout', {
+  // ⚠️ **Sem `/api` aqui.** `API_URL` já é `${SERVER_URL}/api` (`~/constants/urls`), então
+  // prefixar de novo produz `/api/api/...` e **404** — que é exatamente o que a tela de
+  // assinar mostrou. Os chamadores antigos passam `/media/...` e `/admin/...`.
+  const res = await apiFetch<{ url?: string; kind?: string }>('/billing/checkout', {
     method: 'POST',
     body: JSON.stringify({ planId, returnUrl: returnUrl('/home/feed?checkout=success') }),
   })
@@ -70,7 +73,8 @@ export async function startCheckout(planId: string): Promise<string> {
 
 /** Abre o portal do gateway: trocar cartão, ver faturas, cancelar. */
 export async function startPortal(): Promise<string> {
-  const res = await apiFetch<{ url?: string }>('/api/billing/portal', {
+  // idem: `API_URL` já traz o `/api`
+  const res = await apiFetch<{ url?: string }>('/billing/portal', {
     method: 'POST',
     body: JSON.stringify({ returnUrl: returnUrl('/home/settings') }),
   })

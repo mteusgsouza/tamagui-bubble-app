@@ -146,7 +146,7 @@ const Empty = ({
       {detail}
     </SizableText>
     {cta ? (
-      <Link href="/home/assinar" asChild>
+      <Link href="/assinar" asChild>
         <Button mt="$3" variant="accent" size="$3">
           Ver planos
         </Button>

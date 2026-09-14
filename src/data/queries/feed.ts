@@ -1,11 +1,24 @@
 import { zql } from 'on-zero'
 
-import { canAccessPost } from '~/data/where/canAccessContent'
+import {
+  canAccessComment,
+  canAccessMedia,
+  canAccessPost,
+  canAccessPostContent,
+  canAccessPostMedia,
+  canAccessReaction,
+} from '~/data/where/canAccessContent'
 
-// As permissions (`canAccessPost`) só rodam no servidor e decidem o que **sincroniza**.
-// Os `.where()` daqui são para o cache local: uma mutation otimista cria a linha no
-// cliente antes do servidor responder, e sem estes filtros um post recém-apagado
-// reapareceria por um instante.
+// As permissions só rodam no servidor e decidem o que **sincroniza**. Os `.where()` com
+// coluna são para o cache local: uma mutation otimista cria a linha no cliente antes do
+// servidor responder, e sem eles um post recém-apagado reapareceria por um instante.
+//
+// 🔴 **Permission em `.related()` não é automática.** Cada relação precisa da sua, e a
+// falta disso vazou o conteúdo pago: `canAccessPost` ficou frouxo na Fase 12 (para o card
+// bloqueado existir) e tudo que pendura no post passou a fluir junto — `postContent`
+// inclusive. Antes ninguém notava porque a linha do post pago nem chegava, então a
+// proteção das relações era **efeito colateral**, não regra. Ao acrescentar `.related()`
+// aqui, aplique a permission da tabela de destino.
 
 /**
  * Feed do criador. Carrega tudo que a tela de detalhe também usa — autor, mídias em
@@ -28,19 +41,23 @@ export const feedPosts = (props: {
       .limit(props.limit ?? 20)
       .related('feedOwner', (q) => q.one())
       // o texto. Só chega para quem tem direito — ausência dele É o estado bloqueado
-      .related('content', (q) => q.one())
+      .related('content', (q) => q.where(canAccessPostContent).one())
       .related('media', (q) =>
-        q.orderBy('position', 'asc').related('media', (m) => m.one()),
+        q
+          .where(canAccessPostMedia)
+          .orderBy('position', 'asc')
+          .related('media', (m) => m.where(canAccessMedia).one()),
       )
       .related('comments', (q) =>
         q
+          .where(canAccessComment)
           .where('deleted', false)
           .orderBy('createdAt', 'desc')
           .limit(3)
           .related('user', (u) => u.one()),
       )
       // só a reação de quem está olhando: é o que o coração preenchido precisa saber
-      .related('reactions', (q) => q.where('userId', props.userId))
+      .related('reactions', (q) => q.where(canAccessReaction).where('userId', props.userId))
   )
 }
 
@@ -52,24 +69,29 @@ export const postDetail = (props: { postId: string; userId: string }) => {
     .where('deleted', false)
     .one()
     .related('feedOwner', (q) => q.one())
-    .related('content', (q) => q.one())
+    .related('content', (q) => q.where(canAccessPostContent).one())
     .related('media', (q) =>
-      q.orderBy('position', 'asc').related('media', (m) => m.one()),
+      q
+        .where(canAccessPostMedia)
+        .orderBy('position', 'asc')
+        .related('media', (m) => m.where(canAccessMedia).one()),
     )
     .related('comments', (q) =>
       q
+        .where(canAccessComment)
         .where('deleted', false)
         .orderBy('createdAt', 'desc')
         .limit(100)
         .related('user', (u) => u.one())
         .related('replies', (r) =>
           r
+            .where(canAccessComment)
             .where('deleted', false)
             .orderBy('createdAt', 'asc')
             .related('user', (u) => u.one()),
         ),
     )
-    .related('reactions', (q) => q.where('userId', props.userId))
+    .related('reactions', (q) => q.where(canAccessReaction).where('userId', props.userId))
 }
 
 /**
@@ -91,11 +113,14 @@ export const feedPostsPage = (props: {
     .orderBy('id', 'desc')
     .limit(props.pageSize)
     .related('feedOwner', (q) => q.one())
-    .related('content', (q) => q.one())
+    .related('content', (q) => q.where(canAccessPostContent).one())
     .related('media', (q) =>
-      q.orderBy('position', 'asc').related('media', (m) => m.one()),
+      q
+        .where(canAccessPostMedia)
+        .orderBy('position', 'asc')
+        .related('media', (m) => m.where(canAccessMedia).one()),
     )
-    .related('reactions', (q) => q.where('userId', props.userId))
+    .related('reactions', (q) => q.where(canAccessReaction).where('userId', props.userId))
 
   return props.cursor ? query.start(props.cursor) : query
 }

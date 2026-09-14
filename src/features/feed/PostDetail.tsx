@@ -161,7 +161,7 @@ const Paywall = ({
       {likeCount} curtidas · {commentCount} comentários
     </SizableText>
 
-    <Link href="/home/assinar" data-testid="post-detail-cta" style={{ width: '100%' }} asChild>
+    <Link href="/assinar" data-testid="post-detail-cta" style={{ width: '100%' }} asChild>
       <Button variant="accent" size="$4" width="100%">
         Ver planos
       </Button>

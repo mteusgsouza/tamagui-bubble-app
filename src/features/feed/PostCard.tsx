@@ -163,7 +163,7 @@ const LockedActions = () => (
       </SizableText>
     </XStack>
 
-    <Link href="/home/assinar" data-testid="post-card-cta" asChild>
+    <Link href="/assinar" data-testid="post-card-cta" asChild>
       <Button variant="accent" size="$2">
         Assinar
       </Button>

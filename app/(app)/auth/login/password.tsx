@@ -1,7 +1,7 @@
 import { router, useParams } from 'one'
 import { useState } from 'react'
 import { Keyboard } from 'react-native'
-import { SizableText, XStack, YStack } from 'tamagui'
+import { SizableText, YStack } from 'tamagui'
 
 import { passwordLogin } from '~/features/auth/client/passwordLogin'
 import {
@@ -12,6 +12,8 @@ import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { showError } from '~/interface/dialogs/actions'
 import { Field } from '~/interface/forms/Field'
+import { EyeIcon } from '~/interface/icons/phosphor/EyeIcon'
+import { EyeSlashIcon } from '~/interface/icons/phosphor/EyeSlashIcon'
 import { PasswordIcon } from '~/interface/icons/phosphor/PasswordIcon'
 import { KeyboardStickyFooter } from '~/interface/keyboard/KeyboardStickyFooter'
 import { StepPageLayout } from '~/interface/pages/StepPageLayout'
@@ -37,12 +39,20 @@ export const PasswordPage = () => {
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   // com exigência de tamanho, esconder o que se digita só aumenta a chance de errar
   const [reveal, setReveal] = useState(false)
 
   const longEnough = password.length >= MIN_PASSWORD_LENGTH
+  // só compara depois que a pessoa começou a repetir — acusar diferença no primeiro
+  // caractere digitado é ruído, não ajuda
+  const confirmTouched = confirm.length > 0
+  const matches = password === confirm
+
   const canSubmit =
-    Boolean(password) && !loading && (!isSignup || (name.trim().length > 0 && longEnough))
+    Boolean(password) &&
+    !loading &&
+    (!isSignup || (name.trim().length > 0 && longEnough && confirmTouched && matches))
 
   const handleContinue = async () => {
     if (!params.value) {
@@ -71,11 +81,25 @@ export const PasswordPage = () => {
     }
   }
 
+  /**
+   * O olho, dentro do campo. Um só, mandando nos dois: revelar um e esconder o outro
+   * deixaria a conferência impossível justamente para quem precisa dela.
+   *
+   * ⚠️ `aria-label` não é enfeite — ícone sozinho não comunica a quem usa leitor de tela.
+   */
   const revealToggle = (
-    <Pressable onPress={() => setReveal((v) => !v)} role="button" hitSlop={8}>
-      <SizableText size="$2" fontWeight="600" color="$accent11">
-        {reveal ? 'Ocultar' : 'Mostrar'}
-      </SizableText>
+    <Pressable
+      onPress={() => setReveal((v) => !v)}
+      role="button"
+      hitSlop={10}
+      aria-label={reveal ? 'Ocultar senha' : 'Mostrar senha'}
+      data-testid="toggle-password-visibility"
+    >
+      {reveal ? (
+        <EyeSlashIcon size={20} color="$color10" />
+      ) : (
+        <EyeIcon size={20} color="$color10" />
+      )}
     </Pressable>
   )
 
@@ -124,12 +148,18 @@ export const PasswordPage = () => {
         ) : null}
 
         <Field
-          label="Senha"
+          label={isSignup ? 'Crie uma senha' : 'Senha'}
           // a exigência fica visível ANTES de errar, e não some quando a pessoa digita
           hint={isSignup ? `Ao menos ${MIN_PASSWORD_LENGTH} caracteres.` : undefined}
-          action={password ? revealToggle : undefined}
+          adornment={revealToggle}
           data-testid="password-input"
-          secureTextEntry={!reveal}
+          // 🔴 `type`, **nunca** `secureTextEntry`. O `Input` web do Tamagui descarta
+          // `secureTextEntry` (a fonte dele lista a prop como "Native-only props (ignored
+          // on web)"), e o sintoma é senha digitada em texto puro, sem erro nenhum —
+          // typecheck passa liso. O nativo faz o caminho inverso e deriva o mascaramento
+          // de `type` (`Input.native.tsx`, "Convert web type to native props"), então
+          // `type` é a prop que funciona nas duas plataformas.
+          type={reveal ? 'text' : 'password'}
           autoFocus={!isSignup}
           value={password}
           onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
@@ -137,20 +167,39 @@ export const PasswordPage = () => {
           autoComplete={isSignup ? 'new-password' : 'current-password'}
           footer={
             isSignup && password ? (
-              <XStack items="center" gap="$1.5">
-                <SizableText size="$2" color={longEnough ? '$accent11' : '$color10'}>
-                  {longEnough
-                    ? 'Tamanho suficiente'
-                    : `Faltam ${MIN_PASSWORD_LENGTH - password.length} ${
-                        MIN_PASSWORD_LENGTH - password.length === 1
-                          ? 'caractere'
-                          : 'caracteres'
-                      }`}
-                </SizableText>
-              </XStack>
+              <SizableText size="$2" color={longEnough ? '$accent11' : '$color10'}>
+                {longEnough
+                  ? 'Tamanho suficiente'
+                  : `Faltam ${MIN_PASSWORD_LENGTH - password.length} ${
+                      MIN_PASSWORD_LENGTH - password.length === 1
+                        ? 'caractere'
+                        : 'caracteres'
+                    }`}
+              </SizableText>
             ) : null
           }
         />
+
+        {isSignup ? (
+          <Field
+            label="Repita a senha"
+            data-testid="confirm-password-input"
+            adornment={revealToggle}
+            // mesmo motivo do campo acima: `type`, nunca `secureTextEntry`
+            type={reveal ? 'text' : 'password'}
+            value={confirm}
+            onChange={(e) => setConfirm((e.target as HTMLInputElement).value)}
+            onSubmitEditing={handleContinue}
+            autoComplete="new-password"
+            footer={
+              confirmTouched ? (
+                <SizableText size="$2" color={matches ? '$accent11' : '$red11'}>
+                  {matches ? 'As senhas conferem' : 'As senhas não são iguais'}
+                </SizableText>
+              ) : null
+            }
+          />
+        ) : null}
       </YStack>
     </StepPageLayout>
   )

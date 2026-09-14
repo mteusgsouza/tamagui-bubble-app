@@ -87,6 +87,12 @@ Contas: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador, `role = ad
 10. **Guard de rota nunca devolve `null`.** Desmontar a árvore faz o roteador
     reinicializar na primeira rota do grupo em ordem alfabética (hoje `/admin`). Ver
     `app/(app)/_layout.tsx`.
+11. **Campo de senha usa `type`, nunca `secureTextEntry`.** O `Input` **web** do Tamagui
+    descarta `secureTextEntry` — a fonte dele lista a prop sob *"Native-only props
+    (ignored on web)"*. O sintoma é senha digitada **em texto puro**, sem erro e sem
+    typecheck reclamando. O nativo faz o inverso e deriva o mascaramento de `type`
+    (`Input.native.tsx`, "Convert web type to native props"), então `type` funciona nas
+    duas plataformas. Já quebrou uma vez.
 
 ## Verificação
 

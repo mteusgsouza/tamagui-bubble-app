@@ -78,7 +78,7 @@ export const SubscriptionCard = memo(() => {
         <SizableText size="$3" color="$color11">
           Assine para abrir os posts e cursos de assinante.
         </SizableText>
-        <Link href="/home/assinar" style={{ width: '100%' }} asChild>
+        <Link href="/assinar" style={{ width: '100%' }} asChild>
           <Button mt="$2" variant="accent" size="$3" width="100%">
             Ver planos
           </Button>

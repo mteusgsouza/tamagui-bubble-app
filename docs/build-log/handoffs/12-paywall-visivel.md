@@ -72,13 +72,22 @@ Migration `20260913211526_glossy_prodigy`.
 ```bash
 bunx on-zero generate        # 14 models, 18 queries, 47 mutations
 bun backend:clean && bun backend
-bun run:dev scripts/seed-courses.ts && bun run:dev scripts/seed-posts.ts
+bun run:dev scripts/seed-courses.ts
+bun run:dev scripts/seed-posts.ts
+bun run:dev scripts/stripe-sync-plans.ts --adopt plan-trial=prod_VFW6CAlayZiEO2 --adopt plan-mensal=prod_VFW5Pqq3eST6Xr
 bun test:unit
 ```
 
 🔴 **O `backend:clean` foi obrigatório**, não conveniência: `postContent` entrou na
 publication (14 tabelas, era 13) e o replica do zero-cache precisa nascer de novo, senão
 morre com `Unknown table postContent` no primeiro INSERT. É a armadilha da Fase 4.
+
+🔴 **E `backend:clean` leva o mapeamento do Stripe junto.** `planProviderPrice` e
+`billingCustomer` moram no mesmo Postgres, então **o sync tem que ser refeito** — senão o
+checkout responde 500 `checkout-failed` e a tela só diz "não deu para abrir o pagamento".
+A primeira versão desta lista omitia o `stripe-sync-plans` e o buraco foi encontrado
+clicando em Assinar. Some a isso que **as contas de teste também somem**: a migration só
+recria o `demo@takeout.tamagui.dev`, então a cobaia precisa ser criada de novo pela UI.
 
 Verificado: typecheck limpo · **114 testes** (era 111) · publication com 14 tabelas ·
 `post` sem `body` · 5 posts com linha em `postContent`, 3 com isca.

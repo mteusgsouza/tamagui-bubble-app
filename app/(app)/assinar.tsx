@@ -1,6 +1,6 @@
 import { router } from 'one'
 import { memo, useState } from 'react'
-import { ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
+import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
 import { activePlans, activeSubscription } from '~/data/queries/subscription'
@@ -27,14 +27,23 @@ type PlanRow = {
 }
 
 /**
- * A tela de assinar.
+ * A tela de assinar, em `/assinar`.
  *
- * Fica **fora de `(tabs)`** de propósito: é um caminho de conversão, não uma seção do app.
- * Sem a barra de abas embaixo, a única saída é voltar ou pagar.
+ * Fica **fora de `(tabs)`** de propósito: é caminho de conversão, não seção do app. Sem a
+ * barra de abas embaixo, a saída é voltar ou pagar.
  *
- * ⚠️ Também não fica na raiz de `(app)`: "assinar" vem antes de "admin" em ordem
- * alfabética, e a primeira rota do grupo é o destino do escorregão descrito na
- * invariante 10. Não vale mexer nisso por causa de uma tela.
+ * E fica na **raiz** do grupo, não sob `/home`: é a URL que se compartilha, e enterrá-la
+ * numa seção interna é URL pior sem ganho.
+ *
+ * ℹ️ A primeira versão morava em `/home/assinar` por medo da invariante 10 — "a primeira
+ * rota do grupo em ordem alfabética é o destino do escorregão". Era medo de bug **já
+ * corrigido**: o deep link foi resolvido quando o guard de `(app)/_layout.tsx` parou de
+ * devolver `null` (ver `STATE.md`). E se algum dia voltar, cair em `/assinar` é menos
+ * ruim que cair em `/admin`, que era o destino anterior.
+ *
+ * ⚠️ Rota fora de `/home` **não é protegida por padrão** — o guard só olhava `/home`.
+ * Ele passou a cobrir `/assinar` também; sem isso, deslogado veria giro infinito, porque
+ * `activePlans` fica `enabled: false` sem `userId`.
  */
 export const SubscribePage = memo(() => {
   const { user } = useAuth()
@@ -70,73 +79,97 @@ export const SubscribePage = memo(() => {
     }
   }
 
+  const content = (
+    <YStack width="100%" maxW={620} mx="auto" px="$4" pt="$4" pb="$10" gap="$5">
+      <XStack items="center" gap="$2">
+        <Button
+          variant="outlined"
+          size="$2"
+          circular
+          onPress={() => router.back()}
+          aria-label="Voltar"
+        >
+          <CaretLeftIcon size={16} color="$color11" />
+        </Button>
+        <SizableText size="$8" fontWeight="800">
+          Assinar
+        </SizableText>
+      </XStack>
+
+      <SizableText size="$4" color="$color11" lineHeight={23}>
+        Acesso ao conteúdo de assinante: posts, cursos e o que vier depois.
+      </SizableText>
+
+      {/* quem já assina não vê preço, vê o que tem — evita a compra duplicada e a
+          dúvida de "será que já paguei?" */}
+      {current ? (
+        <AlreadySubscribed planName={(current as any).plan?.name} />
+      ) : loading ? (
+        <YStack py="$10" items="center">
+          <Spinner size="small" color="$accent9" />
+        </YStack>
+      ) : rows.length === 0 ? (
+        <Empty />
+      ) : (
+        <YStack gap="$3">
+          {rows.map((plan) => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              busy={pending === plan.id}
+              disabled={Boolean(pending)}
+              onPress={() => subscribe(plan.id)}
+            />
+          ))}
+        </YStack>
+      )}
+
+      {error ? (
+        <YStack
+          p="$3"
+          rounded="$6"
+          bg="$red2"
+          borderWidth={1}
+          borderColor="$red7"
+          gap="$1"
+        >
+          <SizableText size="$3" color="$red11" fontWeight="600">
+            {error}
+          </SizableText>
+        </YStack>
+      ) : null}
+
+      <SizableText size="$2" color="$color9" text="center">
+        O pagamento acontece numa página segura do gateway. O Bubble não guarda os
+        dados do seu cartão.
+      </SizableText>
+    </YStack>
+  )
+
+  /**
+   * 🔴 **Na web, `ScrollView` aqui colapsa para altura zero.**
+   *
+   * `PageLayout` na web devolve `<>{children}</>` — sem wrapper e sem altura. As telas de
+   * aba escapam disso porque `(tabs)/_layout.tsx` dimensiona o container; esta rota mora
+   * direto sob o `<Slot/>` de `(app)`, então não há nada para o `flex={1}` medir e a tela
+   * fica **em branco com o conteúdo no DOM** — o pior sintoma possível, porque ler o HTML
+   * mostra tudo lá e nada aparece.
+   *
+   * É o mesmo formato que `feed/index.tsx` e `courses/index.tsx` usam: na web quem rola é
+   * o documento; `ScrollView` só no nativo.
+   */
+  if (isWeb) {
+    return (
+      <YStack bg="$background" flex={1} {...({ minHeight: '100vh' } as any)}>
+        {content}
+      </YStack>
+    )
+  }
+
   return (
     <PageLayout useImage>
       <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-        <YStack width="100%" maxW={620} mx="auto" px="$4" pt="$4" pb="$10" gap="$5">
-          <XStack items="center" gap="$2">
-            <Button
-              variant="outlined"
-              size="$2"
-              circular
-              onPress={() => router.back()}
-              aria-label="Voltar"
-            >
-              <CaretLeftIcon size={16} color="$color11" />
-            </Button>
-            <SizableText size="$8" fontWeight="800">
-              Assinar
-            </SizableText>
-          </XStack>
-
-          <SizableText size="$4" color="$color11" lineHeight={23}>
-            Acesso ao conteúdo de assinante: posts, cursos e o que vier depois.
-          </SizableText>
-
-          {/* quem já assina não vê preço, vê o que tem — evita a compra duplicada e a
-              dúvida de "será que já paguei?" */}
-          {current ? (
-            <AlreadySubscribed planName={(current as any).plan?.name} />
-          ) : loading ? (
-            <YStack py="$10" items="center">
-              <Spinner size="small" color="$accent9" />
-            </YStack>
-          ) : rows.length === 0 ? (
-            <Empty />
-          ) : (
-            <YStack gap="$3">
-              {rows.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  busy={pending === plan.id}
-                  disabled={Boolean(pending)}
-                  onPress={() => subscribe(plan.id)}
-                />
-              ))}
-            </YStack>
-          )}
-
-          {error ? (
-            <YStack
-              p="$3"
-              rounded="$6"
-              bg="$red2"
-              borderWidth={1}
-              borderColor="$red7"
-              gap="$1"
-            >
-              <SizableText size="$3" color="$red11" fontWeight="600">
-                {error}
-              </SizableText>
-            </YStack>
-          ) : null}
-
-          <SizableText size="$2" color="$color9" text="center">
-            O pagamento acontece numa página segura do gateway. O Bubble não guarda os
-            dados do seu cartão.
-          </SizableText>
-        </YStack>
+        {content}
       </ScrollView>
     </PageLayout>
   )

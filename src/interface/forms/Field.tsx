@@ -46,10 +46,14 @@ export const FieldLabel = ({
  * A dica (`hint`) fica **fora** do input e não some: requisito que só aparece depois de
  * errar é requisito escondido.
  */
+/** Espaço reservado à direita do input quando há adorno, para o texto não passar por baixo. */
+const ADORNMENT_WIDTH = 48
+
 export const Field = ({
   label,
   hint,
   action,
+  adornment,
   footer,
   ref,
   ...inputProps
@@ -57,6 +61,11 @@ export const Field = ({
   label: string
   hint?: string
   action?: ReactNode
+  /**
+   * Controle **dentro** do campo, encostado à direita — o olho de mostrar senha é o caso.
+   * Dentro e não ao lado do rótulo: é onde a convenção põe, e não rouba a linha do rótulo.
+   */
+  adornment?: ReactNode
   /** validação ou confirmação, abaixo do campo */
   footer?: ReactNode
   /**
@@ -68,7 +77,26 @@ export const Field = ({
 }) => (
   <YStack gap="$1.5">
     <FieldLabel label={label} hint={hint} action={action} />
-    <Input ref={ref} {...inputProps} />
+
+    {adornment ? (
+      <YStack position="relative">
+        <Input ref={ref} pr={ADORNMENT_WIDTH} {...inputProps} />
+        <XStack
+          position="absolute"
+          r={0}
+          t={0}
+          b={0}
+          width={ADORNMENT_WIDTH}
+          items="center"
+          justify="center"
+        >
+          {adornment}
+        </XStack>
+      </YStack>
+    ) : (
+      <Input ref={ref} {...inputProps} />
+    )}
+
     {footer}
   </YStack>
 )

@@ -25,11 +25,22 @@ export function AppLayout() {
 
   const loading = state === 'loading'
 
+  /**
+   * As rotas que exigem sessão.
+   *
+   * ⚠️ **Rota nova fora de `/home` não entra aqui sozinha.** `/assinar` mora na raiz do
+   * grupo e precisou ser listada: sem isso, deslogado abre a tela e fica girando para
+   * sempre, porque as queries do Zero nascem `enabled: false` sem `userId` — tela
+   * quebrada sem erro, que é o pior modo de falhar.
+   */
+  const needsSession =
+    pathname.startsWith('/home') || pathname.startsWith('/assinar')
+
   // Redireciona só depois que a sessão resolveu: decidir durante o `loading` chuta o
   // usuário logado para o login e vice-versa.
   const redirectTo = loading
     ? null
-    : state === 'logged-out' && pathname.startsWith('/home')
+    : state === 'logged-out' && needsSession
       ? '/auth/login'
       : state === 'logged-in' && pathname.startsWith('/auth')
         ? '/home/feed'
@@ -53,6 +64,8 @@ export function AppLayout() {
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="home" />
                   <Stack.Screen name="auth" />
+                  {/* irmã de `home`, não filha: é caminho de conversão e não tem abas */}
+                  <Stack.Screen name="assinar" />
                 </Stack>
               )}
             </PlatformSpecificRootProvider>
