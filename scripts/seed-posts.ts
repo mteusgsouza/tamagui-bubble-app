@@ -4,7 +4,7 @@
  * @description Semeia os 5 posts do feed. Fecha a lacuna que o `seed-courses.ts` avisava.
  *
  *   bun run:dev scripts/seed-posts.ts                    # no banco local
- *   VITE_MASTER_USER_ID=<id> ZERO_UPSTREAM_DB=<url do Neon> bun scripts/seed-posts.ts
+ *   VITE_MASTER_USER_ID=<id> DATABASE_URL=<url do Neon> bun scripts/seed-posts.ts
  *
  * Idempotente e **convergente**: rodar de novo alinha o que já existe ao que está aqui.
  *
@@ -32,12 +32,12 @@
 import { Pool } from 'pg'
 
 const CREATOR = process.env.VITE_MASTER_USER_ID || 'demo-user-id'
-const DB = process.env.ZERO_UPSTREAM_DB
+const DB = process.env.DATABASE_URL
 
 if (!DB) {
-  console.error('❌ ZERO_UPSTREAM_DB não está no ambiente.')
+  console.error('❌ DATABASE_URL não está no ambiente.')
   console.error('   Local:     bun run:dev scripts/seed-posts.ts')
-  console.error('   Produção:  VITE_MASTER_USER_ID=<id> ZERO_UPSTREAM_DB=<url> bun scripts/seed-posts.ts')
+  console.error('   Produção:  VITE_MASTER_USER_ID=<id> DATABASE_URL=<url> bun scripts/seed-posts.ts')
   process.exit(1)
 }
 

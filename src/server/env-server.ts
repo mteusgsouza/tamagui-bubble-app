@@ -8,17 +8,7 @@ if (typeof window !== 'undefined') {
 export const BETTER_AUTH_SECRET = ensureEnv('BETTER_AUTH_SECRET')
 export const BETTER_AUTH_URL = ensureEnv('BETTER_AUTH_URL')
 export const ONE_SERVER_URL = ensureEnv('ONE_SERVER_URL')
-export const VITE_ZERO_HOSTNAME = ensureEnv('VITE_ZERO_HOSTNAME', "")
 export const VITE_WEB_HOSTNAME = ensureEnv('VITE_WEB_HOSTNAME', "")
-export const ZERO_VERSION = ensureEnv('ZERO_VERSION')
-export const ZERO_NUM_SYNC_WORKERS = ensureEnv('ZERO_NUM_SYNC_WORKERS', "2")
-export const ZERO_CVR_MAX_CONNS = ensureEnv('ZERO_CVR_MAX_CONNS', "4")
-export const ZERO_UPSTREAM_MAX_CONNS = ensureEnv('ZERO_UPSTREAM_MAX_CONNS', "8")
-export const ZERO_PER_USER_MUTATION_LIMIT_MAX = ensureEnv('ZERO_PER_USER_MUTATION_LIMIT_MAX', "30")
-export const ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS = ensureEnv('ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS', "60000")
-export const ZERO_MUTATE_FORWARD_COOKIES = ensureEnv('ZERO_MUTATE_FORWARD_COOKIES', "true")
-export const ZERO_QUERY_FORWARD_COOKIES = ensureEnv('ZERO_QUERY_FORWARD_COOKIES', "true")
-export const ZERO_APP_PUBLICATIONS = ensureEnv('ZERO_APP_PUBLICATIONS', "zero_takeout")
 export const CLOUDFLARE_R2_ENDPOINT = ensureEnv('CLOUDFLARE_R2_ENDPOINT', "")
 export const CLOUDFLARE_R2_BUCKET = ensureEnv('CLOUDFLARE_R2_BUCKET', "")
 export const CLOUDFLARE_R2_ACCESS_KEY = ensureEnv('CLOUDFLARE_R2_ACCESS_KEY', "")
@@ -37,22 +27,17 @@ export const GOOGLE_CLIENT_SECRET = ensureEnv('GOOGLE_CLIENT_SECRET', "")
 // use bracket notation to prevent build-time inlining
 
 /**
- * A conexão do **app server** com o Postgres — apesar do nome, que veio do starter.
- * É a que `src/database/database.ts` usa.
+ * A conexão com o Postgres.
  *
- * `DATABASE_URL` é o fallback porque a integração Neon↔Vercel injeta as variáveis com
- * os nomes dela, e `ZERO_UPSTREAM_DB` não está entre eles. Ler o nome padrão evita
- * copiar o valor à mão para um segundo campo — cópia que ficaria velha na primeira
- * rotação de credencial feita pelo Neon.
+ * 🔴 **`DATABASE_URL` vem primeiro, `ZERO_UPSTREAM_DB` é só compatibilidade.** A ordem
+ * era a inversa enquanto o zero-cache existia. Inverter antes de tirar a variável velha
+ * das máquinas é o que evita um outage de sintoma confuso: enquanto as duas existirem, a
+ * nova ganha; quando `ZERO_UPSTREAM_DB` sumir do `app.env`, nada muda.
  *
- * ⚠️ **Na Vercel isto tem que ser a URL COM pooler** (é o que `DATABASE_URL` traz):
- * cada função serverless abre conexão própria, e sem o PgBouncer o Neon esgota.
- * O oposto vale para o zero-cache e para as migrations, que precisam da direta
- * (`DATABASE_URL_UNPOOLED`) porque replicação lógica não passa por pooler.
+ * O nome antigo fica por um ciclo de deploy e depois sai.
  */
-export const ZERO_UPSTREAM_DB =
-  process.env['ZERO_UPSTREAM_DB'] || process.env['DATABASE_URL'] || ''
+export const DATABASE_URL =
+  process.env['DATABASE_URL'] || process.env['ZERO_UPSTREAM_DB'] || ''
 
-// usados só pelo zero-cache, que roda no Fly com env próprio
-export const ZERO_CVR_DB = process.env['ZERO_CVR_DB'] || ''
-export const ZERO_CHANGE_DB = process.env['ZERO_CHANGE_DB'] || ''
+/** @deprecated Use `DATABASE_URL`. Mantido enquanto as máquinas têm o nome antigo. */
+export const ZERO_UPSTREAM_DB = DATABASE_URL

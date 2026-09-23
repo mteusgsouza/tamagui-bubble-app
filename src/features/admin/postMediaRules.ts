@@ -8,7 +8,7 @@
 
 import { MAX_PHOTOS_PER_POST } from '~/constants/media'
 
-import type { PostKind } from '~/data/types'
+import type { PostKind } from '~/data/enums'
 import type { PickKind } from './pickFile'
 
 /** O que a query do admin entrega em `post.media` — o vínculo, com a mídia dentro. */

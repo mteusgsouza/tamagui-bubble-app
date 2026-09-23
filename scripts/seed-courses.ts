@@ -18,10 +18,10 @@
 import { Pool } from 'pg'
 
 const CREATOR = process.env.VITE_MASTER_USER_ID || 'demo-user-id'
-const DB = process.env.ZERO_UPSTREAM_DB
+const DB = process.env.DATABASE_URL
 
 if (!DB) {
-  console.error('❌ ZERO_UPSTREAM_DB não está no ambiente.')
+  console.error('❌ DATABASE_URL não está no ambiente.')
   console.error('   Rode assim:  bun run:dev scripts/seed-courses.ts')
   process.exit(1)
 }

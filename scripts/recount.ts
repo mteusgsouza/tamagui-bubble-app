@@ -23,10 +23,10 @@
 
 import { Pool } from 'pg'
 
-const DB = process.env.ZERO_UPSTREAM_DB
+const DB = process.env.DATABASE_URL
 
 if (!DB) {
-  console.error('❌ ZERO_UPSTREAM_DB não está no ambiente.')
+  console.error('❌ DATABASE_URL não está no ambiente.')
   console.error('   Local:  bun run:dev scripts/recount.ts')
   process.exit(1)
 }

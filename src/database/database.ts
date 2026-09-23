@@ -1,21 +1,21 @@
 import { Pool } from 'pg'
 
-import { ZERO_UPSTREAM_DB } from '~/server/env-server'
+import { DATABASE_URL } from '~/server/env-server'
 
 import './pgTypes'
 
-if (!ZERO_UPSTREAM_DB) {
+if (!DATABASE_URL) {
   throw new Error(`No db string connection found`)
 }
 
 export const database = new Pool({
-  connectionString: ZERO_UPSTREAM_DB,
+  connectionString: DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
   allowExitOnIdle: true,
   // handle self-signed certificates in production
-  ssl: ZERO_UPSTREAM_DB.includes('sslmode=require')
+  ssl: DATABASE_URL.includes('sslmode=require')
     ? { rejectUnauthorized: false }
     : undefined,
 })

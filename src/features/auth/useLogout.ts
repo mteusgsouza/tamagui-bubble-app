@@ -1,9 +1,9 @@
 import { isWeb } from 'tamagui'
 
 import { AUTH_URL } from '~/constants/urls'
+import { queryClient } from '~/data/client/queryClient'
 import { clearAllAuth } from '~/features/auth/client/authClient'
 import { dialogConfirm, showError } from '~/interface/dialogs/actions'
-import { dropLocalZeroData } from '~/zero/client'
 
 export const useLogout = () => {
   const logout = async (options?: { skipConfirm?: boolean }) => {
@@ -56,16 +56,14 @@ export const useLogout = () => {
     // limpa localStorage, cookies não-HttpOnly e põe o estado em `logged-out`
     clearAllAuth()
 
-    // Dado sincronizado que fica para trás. Não bloqueia a saída: se travar, a sessão
-    // já morreu, que é o que importa.
-    try {
-      await dropLocalZeroData()
-    } catch (error) {
-      console.warn('[logout] não consegui apagar o banco local do Zero', error)
-    }
+    // O conteúdo da conta anterior sai da memória. Antes era `dropLocalZeroData()`, que
+    // apagava bancos no IndexedDB e podia travar; agora o cache é só memória e
+    // `clear()` não falha — foi por isso que não persistir o cache é a escolha certa
+    // para conteúdo pago.
+    queryClient.clear()
 
     if (isWeb) {
-      // navegação dura: derruba o cliente Zero e qualquer estado em memória de uma vez
+      // navegação dura: derruba qualquer estado em memória de uma vez
       window.location.replace('/auth/login')
     }
     // No nativo não navegamos: quem redireciona é o `AppLayout` quando o estado vira

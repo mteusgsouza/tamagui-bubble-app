@@ -12,7 +12,7 @@ import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { useAuth } from '~/features/auth/client/authClient'
 import { Button } from '~/interface/buttons/Button'
 
-import type { Visibility } from '~/data/types'
+import type { Visibility } from '~/data/enums'
 
 const route = createRoute<'/(app)/admin/courses/[courseId]'>()
 

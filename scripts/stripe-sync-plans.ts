@@ -23,11 +23,11 @@
 import { Pool } from 'pg'
 import Stripe from 'stripe'
 
-const DB = process.env.ZERO_UPSTREAM_DB
+const DB = process.env.DATABASE_URL
 const KEY = process.env.STRIPE_SECRET_KEY
 
 if (!DB) {
-  console.error('❌ ZERO_UPSTREAM_DB não está no ambiente.')
+  console.error('❌ DATABASE_URL não está no ambiente.')
   console.error('   Rode assim:  bun run:dev scripts/stripe-sync-plans.ts')
   process.exit(1)
 }

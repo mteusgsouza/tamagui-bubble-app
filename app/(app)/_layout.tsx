@@ -6,7 +6,6 @@ import { DialogProvider } from '~/interface/dialogs/Dialog'
 import { PlatformSpecificRootProvider } from '~/interface/platform/PlatformSpecificRootProvider'
 import { ProvideQueryClient } from '~/data/client/queryClient'
 import { ToastProvider } from '~/interface/toast/Toast'
-import { ProvideZero } from '~/zero/client'
 
 /**
  * Guard do app.
@@ -49,10 +48,7 @@ export function AppLayout() {
 
   return (
     <Configuration disableSSR>
-      <ProvideZero>
-        {/* Durante a migração os dois convivem: o Zero ainda alimenta as telas, e o
-            React Query alimenta as que já migraram. Sai na Etapa 6. */}
-        <ProvideQueryClient>
+      <ProvideQueryClient>
           <ToastProvider>
             <DialogProvider>
               <PlatformSpecificRootProvider>
@@ -75,8 +71,7 @@ export function AppLayout() {
               </PlatformSpecificRootProvider>
             </DialogProvider>
           </ToastProvider>
-        </ProvideQueryClient>
-      </ProvideZero>
+      </ProvideQueryClient>
     </Configuration>
   )
 }

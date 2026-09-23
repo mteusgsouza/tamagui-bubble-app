@@ -19,7 +19,7 @@ import { newId } from '~/helpers/id'
 
 import { mediaApi, MediaApiError } from './mediaApi'
 
-import type { MediaKind } from '~/data/models/media'
+import type { MediaKind } from '~/data/enums'
 
 type SignedUpload = {
   url: string

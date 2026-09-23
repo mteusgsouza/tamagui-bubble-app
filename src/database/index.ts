@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 
-import { ZERO_UPSTREAM_DB } from '~/server/env-server'
+import { DATABASE_URL } from '~/server/env-server'
 
 import './pgTypes'
 
@@ -14,7 +14,7 @@ const schema = {
 }
 
 export const createPool = (connectionString?: string) => {
-  const connStr = connectionString || ZERO_UPSTREAM_DB
+  const connStr = connectionString || DATABASE_URL
   return new Pool({
     connectionString: connStr,
     max: 20,

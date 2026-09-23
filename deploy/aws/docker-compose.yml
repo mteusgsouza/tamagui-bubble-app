@@ -1,8 +1,15 @@
-# Bubble App inteiro numa máquina só: site, API e sync.
+# Bubble App inteiro numa máquina só: banco, site, API e proxy.
 #
-# Foi para cá porque o Fly em trial dura 7 dias e não deixa cadastrar domínio próprio —
-# e sem domínio não há login com Google. Fora daqui ficam só o Neon (Postgres) e o
-# Cloudflare R2 (mídia), que têm free tier de verdade.
+# 🔴 **O Postgres roda aqui dentro, não num serviço gerenciado.** Antes era Neon, e o
+# zero-cache mantinha um slot de replicação lógica permanente que impedia o autosuspend:
+# 24 h/dia de compute com quase ninguém usando, e a cota do free tier morria por volta do
+# dia 8 de todo mês. Sem o Zero o slot não existe mais, e com o banco na própria máquina
+# não há cota nenhuma para estourar — a leitura também para de cruzar a rede.
+#
+# Fora daqui fica só o Cloudflare R2 (mídia), que tem free tier de verdade.
+#
+# ⚠️ **O disco agora é o produto.** Um `docker compose down -v` distraído apaga o banco.
+# Ver a seção de backup no README.
 #
 # Passos completos: README.md nesta pasta.
 
@@ -22,9 +29,63 @@ services:
       - caddy_config:/config
     depends_on:
       - app
-      - zero
 
-  # O site e todas as rotas `app/api/*` (auth, mídia, billing, cron, zero).
+  # O Postgres.
+  #
+  # 🔴 **`wal_level=replica`, explicitamente NÃO `logical`.** Replicação lógica é o que
+  # cria slot, e slot é o que prendia o WAL e mantinha o compute do Neon acordado. Sem
+  # sync engine, nada aqui precisa dela.
+  #
+  # Sem `ports:` de propósito — o banco não vai para a internet. Para acessar da sua
+  # máquina: `ssh -L 5433:localhost:5432` e `docker compose exec db psql -U bubble`.
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    # o default de 64m estoura em query paralela
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: bubble
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bubble
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bubble -d bubble']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Tuning para uma máquina de 1 GB. `shared_buffers` em ~10% da RAM: o conjunto de
+    # dados de um criador só cabe inteiro em cache, e é daí que vem a leitura rápida.
+    # `effective_cache_size` é estimativa para o planner, não alocação.
+    command: >
+      postgres
+      -c max_connections=30
+      -c shared_buffers=96MB
+      -c effective_cache_size=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c wal_level=replica
+      -c max_wal_size=512MB
+      -c min_wal_size=80MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c log_min_duration_statement=200
+      -c statement_timeout=15000
+      -c idle_in_transaction_session_timeout=60000
+
+  # Roda as migrations e sai. Mesma imagem do app.
+  migrate:
+    image: SEU_USUARIO/bubble-app:latest
+    restart: 'no'
+    env_file: app.env
+    environment:
+      RUN: '1'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ['node', '/app/src/database/migrate-dist.js']
+
+  # O site e todas as rotas `app/api/*` (auth, mídia, billing, cron, conteúdo).
   #
   # ⚠️ A imagem é construída na SUA máquina e publicada num registry — o `Dockerfile`
   # roda `bun install`, que não cabe na RAM daqui. Ver o README.
@@ -35,64 +96,20 @@ services:
     image: SEU_USUARIO/bubble-app:latest
     restart: unless-stopped
     env_file: app.env
+    depends_on:
+      db:
+        condition: service_healthy
     expose:
       - '8092'
 
-  zero:
-    # A versão TEM que casar com `@rocicorp/zero` do package.json e com `ZERO_VERSION`
-    # do app: cliente e servidor precisam falar o mesmo protocolo.
-    image: rocicorp/zero:0.26.2
-    restart: unless-stopped
-    env_file: zero.env
-    volumes:
-      - zero_data:/data
-    environment:
-      ZERO_LOG_LEVEL: ${ZERO_LOG_LEVEL:-info}
-
-      # o replica vive no volume; sem isso ele é reconstruído do Postgres a cada restart
-      ZERO_REPLICA_FILE: /data/replica.db
-
-      # tem que bater com a publicação que `src/database/migrate.ts` cria
-      ZERO_APP_PUBLICATIONS: ${ZERO_APP_PUBLICATIONS:-zero_takeout}
-
-      # Endereço INTERNO do app server — é ele quem decide o que cada usuário pode ver.
-      # Interno de propósito: não sai para a internet, não depende de DNS nem de TLS, e
-      # não paga a volta pelo Caddy.
-      ZERO_MUTATE_URL: http://app:8092/api/zero/push
-      ZERO_QUERY_URL: http://app:8092/api/zero/pull
-
-      # a sessão do usuário viaja por cookie até o app server, que é quem decide
-      ZERO_MUTATE_FORWARD_COOKIES: 'true'
-      ZERO_QUERY_FORWARD_COOKIES: 'true'
-
-      # limite de mutations por usuário. O throttle do progresso de aula
-      # (`useLessonProgress`) foi dimensionado contra este número.
-      ZERO_PER_USER_MUTATION_LIMIT_MAX: '30'
-      ZERO_PER_USER_MUTATION_LIMIT_WINDOW_MS: '60000'
-
-      # conexões no Neon: some ao que o app server usa antes de aumentar
-      ZERO_UPSTREAM_MAX_CONNS: '10'
-      ZERO_CVR_MAX_CONNS: '4'
-
-      # ⚠️ Numa instância de 1 GB ponha '1'. Medido lá: com dois workers o container
-      # ficava em 376 MB e sobravam 30 MiB livres na máquina inteira — qualquer pico
-      # convidava o OOM killer. Um worker dá conta de um app de um criador só.
-      ZERO_NUM_SYNC_WORKERS: '2'
-
-    expose:
-      - '4848'
-
 volumes:
-  zero_data:
+  pgdata: # 🔴 o produto mora aqui
   caddy_data:
   caddy_config:
 
 # 🔴 Numa máquina IPv6-only isto é obrigatório, e o `daemon.json` sozinho NÃO cobre:
 # `"ipv6": true` lá vale para a bridge padrão (`docker0`), enquanto o Compose cria uma
 # rede própria — que nasce IPv4-only e deixa o container sem rota.
-#
-# O sintoma é o zero-cache morrendo no boot com `ENETUNREACH` no endereço IPv6 do Neon
-# (e `ETIMEDOUT` nos IPv4, que ali não existem mesmo).
 #
 # Em dual-stack não atrapalha: fica sobrando.
 networks:

@@ -27,7 +27,7 @@ import { fail } from '~/server/api/respond'
 import { canUploadMedia } from '~/server/media/mediaAccess'
 import { buildStorageKey, getSignedUploadUrl, isR2Configured } from '~/server/storage/r2'
 
-import type { MediaKind } from '~/data/models/media'
+import type { MediaKind } from '~/data/enums'
 import type { Endpoint } from 'one'
 
 // `newId()` gera uuid v4; a faixa aceita cobre isso sem deixar passar path traversal

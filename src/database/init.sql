@@ -4,5 +4,3 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- create zero databases
-CREATE DATABASE zero_cvr;
-CREATE DATABASE zero_cdb;

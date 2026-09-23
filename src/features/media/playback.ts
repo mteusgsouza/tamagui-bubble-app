@@ -13,7 +13,7 @@ import { API_URL } from '~/constants/urls'
 
 import { mediaApi, MediaApiError } from './mediaApi'
 
-import type { MediaKind } from '~/data/models/media'
+import type { MediaKind } from '~/data/enums'
 
 export type MediaVariant = 'original' | 'poster'
 
