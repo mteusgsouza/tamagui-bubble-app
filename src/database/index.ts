@@ -3,6 +3,8 @@ import { Pool } from 'pg'
 
 import { ZERO_UPSTREAM_DB } from '~/server/env-server'
 
+import './pgTypes'
+
 import * as schemaPrivate from './schema-private'
 import * as schemaPublic from './schema-public'
 

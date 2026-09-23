@@ -2,6 +2,8 @@ import { Pool } from 'pg'
 
 import { ZERO_UPSTREAM_DB } from '~/server/env-server'
 
+import './pgTypes'
+
 if (!ZERO_UPSTREAM_DB) {
   throw new Error(`No db string connection found`)
 }
