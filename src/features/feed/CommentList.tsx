@@ -2,12 +2,11 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { isWeb, SizableText, Spinner, useMedia, XStack, YStack } from 'tamagui'
 
 import { BOTTOM_BAR_HEIGHT } from '~/constants/navigation'
+import { useCreateComment, useDeleteComment } from '~/data/client/mutations'
 import { useAuth } from '~/features/auth/client/authClient'
-import { newId } from '~/helpers/id'
 import { Avatar } from '~/interface/avatars/Avatar'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { TextArea } from '~/interface/forms/TextArea'
-import { zero } from '~/zero/client'
 
 import { CreatorBadge } from './CreatorBadge'
 import { plural, timeAgo } from './formatDate'
@@ -64,6 +63,9 @@ const COMPOSER_MAX_INPUT_HEIGHT = 84
  */
 export const CommentList = memo(
   ({ postId, feedOwnerId, comments, commentCount }: Props) => {
+    // apagar vive aqui, e não em cada linha: uma mutation por lista, não por comentário
+    const remove = useDeleteComment(postId)
+    const onDelete = (commentId: string) => remove.mutate(commentId)
     const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null)
     const media = useMedia()
 
@@ -106,6 +108,7 @@ export const CommentList = memo(
                 comment={comment}
                 feedOwnerId={feedOwnerId}
                 onReply={setReplyTo}
+                onDelete={onDelete}
               />
             ))}
           </YStack>
@@ -142,10 +145,12 @@ const CommentThread = ({
   comment,
   feedOwnerId,
   onReply,
+  onDelete,
 }: {
   comment: FeedComment
   feedOwnerId: string
   onReply: (target: ReplyTarget) => void
+  onDelete: (commentId: string) => void
 }) => {
   const replies = (comment.replies ?? []).filter((reply) => !reply.deleted)
   const collapsible = replies.length > MAX_REPLIES_ALWAYS_OPEN
@@ -155,7 +160,12 @@ const CommentThread = ({
 
   return (
     <YStack>
-      <CommentItem comment={comment} feedOwnerId={feedOwnerId} onReply={onReply} />
+      <CommentItem
+        comment={comment}
+        feedOwnerId={feedOwnerId}
+        onReply={onReply}
+        onDelete={onDelete}
+      />
 
       {replies.length > 0 ? (
         <YStack pl={REPLY_INDENT}>
@@ -185,6 +195,7 @@ const CommentThread = ({
                   comment={reply}
                   feedOwnerId={feedOwnerId}
                   onReply={onReply}
+                  onDelete={onDelete}
                   isReply
                 />
               ))
@@ -199,11 +210,13 @@ const CommentItem = ({
   comment,
   feedOwnerId,
   onReply,
+  onDelete,
   isReply,
 }: {
   comment: FeedComment
   feedOwnerId: string
   onReply: (target: ReplyTarget) => void
+  onDelete: (commentId: string) => void
   isReply?: boolean
 }) => {
   const { user } = useAuth()
@@ -249,7 +262,7 @@ const CommentItem = ({
           {isMine ? (
             <CommentAction
               label="Apagar"
-              onPress={() => zero.mutate.comment.softDelete({ id: comment.id })}
+              onPress={() => onDelete(comment.id)}
             />
           ) : null}
         </XStack>
@@ -278,6 +291,7 @@ const CommentComposer = ({
   pinned: boolean
 }) => {
   const { user } = useAuth()
+  const create = useCreateComment(postId)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const inputRef = useRef<any>(null)
@@ -302,18 +316,13 @@ const CommentComposer = ({
 
     setSending(true)
     try {
-      // id e timestamp nascem na tela, nunca dentro da mutation
-      await zero.mutate.comment.insert({
-        id: newId(),
-        postId,
-        userId: user!.id,
-        parentId: replyTo?.parentId,
-        body: text,
-        deleted: false,
-        createdAt: Date.now(),
-      })
+      // id e timestamp nascem no servidor agora — gerá-los aqui era exigência do Zero,
+      // que rodava a mutation duas vezes e precisava que as duas convergissem
+      await create.mutateAsync({ body: text, parentId: replyTo?.parentId ?? null })
       setBody('')
       onDone()
+    } catch {
+      // a frase já aparece pelo `error` da mutation; aqui só não se perde o texto
     } finally {
       setSending(false)
     }

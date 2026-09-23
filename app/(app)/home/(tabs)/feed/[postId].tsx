@@ -3,12 +3,10 @@ import { memo } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { postDetail } from '~/data/queries/feed'
-import { useAuth } from '~/features/auth/client/authClient'
+import { usePost } from '~/data/client/hooks'
 import { PostDetail } from '~/features/feed/PostDetail'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
-import { useQuery } from '~/zero/client'
 
 import type { FeedPost } from '~/features/feed/types'
 
@@ -19,17 +17,12 @@ export const PostDetailPage = memo(() => {
   const router = useRouter()
   const { postId } = useParams<{ postId?: string }>()
 
-  // useAuth, não useUser: o id vem do JWT na hora, sem consultar o banco
-  const { user } = useAuth()
-  const userId = user?.id || ''
+  // Semeado pelo que o feed já tem em cache (`usePost`), então abrir um post vindo da
+  // lista não mostra spinner: o card aparece na hora e os comentários chegam por baixo.
+  const { data, isPending, isError } = usePost(postId || '')
+  const post = data?.post
 
-  const [post, status] = useQuery(
-    postDetail,
-    { postId: postId || '', userId },
-    { enabled: Boolean(postId && userId) },
-  )
-
-  const isLoading = status?.type !== 'complete' && !post
+  const isLoading = isPending
 
   const content = (
     <YStack bg="$background" flex={1} width="100%" maxW={620} mx="auto" px="$4">
@@ -46,9 +39,10 @@ export const PostDetailPage = memo(() => {
         <YStack flex={1} items="center" justify="center" py="$10">
           <Spinner size="small" color="$accent9" />
         </YStack>
-      ) : !post ? (
-        // some do sync tanto post apagado quanto post que o paywall barra: para o
-        // cliente os dois são a mesma coisa — a linha não existe
+      ) : isError || !post ? (
+        // 404 tanto para post apagado quanto para rascunho alheio: a tela não deve
+        // revelar que o rascunho existe. O post **bloqueado** não cai aqui — ele vem,
+        // com `content: null`, e vira card com isca.
         <YStack flex={1} gap="$2" items="center" justify="center" py="$10">
           <SizableText size="$6" fontWeight="700">
             Post indisponível

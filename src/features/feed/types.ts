@@ -5,7 +5,7 @@
 // (que trazem campos diferentes) sem um cast em cada tela. Arrays são `readonly` porque
 // é assim que o resultado do Zero chega.
 
-import type { PostKind } from '~/data/types'
+import type { PostKind } from '~/data/enums'
 import type { MediaViewMedia } from '~/features/media/MediaFrame'
 
 export type FeedAuthor = {
@@ -55,16 +55,24 @@ export type FeedPost = {
   feedOwner?: FeedAuthor | null
   media?: readonly FeedPostMedia[]
   comments?: readonly FeedComment[]
-  /** só a reação do próprio usuário — array vazio significa "não curti" */
-  reactions?: readonly { id: string }[]
+  /**
+   * Se **quem está olhando** curtiu.
+   *
+   * Era `reactions: [{id}]` — a query do Zero filtrava por `userId` e a tela contava o
+   * array. O servidor agora achata isso num booleano, que é o que o `<LikeButton>` já
+   * recebia como prop.
+   */
+  liked?: boolean
 }
 
 /**
  * "Este post está bloqueado para quem está olhando?"
  *
- * A resposta é a **ausência da linha de `postContent`** no que o Zero sincronizou — não
- * há flag, e não se pergunta ao servidor. Quem decide é `canAccessPostContent`, no
- * servidor; aqui só se lê o resultado.
+ * A resposta continua sendo a **ausência de `content`**: o servidor não manda o corpo de
+ * quem não tem direito. O que mudou é que agora existe uma decisão explícita
+ * (`postAccess`, em `src/server/access/contentAccess.ts`) em vez de uma linha que "não
+ * sincronizou" — o DTO até carrega `locked` e `lockReason`. O predicado fica como está
+ * porque um lugar só decide, e o teste protege esse lugar.
  *
  * ⚠️ Post de texto pode legitimamente ter `body` vazio, então a checagem é sobre o
  * **objeto `content`**, não sobre o conteúdo dele. Confundir os dois faria post sem texto
