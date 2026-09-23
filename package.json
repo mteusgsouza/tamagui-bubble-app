@@ -81,6 +81,7 @@
     "@tamagui/themes": "2.0.0-rc.34",
     "@tamagui/toast": "2.0.0-rc.34",
     "@tamagui/vite-plugin": "2.0.0-rc.34",
+    "@tanstack/react-query": "^5.103.2",
     "@vxrn/color-scheme": "1.14.2",
     "@vxrn/compiler": "1.14.2",
     "@vxrn/resolve": "1.14.2",
