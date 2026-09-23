@@ -3,14 +3,14 @@ import { memo, useEffect, useState } from 'react'
 import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { adminCourse } from '~/data/queries/admin'
-import { activePlans } from '~/data/queries/subscription'
 import { AdminSection } from '~/features/admin/AdminShell'
 import { CourseCurriculumEditor } from '~/features/admin/CourseCurriculumEditor'
 import { OptionRow, TextField } from '~/features/admin/fields'
+import { adminCourses as adminCoursesApi } from '~/data/client/api'
+import { useAdminCourse, usePlans } from '~/data/client/hooks'
+import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { useAuth } from '~/features/auth/client/authClient'
 import { Button } from '~/interface/buttons/Button'
-import { useQuery, zero } from '~/zero/client'
 
 import type { Visibility } from '~/data/types'
 
@@ -39,12 +39,10 @@ export const AdminCourseEditPage = memo(() => {
 
   const isNew = novo === '1'
 
-  const [course, status] = useQuery(
-    adminCourse,
-    { courseId: courseId || '', userId },
-    { enabled: Boolean(courseId && userId && !isNew) },
-  )
-  const [plans] = useQuery(activePlans, { enabled: Boolean(userId) })
+  const courseQuery = useAdminCourse(courseId || '', !isNew)
+  const course = courseQuery.data?.course
+  const plans = usePlans().data?.plans
+  const invalidate = useInvalidateAfterAdminWrite()
 
   const [draft, setDraft] = useState({
     title: '',
@@ -74,7 +72,7 @@ export const AdminCourseEditPage = memo(() => {
 
   const row = course as any
   const exists = Boolean(row)
-  const isLoading = !isNew && status?.type !== 'complete' && !course
+  const isLoading = !isNew && courseQuery.isPending
 
   const save = async () => {
     if (!courseId || !userId || saving) return
@@ -91,19 +89,11 @@ export const AdminCourseEditPage = memo(() => {
         requiredPlanId: draft.requiredPlanId ?? undefined,
       }
 
-      if (exists) {
-        await zero.mutate.course.update({ id: courseId, ...shared })
-      } else {
-        await zero.mutate.course.insert({
-          id: courseId,
-          feedOwnerId: MASTER_USER_ID,
-          published: false,
-          order: 0,
-          createdAt: Date.now(),
-          ...shared,
-        })
-        router.replace(`/admin/courses/${courseId}`)
-      }
+      // upsert: `on conflict (id)` decide entre criar e atualizar, e a `order` sai do
+      // servidor (`max + 1`) em vez de um `0` fixo que empatava com o primeiro curso
+      await adminCoursesApi({ action: 'saveCourse', id: courseId, ...shared })
+      invalidate()
+      if (!exists) router.replace(`/admin/courses/${courseId}`)
     } finally {
       setSaving(false)
     }
@@ -111,7 +101,12 @@ export const AdminCourseEditPage = memo(() => {
 
   const togglePublish = async () => {
     if (!courseId || !exists) return
-    await zero.mutate.course.update({ id: courseId, published: !row.published })
+    await adminCoursesApi({
+      action: 'togglePublish',
+      id: courseId,
+      published: !row.published,
+    })
+    invalidate()
   }
 
   if (isLoading) {

@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
+import { adminCourses } from '~/data/client/api'
+import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { AdminEmpty, AdminSection } from '~/features/admin/AdminShell'
 import { formatDuration } from '~/features/media/formatDuration'
-import { newId } from '~/helpers/id'
 import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { Input } from '~/interface/forms/Input'
-import { zero } from '~/zero/client'
 
 type ModuleRow = { id: string; title: string; order: number }
 type LessonRow = {
@@ -37,17 +37,16 @@ export const CourseCurriculumEditor = ({
   modules: ModuleRow[]
   lessons: LessonRow[]
 }) => {
+  const invalidate = useInvalidateAfterAdminWrite()
   const [newModule, setNewModule] = useState('')
 
   const addModule = async () => {
     const title = newModule.trim()
     if (!title) return
-    await zero.mutate.courseModule.insert({
-      id: newId(),
-      courseId,
-      title,
-      order: modules.length,
-    })
+    // a `order` sai do servidor (`max + 1`): mandar `modules.length` corria — dois
+    // cliques rápidos geravam a mesma posição
+    await adminCourses({ action: 'addModule', courseId, title })
+    invalidate()
     setNewModule('')
   }
 
@@ -123,29 +122,23 @@ const ModuleBlock = ({
   lessons: LessonRow[]
   totalLessons: number
 }) => {
+  const invalidate = useInvalidateAfterAdminWrite()
   const [newLesson, setNewLesson] = useState('')
 
   const addLesson = async () => {
     const title = newLesson.trim()
     if (!title) return
-    await zero.mutate.lesson.insert({
-      id: newId(),
-      courseId,
-      moduleId: courseModule.id,
-      title,
-      // entra no fim da numeração GLOBAL do curso — ver comentário do componente
-      order: totalLessons,
-      published: false,
-      freePreview: false,
-      createdAt: Date.now(),
-    })
+    // a numeração global do curso agora é calculada no servidor
+    await adminCourses({ action: 'addLesson', courseId, moduleId: courseModule.id, title })
+    invalidate()
     setNewLesson('')
   }
 
   const removeModule = async () => {
     // as aulas ficam: `lesson.moduleId` é `set null` no schema, então elas caem em
     // "fora de módulo" em vez de sumirem junto
-    await zero.mutate.courseModule.delete({ id: courseModule.id })
+    await adminCourses({ action: 'removeModule', moduleId: courseModule.id })
+    invalidate()
   }
 
   return (
@@ -188,12 +181,16 @@ const ModuleBlock = ({
 }
 
 const LessonLine = ({ lesson }: { lesson: LessonRow }) => {
+  const invalidate = useInvalidateAfterAdminWrite()
+
   const toggle = (field: 'published' | 'freePreview') => async () => {
-    await zero.mutate.lesson.update({ id: lesson.id, [field]: !lesson[field] })
+    await adminCourses({ action: 'updateLesson', lessonId: lesson.id, [field]: !lesson[field] })
+    invalidate()
   }
 
   const remove = async () => {
-    await zero.mutate.lesson.delete({ id: lesson.id })
+    await adminCourses({ action: 'removeLesson', lessonId: lesson.id })
+    invalidate()
   }
 
   return (

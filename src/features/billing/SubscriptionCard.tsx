@@ -2,11 +2,8 @@ import { Link } from 'one'
 import { memo, useState } from 'react'
 import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { MASTER_USER_ID } from '~/constants/creator'
-import { activeSubscription } from '~/data/queries/subscription'
-import { useAuth } from '~/features/auth/client/authClient'
+import { useMe } from '~/data/client/hooks'
 import { Button } from '~/interface/buttons/Button'
-import { useQuery } from '~/zero/client'
 
 import { billingMessage, goToGateway, PORTAL_MESSAGES, startPortal } from './client/billingApi'
 import { planPriceLabel } from './formatPrice'
@@ -41,14 +38,8 @@ const STATUS: Record<string, { label: string; tone: 'ok' | 'warn' }> = {
  * é feito lá volta pelo webhook, sem escrita especial daqui.
  */
 export const SubscriptionCard = memo(() => {
-  const { user } = useAuth()
-  const userId = user?.id || ''
-
-  const [subscription] = useQuery(
-    activeSubscription,
-    { userId, creatorId: MASTER_USER_ID },
-    { enabled: Boolean(userId && MASTER_USER_ID) },
-  )
+  // mesma chave de cache que `/assinar` usa: uma pergunta, duas telas
+  const subscription = useMe().data?.subscription ?? null
 
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState<string | null>(null)

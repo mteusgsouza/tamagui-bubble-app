@@ -3,24 +3,19 @@ import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { adminPosts } from '~/data/queries/admin'
 import { AdminEmpty, AdminSection } from '~/features/admin/AdminShell'
+import { useAdminPosts } from '~/data/client/hooks'
 import { useAuth } from '~/features/auth/client/authClient'
 import { timeAgo } from '~/features/feed/formatDate'
 import { newId } from '~/helpers/id'
 import { Button } from '~/interface/buttons/Button'
-import { useQuery } from '~/zero/client'
 
 export const AdminPostsPage = memo(() => {
   const router = useRouter()
   const { user } = useAuth()
   const userId = user?.id || ''
 
-  const [posts] = useQuery(
-    adminPosts,
-    { feedOwnerId: MASTER_USER_ID, userId, limit: 200 },
-    { enabled: Boolean(userId && MASTER_USER_ID) },
-  )
+  const posts = useAdminPosts().data?.posts
 
   const rows = (posts ?? []) as any[]
 

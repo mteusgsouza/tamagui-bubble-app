@@ -3,10 +3,9 @@ import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { adminCourses, adminPosts } from '~/data/queries/admin'
 import { AdminSection } from '~/features/admin/AdminShell'
+import { useAdminCourses, useAdminPosts } from '~/data/client/hooks'
 import { useAuth } from '~/features/auth/client/authClient'
-import { useQuery } from '~/zero/client'
 
 import type { Href } from 'one'
 
@@ -15,16 +14,8 @@ export const AdminHomePage = memo(() => {
   const userId = user?.id || ''
   const enabled = Boolean(userId && MASTER_USER_ID)
 
-  const [posts] = useQuery(
-    adminPosts,
-    { feedOwnerId: MASTER_USER_ID, userId, limit: 200 },
-    { enabled },
-  )
-  const [courses] = useQuery(
-    adminCourses,
-    { feedOwnerId: MASTER_USER_ID, userId },
-    { enabled },
-  )
+  const posts = useAdminPosts().data?.posts
+  const courses = useAdminCourses().data?.courses
 
   const allPosts = posts ?? []
   const allCourses = courses ?? []

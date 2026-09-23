@@ -3,20 +3,20 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { adminPost } from '~/data/queries/admin'
-import { activePlans } from '~/data/queries/subscription'
+import { adminPosts } from '~/data/client/api'
+import { useAdminPost, usePlans } from '~/data/client/hooks'
+import { ADMIN_MESSAGES } from '~/data/client/messages'
+import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { AdminSection } from '~/features/admin/AdminShell'
 import { OptionRow, TextField } from '~/features/admin/fields'
 import { PostMediaField } from '~/features/admin/PostMediaField'
 import { deriveKind } from '~/features/admin/postMediaRules'
 import { useAuth } from '~/features/auth/client/authClient'
 import { Button } from '~/interface/buttons/Button'
+import { apiMessage } from '~/helpers/apiMessage'
 import { showToast } from '~/interface/toast/helpers'
-import { useQuery, zero } from '~/zero/client'
-import { awaitMutation } from '~/zero/helpers/awaitMutation'
 
-import type { PostKind, Visibility } from '~/data/types'
-import type { MutationOutcome } from '~/zero/helpers/awaitMutation'
+import type { PostKind, Visibility } from '~/data/enums'
 
 const route = createRoute<'/(app)/admin/posts/[postId]'>()
 
@@ -26,19 +26,20 @@ const VISIBILITIES: { id: Visibility; label: string }[] = [
 ]
 
 /**
- * Transforma o desfecho de uma mutation em toast.
+ * Roda a escrita e reporta em toast.
  *
- * `pending` fica de fora do ramo de erro de propósito: nada se perdeu, o Zero só ainda
- * não conseguiu falar com o servidor. Chamar isso de falha faria quem publica salvar
- * de novo — e o texto voltaria a subir duas vezes.
+ * O estado `pending` ("ainda não confirmado, mas não se perdeu") morreu com o Zero e a
+ * fila de mutations offline. Agora é binário: ou o servidor aceitou, ou falhou — o que
+ * simplifica a tela e é honesto, porque não existe mais fila para segurar a escrita.
  */
-const reportOutcome = (outcome: MutationOutcome, done: string, failed: string) => {
-  if (outcome.ok) {
+const report = async (action: () => Promise<unknown>, done: string, failed: string) => {
+  try {
+    await action()
     showToast(done, { type: 'success' })
-  } else if (outcome.pending) {
-    showToast('Ainda não confirmado', { type: 'warn', message: outcome.message })
-  } else {
-    showToast(failed, { type: 'error', message: outcome.message })
+    return true
+  } catch (error) {
+    showToast(failed, { type: 'error', message: apiMessage(error, ADMIN_MESSAGES) })
+    return false
   }
 }
 
@@ -50,14 +51,12 @@ export const AdminPostEditPage = memo(() => {
 
   const isNew = novo === '1'
 
-  const [post, status] = useQuery(
-    adminPost,
-    { postId: postId || '', userId },
-    { enabled: Boolean(postId && userId && !isNew) },
-  )
-  const [plans] = useQuery(activePlans, { enabled: Boolean(userId) })
+  const postQuery = useAdminPost(postId || '', !isNew)
+  const post = postQuery.data?.post
+  const plans = usePlans().data?.plans
+  const invalidate = useInvalidateAfterAdminWrite()
 
-  // rascunho local: o Zero é a fonte, mas digitar não pode disparar mutation por tecla.
+  // rascunho local: o servidor é a fonte, mas digitar não pode disparar requisição por tecla.
   // `kind` NÃO entra aqui — ele é deduzido da mídia, nunca escolhido.
   const [draft, setDraft] = useState({
     title: '',
@@ -89,116 +88,90 @@ export const AdminPostEditPage = memo(() => {
 
   const row = post as any
   const exists = Boolean(row)
-  const isLoading = !isNew && status?.type !== 'complete' && !post
+  const isLoading = !isNew && postQuery.isPending
 
   const attached = (row?.media ?? []) as any[]
   const kind = deriveKind(attached)
 
-  // anexar mídia já é mutation imediata, então o `kind` do banco tem que acompanhar na
-  // hora — esperar o "Salvar" deixaria o card do feed com o rótulo errado nesse meio.
+  // anexar mídia já grava, então o `kind` do banco tem que acompanhar na hora —
+  // esperar o "Salvar" deixaria o card do feed com o rótulo errado nesse meio.
   const createdRef = useRef(false)
-  // o ack do servidor da criação. O "Salvar" espera por ele para saber o que dizer; o
-  // anexo de mídia não espera nada — para ele basta a linha existir localmente, e as
-  // mutations chegam ao servidor na ordem em que saíram.
-  const createAckRef = useRef<Promise<MutationOutcome> | null>(null)
   const savedKindRef = useRef<PostKind | null>(null)
+
+  const fields = () => ({
+    kind,
+    title: draft.title.trim() || null,
+    teaser: draft.teaser.trim() || null,
+    body: draft.body,
+    visibility: draft.visibility,
+    // plano só faz sentido em post de assinante
+    requiredPlanId: draft.visibility === 'subscribers' ? draft.requiredPlanId : null,
+  })
+
+  /**
+   * Grava o post e o corpo.
+   *
+   * 🔴 **Uma chamada, uma transação.** Antes eram quatro mutations encadeadas mais
+   * `createdRef`, `createAckRef` e um `insert`-ou-`update` escolhido na tela, porque o
+   * corpo vive em `postContent` desde a Fase 12 e o CRUD gerado pelo Zero não tinha
+   * upsert. Agora quem decide entre criar e atualizar é o `on conflict (id)` no
+   * servidor, e a linha de `postContent` nasce junto — a ausência dela é o sinal de
+   * "bloqueado", então post sem ela apareceria com paywall até para o criador.
+   *
+   * O id continua nascendo no cliente: ele veio na URL, e o anexo de mídia precisa que
+   * a linha exista antes do arquivo (`postMedia.postId` é FK).
+   */
+  const persist = () => adminPosts({ action: 'save', id: postId!, ...fields() })
+
   const onKindChange = useCallback(
     (next: PostKind) => {
-      // `createdRef` cobre a janela entre `ensurePost` criar a linha e a query refletir
       if (!postId || (!exists && !createdRef.current)) return
       if (savedKindRef.current === next || row?.kind === next) {
         savedKindRef.current = next
         return
       }
       savedKindRef.current = next
-      void zero.mutate.post.update({ id: postId, kind: next })
+      void adminPosts({ action: 'save', id: postId, ...fields(), kind: next }).then(invalidate)
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [postId, exists, row?.kind],
   )
 
-  const fields = () => ({
-    kind,
-    title: draft.title.trim() || undefined,
-    teaser: draft.teaser.trim() || undefined,
-    visibility: draft.visibility,
-    // plano só faz sentido em post de assinante
-    requiredPlanId:
-      draft.visibility === 'subscribers'
-        ? (draft.requiredPlanId ?? undefined)
-        : undefined,
-  })
-
   /**
-   * Cria a linha do post se ela ainda não existe.
+   * Materializa o rascunho antes do primeiro anexo de mídia.
    *
-   * Chamada pelo "Salvar" **e** pelo primeiro anexo de mídia: `postMedia.postId` é FK,
-   * então o post precisa existir antes do arquivo — mas isso é problema nosso, não de
-   * quem publica. O id já nasceu no cliente (veio na URL), então escolher um arquivo já
-   * basta para materializar o rascunho.
+   * `postMedia.postId` é FK, então o post precisa existir antes do arquivo — mas isso é
+   * problema nosso, não de quem publica: escolher um arquivo já basta.
    */
   const ensurePost = async () => {
     if (exists || createdRef.current) return true
-    if (!postId || !userId || !MASTER_USER_ID) return false
+    if (!postId || !MASTER_USER_ID) return false
 
     createdRef.current = true
     try {
-      // `newId()` e `Date.now()` na tela, nunca dentro da mutation
-      const created = zero.mutate.post.insert({
-        id: postId,
-        feedOwnerId: MASTER_USER_ID,
-        published: false,
-        publishedAt: undefined,
-        likeCount: 0,
-        commentCount: 0,
-        deleted: false,
-        createdAt: Date.now(),
-        ...fields(),
-      })
-      // guarda o ack para o "Salvar", mas só espera o lado otimista aqui
-      createAckRef.current = awaitMutation(created)
-      const applied = await created.client
-      if (applied.type === 'error') throw new Error(applied.error.message)
-
-      // 🔴 **A linha de `postContent` nasce SEMPRE, mesmo vazia.** Ausência de `content` é
-      // o sinal de "bloqueado" que a tela lê (`isPostLocked`) — post sem essa linha
-      // apareceria bloqueado até para o próprio criador.
-      void zero.mutate.postContent.insert({
-        postId,
-        body: draft.body.trim() || undefined,
-      })
+      await persist()
+      invalidate()
       // sai do modo "novo": daqui pra frente a tela edita em vez de recriar
       router.replace(`/admin/posts/${postId}`)
       return true
     } catch {
       createdRef.current = false
-      createAckRef.current = null
       return false
     }
   }
 
   const save = async () => {
-    if (!postId || !userId || saving) return
+    if (!postId || saving) return
     setSaving(true)
     try {
-      let outcome: MutationOutcome
-      if (exists || createdRef.current) {
-        outcome = await awaitMutation(zero.mutate.post.update({ id: postId, ...fields() }))
-        // o corpo vive em outra tabela desde a Fase 12. Não há `upsert` no CRUD gerado,
-        // então o `insert` cobre post criado antes dela, que não tem a linha ainda.
-        const body = draft.body.trim() || undefined
-        const contentOutcome = await awaitMutation(
-          row?.content
-            ? zero.mutate.postContent.update({ postId, body })
-            : zero.mutate.postContent.insert({ postId, body }),
-        )
-        // salvar o post e perder o texto seria o pior resultado: reporta a falha real
-        if (outcome.ok && !contentOutcome.ok) outcome = contentOutcome
-      } else if (await ensurePost()) {
-        outcome = (await createAckRef.current) ?? { ok: true }
-      } else {
-        outcome = { ok: false, pending: false, message: 'A criação do post foi recusada.' }
+      const ok = await report(persist, 'Post salvo', 'Não deu para salvar')
+      if (ok) {
+        invalidate()
+        if (!exists && !createdRef.current) {
+          createdRef.current = true
+          router.replace(`/admin/posts/${postId}`)
+        }
       }
-      reportOutcome(outcome, 'Post salvo', 'Não deu para salvar')
     } finally {
       setSaving(false)
     }
@@ -209,16 +182,13 @@ export const AdminPostEditPage = memo(() => {
     setBusy(true)
     const wasPublished = Boolean(row.published)
     try {
-      const outcome = await awaitMutation(
-        wasPublished
-          ? zero.mutate.post.update({ id: postId, published: false })
-          : zero.mutate.post.publish({ id: postId, publishedAt: Date.now() }),
-      )
-      reportOutcome(
-        outcome,
+      await report(
+        () =>
+          adminPosts({ action: wasPublished ? 'unpublish' : 'publish', id: postId }),
         wasPublished ? 'Post despublicado' : 'Post publicado',
         wasPublished ? 'Não deu para despublicar' : 'Não deu para publicar',
       )
+      invalidate()
     } finally {
       setBusy(false)
     }
@@ -227,16 +197,20 @@ export const AdminPostEditPage = memo(() => {
   const remove = async () => {
     if (!postId || !exists || busy) return
     setBusy(true)
-    let outcome: MutationOutcome
+    let ok = false
     try {
-      outcome = await awaitMutation(zero.mutate.post.softDelete({ id: postId }))
+      ok = await report(
+        () => adminPosts({ action: 'delete', id: postId }),
+        'Post apagado',
+        'Não deu para apagar',
+      )
     } finally {
       setBusy(false)
     }
-    reportOutcome(outcome, 'Post apagado', 'Não deu para apagar')
-    // sai da tela de qualquer jeito que não seja recusa do servidor: em `pending` o
-    // post já sumiu do feed localmente, ficar aqui só confundiria.
-    if (outcome.ok || outcome.pending) router.replace('/admin/posts')
+    if (ok) {
+      invalidate()
+      router.replace('/admin/posts')
+    }
   }
 
   if (isLoading) {

@@ -1,7 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { adminPlans } from '~/data/queries/admin'
 import { AdminEmpty, AdminSection } from '~/features/admin/AdminShell'
 import { OptionRow, TextField } from '~/features/admin/fields'
 import {
@@ -10,10 +9,14 @@ import {
   slugify,
   validatePlan,
 } from '~/features/admin/planForm'
+import { adminPlans as adminPlansApi } from '~/data/client/api'
+import { useAdminPlans } from '~/data/client/hooks'
+import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
+import { ADMIN_MESSAGES } from '~/data/client/messages'
 import { useAuth } from '~/features/auth/client/authClient'
+import { apiMessage } from '~/helpers/apiMessage'
 import { newId } from '~/helpers/id'
 import { Button } from '~/interface/buttons/Button'
-import { useQuery, zero } from '~/zero/client'
 
 import type { PlanDraft } from '~/features/admin/planForm'
 
@@ -48,15 +51,14 @@ const emptyDraft = (order: number): PlanDraft => ({
  * e o `planId` de assinaturas já vendidas: apagar quebraria as duas coisas.
  */
 export const AdminPlansPage = memo(() => {
-  const { user } = useAuth()
-  const userId = user?.id || ''
-  const [plans, status] = useQuery(adminPlans, { enabled: Boolean(userId) })
+  const { data, isPending } = useAdminPlans()
+  const invalidate = useInvalidateAfterAdminWrite()
 
   const [draft, setDraft] = useState<PlanDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const all = useMemo(() => (plans ?? []) as any[], [plans])
-  const loading = !plans && status?.type !== 'complete'
+  const all = useMemo(() => (data?.plans ?? []) as any[], [data])
+  const loading = isPending
 
   const startNew = () => {
     setError(null)
@@ -84,25 +86,23 @@ export const AdminPlansPage = memo(() => {
       return
     }
 
-    const exists = all.some((p) => p.id === draft.id)
     try {
-      if (exists) {
-        await zero.mutate.plan.update(result.values)
-      } else {
-        await zero.mutate.plan.insert(result.values)
-      }
+      // upsert: o servidor decide entre criar e atualizar pelo `on conflict (id)`
+      await adminPlansApi({ action: 'save', ...result.values })
+      invalidate()
       setDraft(null)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não consegui salvar o plano.')
+      setError(apiMessage(err, ADMIN_MESSAGES))
     }
   }
 
   const toggleActive = async (plan: any) => {
     try {
-      await zero.mutate.plan.update({ id: plan.id, active: !plan.active })
+      await adminPlansApi({ action: 'toggleActive', id: plan.id, active: !plan.active })
+      invalidate()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não consegui mudar o plano.')
+      setError(apiMessage(err, ADMIN_MESSAGES))
     }
   }
 
