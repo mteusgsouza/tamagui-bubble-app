@@ -1,3 +1,10 @@
+> ⚠️ **HISTÓRICO.** O Zero foi removido do projeto em 23/09/2026 — ver o commit
+> `refactor: o Zero sai do projeto` e a seção da migração no `build-log/STATE.md`.
+>
+> Este documento fica porque explica **por que** as invariantes antigas existiam
+> (convergência de mutation, `zero:generate`, publication) e porque metade do desenho
+> atual é reação direta ao que está descrito aqui. Nada nele descreve o código de hoje.
+
 ---
 name: takeout-zero
 description: Zero data layer guide. useQuery, zql, mutations, CRUD, permissions, serverWhere, exists(), relations, .related(), pagination, cursor, convergence, optimistic updates.

@@ -420,6 +420,53 @@ Estado real da Fase 4:
 
   Mapa completo do que é opcional e onde preencher: `.env.local.example`.
 
+## Migração: o Zero saiu (23/09/2026)
+
+🔴 **O que motivou.** O zero-cache mantinha um slot de replicação lógica permanente no
+Postgres. Isso impedia o autosuspend do Neon e queimou a cota inteira do free tier: 24 h
+por dia de compute com **2 requisições em 9 dias**. Medido — containers de pé em 14/09
+02:11 UTC, cota estourada em 20/09 12:20 UTC, e depois disso ~99 mil erros `53000` por
+dia. Somado a isso: queries de 5 a 9 s, e um vazamento de conteúdo pago causado por
+permission que não era aplicada nas relações.
+
+O domínio é **um escreve, muitos leem**. Não há edição colaborativa nem estado mutável
+compartilhado — os casos que pagam um motor de sync. E metade do app já não usava o Zero:
+pagamento, mídia, auth, cron e admin/people sempre foram REST com Drizzle.
+
+**O que entrou no lugar:** um endpoint por tela (`app/api/{feed,post,courses,course,
+lesson,plans,me}`), `@tanstack/react-query` no cliente, e as permissions como predicado
+puro em `src/server/access/contentAccess.ts`.
+
+| | antes | depois |
+|---|---|---|
+| carga do feed | WebSocket + replica local | `GET /api/feed` em **22 ms** |
+| queries por página | proporcional aos posts | **7, constante** |
+| permissions | 230 linhas de `exists` aninhado | ~90 de predicado puro, **testável sem banco** |
+| cobertura do paywall | nenhuma | 20 casos unitários |
+| dependências | `@rocicorp/zero` + `on-zero` | — |
+| containers | app + zero-cache + Caddy | app + db + Caddy |
+
+⚠️ **Três defeitos apareceram durante a migração e não tinham a ver com ela:**
+
+1. **Todo timestamp lido do banco estava deslocado fora do UTC.** O `pg` interpreta
+   `timestamp` sem fuso como hora **local** do processo; as colunas guardam UTC. Em
+   produção (container em UTC) o defeito sumia por acaso — na WSL daqui eram 3 horas.
+   Fechado em `src/database/pgTypes.ts`.
+2. **Slug duplicado devolvia 500.** O Drizzle embrulha o erro do Postgres em `cause`,
+   então checar `error.code` no topo nunca via o `23505`. Agora é 422 com frase legível.
+3. **`ZERO_VERSION` estava em `REQUIRED` do `/api/health`.** Tirar a variável sem editar
+   a lista faria o health responder 503 com o app inteiro funcionando.
+
+ℹ️ **Curso bloqueado passou a existir.** Era o último lugar onde o paywall escondia a
+existência do conteúdo: `canAccessCourse` filtrava a linha inteira, e quem não assinava
+via "Nenhum curso por aqui" — a própria tela admitia a mentira num comentário. Agora o
+curso fechado chega com capa, descrição e currículo; `body` e `media` da aula não. A
+amostra grátis continua abrindo.
+
+ℹ️ **`DATABASE_URL` é o nome oficial da conexão.** `ZERO_UPSTREAM_DB` ficou como alias
+depreciado, com o fallback **invertido** — a nova ganha — para que tirar o nome antigo das
+máquinas não cause outage.
+
 ## Produção
 
 🔴 **Reconstruir o replica do zero-cache derruba os clientes já abertos — e o sintoma
