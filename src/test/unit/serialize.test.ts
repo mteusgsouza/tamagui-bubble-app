@@ -71,3 +71,13 @@ describe('toEpoch — formatos que o Postgres realmente devolve', () => {
     expect(toEpoch('2026-09-23 14:02:03')).toBe(Date.parse('2026-09-23T14:02:03Z'))
   })
 })
+
+describe('toEpoch — o que o banco devolveu de verdade', () => {
+  // conferido contra o Postgres local, com o processo em America/Sao_Paulo:
+  //   select now()::timestamp  ->  "2026-09-23 14:02:54.486829"
+  it('microssegundos (6 casas) — é o que now() produz', () => {
+    expect(toEpoch('2026-09-23 14:02:54.486829')).toBe(
+      Date.parse('2026-09-23T14:02:54.486Z'),
+    )
+  })
+})
