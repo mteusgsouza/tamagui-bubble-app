@@ -137,6 +137,18 @@ export type CourseDTO = {
   modules: CourseModuleDTO[]
   /** todas as aulas, inclusive as soltas (sem `moduleId`) */
   lessons: LessonDTO[]
+
+  /**
+   * 🔓 Curso bloqueado **existe** e vem com vitrine: capa, título, descrição e o
+   * currículo (títulos, ordem, duração). O que não vem é produto — `body` e `media` da
+   * aula saem vazios.
+   *
+   * Antes a linha inteira era filtrada, e quem não assinava via "Nenhum curso por
+   * aqui" — a mesma mentira que o feed contava antes da Fase 12, e que a própria tela
+   * admitia no comentário. Sem catálogo não há motivo para assinar.
+   */
+  locked: boolean
+  lockReason: LockReason | null
 }
 
 /** O detalhe da aula traz o contexto que o player usa no cabeçalho. */

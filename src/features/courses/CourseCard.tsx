@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { MediaView } from '~/features/media/MediaView'
+import { LockIcon } from '~/interface/icons/phosphor/LockIcon'
 
 import { courseStats, courseSummaryLine } from './courseStats'
 import { ProgressBar } from './ProgressBar'
@@ -17,6 +18,7 @@ import type { ReactNode } from 'react'
 export const CourseCard = memo(({ course }: { course: Course }) => {
   const stats = courseStats(course)
   const started = stats.completedCount > 0
+  const locked = Boolean(course.locked)
 
   return (
     <Link
@@ -44,6 +46,19 @@ export const CourseCard = memo(({ course }: { course: Course }) => {
           <SizableText size="$2" color="$color10">
             {courseSummaryLine(stats)}
           </SizableText>
+
+          {/* 🔓 O cadeado não esconde o curso — ele diz que tem conteúdo ali dentro.
+              Curso invisível era a mentira que a lista contava antes. */}
+          {locked ? (
+            <XStack gap="$1.5" items="center">
+              <LockIcon size={14} color="$accent11" />
+              <SizableText size="$2" fontWeight="600" color="$accent11">
+                {course.lockReason === 'needs-plan'
+                  ? 'Seu plano não inclui este curso'
+                  : 'Assine para abrir as aulas'}
+              </SizableText>
+            </XStack>
+          ) : null}
 
           {started ? (
             <YStack gap="$1.5" pt="$1">

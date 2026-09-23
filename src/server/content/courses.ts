@@ -3,12 +3,14 @@
 // Mesmo orçamento fixo do feed: 4 queries para a lista inteira, independente de quantos
 // cursos, módulos e aulas existam.
 //
-// ⚠️ **Comportamento preservado de propósito:** curso de assinante que o visitante não
-// pode ver é **removido da lista**, não devolvido bloqueado. É o que `canAccessCourse`
-// fazia no Zero. A própria tela reconhece que isso é ruim ("Dizer 'nenhum curso ainda'
-// seria mentira"), e dar ao curso o tratamento de card bloqueado que o post ganhou na
-// Fase 12 ficou fácil agora — mas fica para depois. Preservar o comportamento exato é o
-// que mantém a pergunta "a migração quebrou alguma coisa?" respondível.
+// 🔓 **Curso bloqueado existe.** É o tratamento que o post recebeu na Fase 12, agora
+// aplicado ao curso: capa, título, descrição e currículo (títulos, ordem, duração)
+// chegam a todo mundo; `body` e `media` da aula só para quem tem direito, e a aula de
+// amostra abre mesmo em curso fechado.
+//
+// Antes a linha inteira era filtrada, e quem não assinava via "Nenhum curso por aqui" —
+// exatamente a mentira que a própria tela admitia num comentário. Catálogo invisível não
+// converte ninguém.
 
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
@@ -149,12 +151,12 @@ export async function loadCourses(
     )
     .orderBy(asc(course.order))
 
-  // o tier decide em memória; curso barrado sai da lista inteira (ver o topo do arquivo)
-  const visible = onlyPublished
-    ? courseRows.filter((row) => courseAccess(viewer, row.course).allowed)
-    : courseRows
+  // o tier decide em memória, e agora decide o **conteúdo**, não a existência
+  const access = new Map(
+    courseRows.map((row) => [row.course.id, courseAccess(viewer, row.course)] as const),
+  )
 
-  const courseIds = visible.map((row) => row.course.id)
+  const courseIds = courseRows.map((row) => row.course.id)
   if (!courseIds.length) return []
 
   const [moduleRows, lessonRows] = await Promise.all([
@@ -182,9 +184,18 @@ export async function loadCourses(
 
   const lessonsByCourse = new Map<string, LessonDTO[]>()
   for (const row of lessonRows) {
-    const item = toLesson(row.lesson, toMedia(row), progress.get(row.lesson.id) ?? [])
+    const allowed = access.get(row.lesson.courseId)?.allowed ?? true
+    // a aula de amostra abre mesmo em curso fechado — é o gancho de conversão
+    const open = allowed || row.lesson.freePreview
+
+    const item = toLesson(
+      row.lesson,
+      open ? toMedia(row) : null,
+      progress.get(row.lesson.id) ?? [],
+    )
+    // título, ordem e duração são vitrine; corpo e mídia são produto
     const list = lessonsByCourse.get(row.lesson.courseId) ?? []
-    list.push(item)
+    list.push(open ? item : { ...item, body: null })
     lessonsByCourse.set(row.lesson.courseId, list)
   }
 
@@ -202,7 +213,7 @@ export async function loadCourses(
     modulesByCourse.set(row.courseId, list)
   }
 
-  return visible.map((row) => ({
+  return courseRows.map((row) => ({
     id: row.course.id,
     feedOwnerId: row.course.feedOwnerId,
     slug: row.course.slug,
@@ -216,10 +227,15 @@ export async function loadCourses(
     requiredPlan: row.planId ? { id: row.planId, name: row.planName ?? '' } : null,
     modules: modulesByCourse.get(row.course.id) ?? [],
     lessons: lessonsByCourse.get(row.course.id) ?? [],
+    locked: !(access.get(row.course.id)?.allowed ?? true),
+    lockReason: (() => {
+      const result = access.get(row.course.id)
+      return result && !result.allowed ? result.reason : null
+    })(),
   }))
 }
 
-/** Um curso pelo slug. `null` quando não existe ou o visitante não tem acesso. */
+/** Um curso pelo slug. `null` só quando **não existe** — bloqueado vem, com `locked`. */
 export async function loadCourseBySlug(
   viewer: Viewer,
   options: { feedOwnerId: string; slug: string },

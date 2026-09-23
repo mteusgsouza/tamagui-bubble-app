@@ -53,6 +53,15 @@ export type Course = {
   modules?: readonly CourseModule[]
   /** todas as aulas do curso, inclusive as soltas (sem `moduleId`) */
   lessons?: readonly CourseLesson[]
+
+  /**
+   * 🔓 Curso de assinante que este visitante ainda não pode abrir.
+   *
+   * O currículo **vem mesmo assim** — títulos, ordem e duração são vitrine. O que não
+   * vem é `body` e `media` da aula. É o mesmo desenho do post bloqueado da Fase 12.
+   */
+  locked?: boolean
+  lockReason?: 'needs-subscription' | 'needs-plan' | null
 }
 
 /** A linha de progresso do usuário nesta aula, ou `undefined`. */

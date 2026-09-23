@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { formatDuration } from '~/features/media/formatDuration'
+import { LockIcon } from '~/interface/icons/phosphor/LockIcon'
 import { PlayIcon } from '~/interface/icons/PlayIcon'
 
 import { courseLessons, moduleSummaryLine } from './courseStats'
@@ -17,6 +18,7 @@ import type { Course, CourseLesson } from './types'
 export const CourseCurriculum = memo(({ course }: { course: Course }) => {
   const all = courseLessons(course)
   const modules = course.modules ?? []
+  const locked = Boolean(course.locked)
 
   // as aulas vêm da lista cheia, filtradas por módulo: `modules[].lessons` traria a
   // mesma coisa, mas assim uma aula nunca aparece duas vezes nem some
@@ -45,7 +47,12 @@ export const CourseCurriculum = memo(({ course }: { course: Course }) => {
 
             <YStack pt="$1">
               {lessons.map((lesson) => (
-                <LessonRow key={lesson.id} lesson={lesson} courseSlug={course.slug} />
+                <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                courseSlug={course.slug}
+                locked={locked}
+              />
               ))}
             </YStack>
           </YStack>
@@ -61,7 +68,12 @@ export const CourseCurriculum = memo(({ course }: { course: Course }) => {
           ) : null}
           <YStack pt="$1">
             {loose.map((lesson) => (
-              <LessonRow key={lesson.id} lesson={lesson} courseSlug={course.slug} />
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                courseSlug={course.slug}
+                locked={locked}
+              />
             ))}
           </YStack>
         </YStack>
@@ -73,9 +85,12 @@ export const CourseCurriculum = memo(({ course }: { course: Course }) => {
 export const LessonRow = ({
   lesson,
   courseSlug,
+  locked = false,
 }: {
   lesson: CourseLesson
   courseSlug: string
+  /** o curso está fechado para este visitante */
+  locked?: boolean
 }) => {
   const done = isLessonComplete(lesson)
   const progress = lessonProgress(lesson)
@@ -87,12 +102,12 @@ export const LessonRow = ({
     ? `${formatDuration(progress.positionSec)} / ${total ?? '—'}`
     : total
 
-  return (
-    <Link
-      href={`/home/courses/${courseSlug}/${lesson.id}`}
-      data-testid="lesson-row"
-      style={{ width: '100%' }}
-    >
+  // 🔒 Aula fechada aparece, mas não leva a lugar nenhum: clicar e cair em "Aula
+  // indisponível" seria pior do que o cadeado dizer de saída o que está acontecendo.
+  // A amostra grátis continua clicável — é ela que converte.
+  const open = !locked || lesson.freePreview
+
+  const row = (
       <XStack
         gap="$3"
         py="$2.5"
@@ -121,8 +136,23 @@ export const LessonRow = ({
           </XStack>
         </YStack>
 
-        <PlayIcon size={14} color="$color9" />
+        {open ? (
+          <PlayIcon size={14} color="$color9" />
+        ) : (
+          <LockIcon size={14} color="$color9" />
+        )}
       </XStack>
+  )
+
+  if (!open) return row
+
+  return (
+    <Link
+      href={`/home/courses/${courseSlug}/${lesson.id}`}
+      data-testid="lesson-row"
+      style={{ width: '100%' }}
+    >
+      {row}
     </Link>
   )
 }

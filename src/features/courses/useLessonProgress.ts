@@ -1,19 +1,17 @@
 // Gravação do progresso da aula.
 //
 // O player reporta posição o tempo todo — na web o `timeupdate` dispara ~4x por segundo,
-// no nativo 1x. Cada `zero.mutate` é uma escrita sincronizada com o servidor, então
-// gravar a cada tique inundaria a fila de mutations (e o `ZERO_PER_USER_MUTATION_LIMIT`
-// do `package.json` é 30 por minuto — sem throttle, um minuto de vídeo já estoura).
+// no nativo 1x. O throttle nasceu contra o `ZERO_PER_USER_MUTATION_LIMIT` (30/min), que
+// morreu junto com o Zero, mas **fica**: agora é sobre não transformar um vídeo de cinco
+// minutos em 1.200 requisições HTTP.
 //
-// Aqui a posição entra numa ref a cada tique e só vira mutation a cada
-// `SAVE_INTERVAL_MS`, mais um flush ao desmontar — sair da aula no meio guarda onde
-// parou.
+// A posição entra numa ref a cada tique e só vira requisição a cada `SAVE_INTERVAL_MS`,
+// mais um flush ao desmontar — sair da aula no meio guarda onde parou.
 
 import { useCallback, useEffect, useRef } from 'react'
 
+import { useSaveProgress } from '~/data/client/mutations'
 import { useAuth } from '~/features/auth/client/authClient'
-import { newId } from '~/helpers/id'
-import { zero } from '~/zero/client'
 
 import { COMPLETE_THRESHOLD } from './courseStats'
 
@@ -25,22 +23,21 @@ const MIN_POSITION_SEC = 3
 
 type Options = {
   lessonId: string
-  /** já concluída? evita regravar `completedAt` e disparar mutation à toa */
+  /** já concluída? evita regravar `completedAt` e disparar requisição à toa */
   alreadyComplete?: boolean
+  /** para invalidar o currículo quando a aula é concluída */
+  courseSlug?: string
 }
 
-export function useLessonProgress({ lessonId, alreadyComplete }: Options) {
+export function useLessonProgress({ lessonId, alreadyComplete, courseSlug }: Options) {
   const { user } = useAuth()
   const userId = user?.id || ''
+  const save = useSaveProgress(courseSlug)
 
   // última posição reportada pelo player, ainda não necessariamente gravada
   const pendingRef = useRef<{ position: number; duration: number } | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const completedRef = useRef(Boolean(alreadyComplete))
-
-  // o id só é usado na primeira gravação desta aula; mantê-lo estável evita criar
-  // linha nova se duas gravações saírem antes de a primeira sincronizar
-  const idRef = useRef(newId())
 
   useEffect(() => {
     completedRef.current = Boolean(alreadyComplete)
@@ -49,7 +46,6 @@ export function useLessonProgress({ lessonId, alreadyComplete }: Options) {
   // trocou de aula: zera tudo, senão a posição de uma vazaria para a outra
   useEffect(() => {
     pendingRef.current = null
-    idRef.current = newId()
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = null
@@ -59,18 +55,11 @@ export function useLessonProgress({ lessonId, alreadyComplete }: Options) {
   const write = useCallback(
     (positionSec: number, complete: boolean) => {
       if (!userId) return
-      // `Date.now()` e `newId()` na tela, nunca dentro da mutation: ela roda duas vezes
-      // (otimista e autoritativa) e as duas execuções têm que convergir
-      zero.mutate.lessonProgress.save({
-        id: idRef.current,
-        userId,
-        lessonId,
-        positionSec: Math.floor(positionSec),
-        updatedAt: Date.now(),
-        completedAt: complete ? Date.now() : undefined,
-      })
+      // id e timestamp nascem no servidor; o upsert por `(userId, lessonId)` dispensa o
+      // id estável que o Zero exigia para não criar linha duplicada
+      save.mutate({ lessonId, positionSec: Math.floor(positionSec), completed: complete })
     },
-    [userId, lessonId],
+    [userId, lessonId, save],
   )
 
   const flush = useCallback(() => {
