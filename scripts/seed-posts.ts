@@ -6,8 +6,16 @@
  *   bun run:dev scripts/seed-posts.ts                    # no banco local
  *   VITE_MASTER_USER_ID=<id> ZERO_UPSTREAM_DB=<url do Neon> bun scripts/seed-posts.ts
  *
- * Idempotente: `ON CONFLICT DO NOTHING` em tudo. Rodar duas vezes não duplica, e rodar
- * depois de `bun backend:clean` recria.
+ * Idempotente e **convergente**: rodar de novo alinha o que já existe ao que está aqui.
+ *
+ * ⚠️ O `ON CONFLICT` do post é `DO UPDATE`, e só nos campos que este arquivo **declara**
+ * (dono, tipo, título, isca, visibilidade, plano exigido). `likeCount`, `publishedAt` e
+ * `createdAt` ficam de fora porque acumulam com o uso — sobrescrevê-los apagaria
+ * interação real a cada execução.
+ *
+ * *Por que mudou:* era `DO NOTHING`, e depois da migration da Fase 12 os posts de
+ * produção ficaram sem `teaser` para sempre — o seed rodava, dizia "5 posts semeados" e
+ * não mexia em nada. Seed que declara conteúdo tem que convergir, igual ao de planos.
  *
  * ⚠️ **O dono vem de `VITE_MASTER_USER_ID`**, não está gravado aqui. Foi por isso que
  * este script existe: os posts nasceram à mão em desenvolvimento com `feedOwnerId =
@@ -154,7 +162,13 @@ async function seed() {
                            "requiredPlanId", published, "publishedAt",
                            "likeCount", deleted, "createdAt")
          VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, false, $8)
-         ON CONFLICT (id) DO NOTHING`,
+         ON CONFLICT (id) DO UPDATE SET
+           "feedOwnerId" = EXCLUDED."feedOwnerId",
+           kind = EXCLUDED.kind,
+           title = EXCLUDED.title,
+           teaser = EXCLUDED.teaser,
+           visibility = EXCLUDED.visibility,
+           "requiredPlanId" = EXCLUDED."requiredPlanId"`,
         [
           post.id,
           CREATOR,

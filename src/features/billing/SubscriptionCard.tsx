@@ -111,11 +111,16 @@ export const SubscriptionCard = memo(() => {
         </SizableText>
       ) : null}
 
+      {/* 🔴 Compra avulsa **não renova**: dizer "próxima cobrança" nela é mentira sobre
+          dinheiro — o usuário passa a esperar uma cobrança que não vem, e o acesso some
+          na data que ele leu como "vou ser cobrado". */}
       {until ? (
         <SizableText size="$2" color="$color10">
           {row.cancelAtPeriodEnd
             ? `Cancelada — o acesso vai até ${until}`
-            : `Próxima cobrança em ${until}`}
+            : row.plan?.interval === 'once'
+              ? `Acesso até ${until}`
+              : `Próxima cobrança em ${until}`}
         </SizableText>
       ) : null}
 

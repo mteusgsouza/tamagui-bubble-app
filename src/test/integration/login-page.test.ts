@@ -39,8 +39,13 @@ test('login page shows login form elements', async ({ page }) => {
     timeout: 10000,
   })
 
-  // wait for the "Continue with Email" button - this proves the page fully rendered
-  const emailButton = page.getByText('Continue with Email')
+  // O botão de entrar por e-mail provando que a página renderizou inteira.
+  //
+  // ⚠️ **Por `data-testid`, não por texto.** A versão anterior procurava
+  // "Continue with Email" e passou a falhar quando a Fase 10 traduziu a tela — sem que
+  // ninguém notasse, porque a CI já estava vermelha pelo lint quebrado. Asserção em
+  // texto de interface quebra a cada ajuste de cópia; o testid sobrevive.
+  const emailButton = page.locator('[data-testid="go-to-login"]')
   await expect(emailButton).toBeVisible({ timeout: 10000 })
 })
 

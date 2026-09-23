@@ -422,6 +422,24 @@ Estado real da Fase 4:
 
 ## Produção
 
+🔴 **Reconstruir o replica do zero-cache derruba os clientes já abertos — e o sintoma
+engana.** Acontecido em 14/09/2026, ao publicar as Fases 11–13.
+
+O navegador guarda estado do Zero em `replicache-dbs-v0` (IndexedDB). Quando o replica
+nasce de novo, esse estado aponta para algo que não existe mais e o cliente entra em
+**laço de remontagem**: `[client] start` repetido, `React #185` (*maximum update depth*)
+capturado pelo error boundary, e uma rajada de `/api/auth/get-session` — foram **187
+chamadas**, em pares a cada ~6 s, que parecem polling e não são. Junto vêm queries de
+5 a 9 s ("Slow query materialization").
+
+Diagnóstico em um passo: **limpar o IndexedDB e o localStorage** do site. Se o
+`get-session` cair para **1**, era isto. Foi medido nos dois estados.
+
+⚠️ Quem nunca visitou antes do deploy não é afetado. Quem visitou precisa de um
+"limpar dados do site" — não há recuperação automática hoje: o `onClientStateNotFound` de
+`src/zero/client.tsx` existe para este caso e **não disparou**, o app entrou em laço em vez
+de mostrar o "Sync Error". Lacuna de robustez conhecida.
+
 Três provedores, porque cada peça tem uma exigência diferente:
 
 | peça | onde | por quê |
