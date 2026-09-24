@@ -1,16 +1,21 @@
 # Bubble App na AWS
 
-Tudo numa máquina só: banco, site, API e Caddy na frente cuidando do TLS.
+Tudo numa máquina só: **banco**, site, API e Caddy na frente cuidando do TLS.
 
-Fora daqui ficam **Neon** (Postgres) e **Cloudflare R2** (mídia), que têm free tier de
-verdade. O Fly saiu de cena: o trial dura 7 dias e não deixa cadastrar domínio próprio —
-e sem domínio não existe login com Google.
+Fora daqui fica só o **Cloudflare R2** (mídia). O Neon saiu em 23/09/2026 — a explicação
+está no `STATE.md`, mas em uma linha: o zero-cache mantinha um slot de replicação
+permanente que impedia o autosuspend, e a cota do free tier morria todo mês por volta do
+dia 8. Sem motor de sync o slot não existe, e com o Postgres aqui dentro não há cota.
+
+O Fly também saiu: o trial dura 7 dias e não deixa cadastrar domínio próprio — e sem
+domínio não existe login com Google.
 
 | container | o que é | exposto? |
 |---|---|---|
-| `caddy` | TLS e roteamento por subdomínio | sim, 80 e 443 |
-| `app` | site + `app/api/*` (auth, mídia, billing, cron, zero) | não, só pelo Caddy |
-| `zero` | banco: o sync reativo | não, só pelo Caddy |
+| `caddy` | TLS e roteamento | sim, 80 e 443 |
+| `app` | site + `app/api/*` (auth, mídia, billing, cron, conteúdo) | não, só pelo Caddy |
+| `db` | Postgres 17 | **não**, nem para a internet nem para o host |
+| `migrate` | roda as migrations e sai | — |
 
 
 ## Backup — leia antes de qualquer coisa
@@ -73,9 +78,9 @@ Lightsail com Docker, plano de **1 GB** ou mais. Requisitos:
   máquina só-IPv6, quem abrir o site de uma rede sem IPv6 não vê nada — que num
   portfólio é justamente o caso que mais importa.
 
-Com 1 GB, três containers cabem apertado — medido: 493 MB somados, e **30 MiB
-disponíveis** na máquina. Olhe a coluna `available` do `free -h`, não a `free`. Ligue
-swap antes de subir:
+Com 1 GB cabe com folga — medido em 24/09/2026: `app` 123 MB + `db` 37 MB + `caddy`
+21 MB, com **321 MB disponíveis**. Olhe a coluna `available` do `free -h`, não a `free`.
+Ligue swap antes de subir mesmo assim:
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
@@ -87,40 +92,20 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ## Antes: o que não é na máquina
 
-**1. Neon.** Crie os dois bancos auxiliares — o banco cria os schemas dentro deles,
-mas não cria os bancos:
+**1. Cloudflare R2.** Bucket criado e o CORS liberando `https://bubble.mateusgsouza.com.br`
+— o navegador faz PUT direto no R2, sem passar por este servidor.
 
-```sql
-CREATE DATABASE zero_cvr; CREATE DATABASE zero_cdb;
-```
-
-E **ligue a replicação lógica**, que vem desligada: *Settings → Logical Replication →
-Enable*. Isso reinicia o compute. Sem ela o banco morre no boot com
-`Postgres must be configured with "wal_level = logical"`. Confirme (`SHOW` não funciona
-no SQL Editor do Neon):
-
-```sql
-SELECT current_setting('wal_level');
-```
-
-**2. DNS.** Dois nomes, ambos para esta máquina, **antes** de subir — o Caddy tenta
-emitir os certificados no primeiro boot e falha se os nomes não resolverem:
+**2. DNS.** Um registro só, apontando para a máquina:
 
 ```
-AAAA  bubble.mateusgsouza.com.br → <IPv6 da máquina>
-AAAA  zero.mateusgsouza.com.br   → <IPv6 da máquina>
-A     (os mesmos dois nomes)     → <IPv4 estático>
+A     bubble.mateusgsouza.com.br  → <IPv4 da máquina>
+AAAA  bubble.mateusgsouza.com.br  → <IPv6 da máquina>
 ```
 
-Crie no provedor que hospeda o DNS do domínio hoje (é a Vercel; o site principal continua
-lá, subdomínio não interfere). Criar uma zona DNS na Lightsail **não funciona** sem
-delegar `NS` do pai para ela — é caminho mais longo para o mesmo lugar.
+ℹ️ Havia um segundo nome, `zero.`, para o zero-cache. Pode ser apagado.
 
-**3. Google.** No Cloud Console, a URI de redirecionamento autorizada tem que ser
-exatamente `https://bubble.mateusgsouza.com.br/api/auth/callback/google`.
-
-**4. R2.** O CORS do bucket precisa listar `https://bubble.mateusgsouza.com.br` — o
-navegador faz `PUT` direto no R2, sem passar pelo servidor. Use `scripts/r2-cors.ts`.
+**3. Google Cloud Console.** A URI de redirecionamento autorizada tem que ser exatamente
+`https://bubble.mateusgsouza.com.br/api/auth/callback/google`.
 
 ## A imagem do app
 
@@ -137,7 +122,7 @@ qualquer uma delas depois exige reconstruir e republicar — mexer no `app.env` 
 Na raiz do repo, na sua máquina:
 
 ```bash
-VITE_ZERO_HOSTNAME=zero.mateusgsouza.com.br VITE_WEB_HOSTNAME=bubble.mateusgsouza.com.br ONE_SERVER_URL=https://bubble.mateusgsouza.com.br bun run build
+VITE_WEB_HOSTNAME=bubble.mateusgsouza.com.br \n  VITE_MASTER_USER_ID=<id do criador> \n  ONE_SERVER_URL=https://bubble.mateusgsouza.com.br bun run build
 ```
 
 ```bash
@@ -163,23 +148,31 @@ Reconecte depois do `exit`: o grupo `docker` só passa a valer em sessão nova.
 
 **2. Os arquivos.** Copie `docker-compose.yml` e `Caddyfile` desta pasta para
 `~/bubble-app/`, troque `SEU_USUARIO` no compose pelo seu usuário do Docker Hub, e crie
-os dois envs:
-
-```bash
-cp zero.env.example zero.env && nano zero.env
-```
+os envs:
 
 ```bash
 cp app.env.example app.env && nano app.env
 ```
 
+🔴 **`POSTGRES_PASSWORD` vai num `.env` ao lado do compose**, não no `app.env`: o
+`env_file` só define variáveis **dentro** do container, e o compose precisa do valor para
+interpolar `${POSTGRES_PASSWORD}` no serviço `db`. O mesmo valor entra dentro da
+`DATABASE_URL`, no `app.env`.
+
+```bash
+PW=$(openssl rand -hex 24)
+printf 'POSTGRES_PASSWORD=%s
+' "$PW" > .env
+chmod 600 .env app.env
+```
+
 **3. Suba:**
 
 ```bash
-docker compose up -d && docker compose logs -f zero
+docker compose up -d --remove-orphans && docker compose logs -f app
 ```
 
-O primeiro boot do banco demora: ele copia o banco do Neon para o replica local.
+O `migrate` roda antes do `app` subir (`depends_on: db healthy`) e sai sozinho.
 
 **4. Confirme de fora:**
 
@@ -187,15 +180,17 @@ O primeiro boot do banco demora: ele copia o banco do Neon para o replica local.
 curl -s -o /dev/null -w "%{http_code}\n" https://bubble.mateusgsouza.com.br/
 ```
 
-## Depois do primeiro login
+## O criador
 
-`VITE_MASTER_USER_ID` nasce vazio, e **com ele vazio o feed abre vazio** — comportamento
-correto, não bug. O id só existe depois que o criador entrar de verdade. Pegue no banco,
-refaça o build com a variável, republique a imagem e:
+`VITE_MASTER_USER_ID` é **embutido no build** e é o `feedOwnerId` de todo conteúdo. Com
+ele vazio o feed abre vazio — comportamento correto, não bug.
 
-```bash
-docker compose pull app && docker compose up -d app
-```
+Duas ordens possíveis, e a segunda evita um build:
+
+- **o criador entra primeiro**: pegue o id no banco, refaça o build com a variável e
+  republique
+- **o id já está escolhido**: use `scripts/bootstrap-creator.ts` para criar a conta já
+  com ele (ver *Banco novo, do zero* acima)
 
 ## Manutenção
 
@@ -203,10 +198,10 @@ docker compose pull app && docker compose up -d app
   build pela WSL (o bun não roda no Windows), imagem, troca do container por SSH e
   confere o 200. Precisa da chave da Lightsail em `~/.ssh/lightsail-bubble.pem`; sem
   ela o script imprime o comando para colar no terminal do navegador.
-- **atualizar o banco**: a versão da imagem tem que continuar casando com
-  `@rocicorp/zero` do `package.json` e com `ZERO_VERSION` do `app.env`
-- **backup**: o volume `zero_data` é descartável — é um replica derivado do Postgres, e
-  se sumir o banco reconstrói. O que não pode se perder é o Neon.
+- 🔴 **backup**: o volume `pgdata` **é** o produto. Ver a primeira seção deste arquivo.
+- **query lenta**: o `db` loga qualquer coisa acima de 200 ms
+  (`log_min_duration_statement`). Depois de um passe pelo app, `docker compose logs db`
+  deve estar vazio — linha ali é regressão com nome e sobrenome.
 - **reboot**: o `restart: unless-stopped` cobre, desde que o Docker suba no boot
   (`sudo systemctl enable docker`)
 
@@ -216,7 +211,7 @@ Não é o recomendado (ver *Máquina*), mas se for, duas coisas que o padrão do
 faz — e que já estão nos arquivos desta pasta:
 
 - **`daemon.json`**: a bridge padrão é IPv4-only. O container sai por NAT para um IPv4
-  que ali não existe e fica sem internet — o banco não alcança o Neon, o Caddy não
+  que ali não existe e fica sem internet — o Caddy não
   alcança a Let's Encrypt. (O `docker pull` funciona: roda no host.)
 
   ```bash
@@ -227,5 +222,5 @@ faz — e que já estão nos arquivos desta pasta:
   padrão, e o Compose cria uma rede própria. Rede já criada não muda de configuração —
   se subiu antes, `docker compose down` primeiro.
 
-O sintoma de faltar qualquer um dos dois é `ENETUNREACH` no endereço IPv6 do Neon, com
+O sintoma de faltar qualquer um dos dois é `ENETUNREACH` ao sair para a internet, com
 `ETIMEDOUT` nos IPv4 junto.
