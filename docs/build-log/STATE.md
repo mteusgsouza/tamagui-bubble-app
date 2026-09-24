@@ -463,6 +463,28 @@ via "Nenhum curso por aqui" — a própria tela admitia a mentira num comentári
 curso fechado chega com capa, descrição e currículo; `body` e `media` da aula não. A
 amostra grátis continua abrindo.
 
+🔴 **Banco que já rodou o Zero não sobe com `wal_level=replica`.** O Postgres recusa:
+
+```
+FATAL: logical replication slot "zero_0_..." exists, but wal_level < logical
+```
+
+O slot não some quando o container do zero-cache some — ele vive **no banco**. Volume de
+desenvolvimento antigo, ou um dump restaurado de antes da migração, trava no boot com o
+compose de hoje. Duas saídas:
+
+```bash
+# descartável (dev): apaga o volume e recria
+docker compose down -v && bun backend
+
+# com dados que importam: sobe uma vez em logical, derruba o slot, volta ao normal
+docker compose run --rm pgdb postgres -c wal_level=logical &
+psql ... -c "SELECT pg_drop_replication_slot(slot_name) FROM pg_replication_slots;"
+```
+
+Em produção isso não apareceu porque o banco nasceu vazio. Apareceu no dev local, e
+custou um diagnóstico — o erro fala de `wal_level`, não de "sobrou coisa do Zero".
+
 ℹ️ **`DATABASE_URL` é o nome oficial da conexão.** `ZERO_UPSTREAM_DB` ficou como alias
 depreciado, com o fallback **invertido** — a nova ganha — para que tirar o nome antigo das
 máquinas não cause outage.

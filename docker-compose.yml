@@ -14,13 +14,17 @@ services:
       POSTGRES_USER: user
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: password
+    # 🔴 Este bloco vira **lista de argumentos**, não linha de shell: o compose separa
+    # por espaço. Comentário aqui dentro não é comentário — o `#` chega ao Postgres como
+    # argumento, ele não sobe, o healthcheck nunca passa e o `migrate` espera para
+    # sempre. O sintoma é "migrations timed out", que não aponta para cá.
+    # `log_min_duration_statement=200`: qualquer query acima disso aparece no log.
     command: |
       postgres
       -c max_connections=256
       -c log_error_verbosity=terse
       -c log_min_messages=fatal
       -c idle_in_transaction_session_timeout=300000
-      # qualquer query acima de 200ms aparece no log — detector de regressão de graça
       -c log_min_duration_statement=200
       -c statement_timeout=60000
       -c tcp_keepalives_idle=60
