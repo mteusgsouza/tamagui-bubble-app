@@ -1,10 +1,11 @@
 # Bubble App
 
 Plataforma de conteúdo de **um criador só**: feed (texto/foto/vídeo/áudio), cursos,
-conteúdo liberado por assinatura, e um admin web. Web + iOS + Android.
+conteúdo liberado por assinatura (mensal, anual ou compra avulsa, pelo Stripe), e um
+admin web. Web + iOS + Android.
 
 Stack: Takeout Free v2-beta (Tamagui 2.0-rc) · One (rotas por arquivo, `app/api/*+api.ts`)
-· React Query · Better Auth · Drizzle + Postgres · Bun.
+· React Query · Better Auth · Drizzle + Postgres · **Stripe** · Bun.
 
 ## Documentação
 
@@ -52,7 +53,7 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 | | |
 |---|---|
 | `bun check types` | typecheck. **`bun check` sozinho não roda nada** |
-| `bun test:unit` | 92 testes |
+| `bun test:unit` | 158 testes |
 | `bun run:dev scripts/x.ts` | script com env. **Sem um segundo `bun`** — `bun run:dev` já embute |
 | `bun env:update` | propaga o bloco `env` do package.json |
 | ~~`bun check lint`~~ | **quebrado**: `panic: unknown rule` (versão do oxlint-tsgolint no starter) |

@@ -20,7 +20,8 @@ Web · iOS · Android — um código só.
 
 Um app onde **um único criador publica e a audiência assina para ver**. Não é rede social:
 não existe feed de terceiros, nem seguir, nem publicar de quem entra. Existe o criador
-(`role = admin`), o conteúdo dele, e quem paga para acessar.
+(`role = admin`), o conteúdo dele, e quem paga para acessar — por assinatura mensal,
+anual ou compra avulsa, cobradas pelo **Stripe**.
 
 A regra que organiza o produto inteiro é uma só: **cada peça de conteúdo é `public` ou
 `subscribers`** — e, quando é de assinante, pode ainda exigir um **plano específico**
@@ -66,14 +67,32 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
 
 ### Assinatura e paywall
 
-- **`plan`** (nome, preço, moeda, intervalo mensal/anual, à venda ou fora) e
+- **`plan`** (nome, preço, moeda, intervalo mensal/anual/**avulso**, à venda ou fora) e
   **`subscription`** (status `trialing` · `active` · `past_due` · `canceled` · `expired`)
 - Gate por **join de duas colunas** (`feedOwnerId`+`requiredPlanId` → `creatorId`+`planId`):
   post/curso sem plano exigido abre para qualquer assinatura ativa; com plano exigido, só
   para aquele plano
-- **Adapter de cobrança** (`manual` e `generic`), webhook assinado com HMAC, rota de
-  checkout e job de expiração de assinatura vencida
-- Concessão e revogação manual de assinatura pelo admin, com histórico de pagamento
+- 🔓 **Conteúdo trancado aparece.** Post e curso de assinante chegam a todo mundo como
+  vitrine — título, capa, isca, e no curso o currículo inteiro. O que não chega é o
+  produto: corpo do post, mídia e aula. Catálogo invisível não converte ninguém
+- Tela **`/assinar`** com a tabela de preços, e o card bloqueado no feed levando a ela
+- Concessão e revogação manual pelo admin, com histórico de pagamento
+
+### Pagamento
+
+- **[Stripe](https://stripe.com)** como gateway, por trás de um adapter
+  ([`src/features/billing/providers/`](src/features/billing/providers/)) que também tem
+  um `manual` para desenvolvimento — trocar é uma variável de ambiente
+- **Checkout hospedado** (`ui_mode: 'hosted_page'`), nos dois modos: assinatura recorrente
+  (`mode: 'subscription'`) e **compra avulsa** (`mode: 'payment'`), que dá acesso por um
+  número fixo de dias em vez de renovar
+- **Portal do cliente** do próprio Stripe para cancelar e trocar cartão — o que acontece
+  lá volta pelo webhook, sem tela nossa
+- Webhook com verificação de assinatura, **deduplicação de pagamento** e mapeamento de
+  evento para status em [`stripeEvents.ts`](src/features/billing/providers/stripeEvents.ts),
+  que é função pura e tem teste
+- `scripts/stripe-sync-plans.ts` liga cada `plan` a um Price do Stripe. Price é imutável
+  lá, então mudar preço cria um novo e o antigo continua valendo para quem já comprou
 
 ### Conta
 
@@ -110,9 +129,8 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
 
 | | Estado |
 |---|---|
-| **Tela de assinar** | ⏳ Os planos existem e o gate funciona, mas **não há tela onde o usuário clique para assinar**. Hoje a assinatura é concedida pelo admin |
-| **Gateway de pagamento real** | ⏳ `providers/stripe.ts` pronto e provado em sandbox; falta registrar o webhook de produção e pôr as chaves no `app.env` |
-| **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`; falta apontar um agendador para ela, uma vez por dia |
+| **Stripe ligado em produção** | ⏳ O código está pronto e **provado ponta a ponta em sandbox** (checkout, webhook concedendo assinatura, pagamento deduplicado, portal). Em produção o `BILLING_PROVIDER` ainda é `manual`: falta registrar o endpoint de webhook e pôr as chaves no `app.env` |
+| **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`; falta apontar um agendador para ela, uma vez por dia. 🔴 Importa mais desde que a **compra avulsa** existe: o Stripe não avisa o fim dos 30 dias, e o gate olha só o status — sem o cron, o avulso vira acesso vitalício |
 | **Recuperar senha / verificar e-mail** | ⏳ `magicLink` já está ligado no servidor; falta a UI |
 | **Inglês (i18n)** | ⬜ Está no escopo, sem prioridade hoje. A UI é em português e ainda não há camada de tradução |
 
@@ -129,9 +147,10 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 | ORM / schema | **[Drizzle](https://orm.drizzle.team)** 1.0.0-beta.9 | Schema em TS, migrations versionadas |
 | Banco | **Postgres 17** | No mesmo host do app em produção — leitura sem viagem de rede |
 | Mídia | **Cloudflare R2** | PUT assinado direto do cliente; sem egress e sem passar bytes pelo app |
+| Pagamento | **[Stripe](https://stripe.com)** 22.6.0 | Checkout hospedado, assinatura e compra avulsa no mesmo adapter; o portal do cliente evita construir tela de cancelamento |
 | Runtime | **Bun 1.3.9** · Node 24.3.0 | |
 | Nativo | **Expo 55** · React Native 0.83.2 · React 19.2 | |
-| Testes | **Vitest** (94 unitários) · **Playwright** (15 de integração) | |
+| Testes | **Vitest** (158 unitários) · **Playwright** (15 de integração) | |
 
 ### As quatro decisões que explicam o resto
 
@@ -244,18 +263,22 @@ de Perfil lê. Ao subir a versão, mexa nos dois — o teste
 | iOS mínimo | 17.0 · Xcode 26.0 |
 | Bun / Node | 1.3.9 / 24.3.0 |
 | One / Tamagui / React Query | 1.14.2 / 2.0.0-rc.34 / 5.103.2 |
+| Stripe | 22.6.0 |
 | Expo / React Native / React | 55 / 0.83.2 / 19.2.0 |
 | Postgres | 17 |
 
 ## Produção
 
-Três provedores, porque cada peça exige uma coisa diferente:
+**Uma máquina e um bucket.** Era três provedores até o Postgres sair do Neon em
+setembro de 2026: o motor de sync mantinha um slot de replicação aberto, o autosuspend
+nunca disparava e a cota do free tier morria todo mês. Detalhe em
+[`STATE.md`](docs/build-log/STATE.md).
 
 | Peça | Onde | Por quê |
 |---|---|---|
-| Banco + app server | **AWS Lightsail** ([`deploy/aws/`](deploy/aws/)) | uma máquina, um Caddy, um domínio |
-| Postgres | **container na própria máquina** | sem cota para estourar, e a leitura não cruza a rede |
-| Mídia | **Cloudflare R2** | PUT direto do navegador, com CORS por origem |
+| Postgres + app + Caddy | **AWS Lightsail** ([`deploy/aws/`](deploy/aws/)) | uma máquina, um domínio; a leitura não cruza a rede |
+| Mídia e backup | **Cloudflare R2** | PUT direto do navegador com CORS por origem; o `pg_dump` diário vai para o mesmo bucket |
+| Pagamento | **Stripe** | checkout e portal hospedados — nenhum dado de cartão passa por aqui |
 
 O app roda em container: `Dockerfile` na raiz, Compose de produção em
 [`deploy/aws/`](deploy/aws/), e o Caddy na frente terminando o TLS.
@@ -267,6 +290,10 @@ no ar antes de dar por feito:
 ```bash
 bash scripts/deploy.sh
 ```
+
+🔴 **O banco mora no volume `pgdata` desta máquina**, então o backup é por nossa conta:
+[`deploy/aws/backup.sh`](deploy/aws/backup.sh) roda por cron, manda o dump para o R2 e
+confere o tamanho do que chegou. Um `docker compose down -v` distraído apaga o produto.
 
 Diagnóstico da instância: `GET /api/health?diag=<CRON_SECRET>` devolve um ping real no
 banco e o estado de cada variável. O passo a passo da infraestrutura está em
