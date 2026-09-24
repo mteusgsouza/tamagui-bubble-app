@@ -2,9 +2,7 @@ import { router } from 'one'
 import { memo, useState } from 'react'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { MASTER_USER_ID } from '~/constants/creator'
-import { activePlans, activeSubscription } from '~/data/queries/subscription'
-import { useAuth } from '~/features/auth/client/authClient'
+import { useMe, usePlans } from '~/data/client/hooks'
 import {
   billingMessage,
   CHECKOUT_MESSAGES,
@@ -15,7 +13,6 @@ import { planPriceLabel, renewalNote } from '~/features/billing/formatPrice'
 import { Button } from '~/interface/buttons/Button'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
 import { PageLayout } from '~/interface/pages/PageLayout'
-import { useQuery } from '~/zero/client'
 
 type PlanRow = {
   id: string
@@ -43,26 +40,21 @@ type PlanRow = {
  *
  * ⚠️ Rota fora de `/home` **não é protegida por padrão** — o guard só olhava `/home`.
  * Ele passou a cobrir `/assinar` também; sem isso, deslogado veria giro infinito, porque
- * `activePlans` fica `enabled: false` sem `userId`.
+ * as queries ficam `enabled: false` sem `userId`.
  */
 export const SubscribePage = memo(() => {
-  const { user } = useAuth()
-  const userId = user?.id || ''
-
-  const [plans, status] = useQuery(activePlans, { enabled: Boolean(userId) })
-  const [current] = useQuery(
-    activeSubscription,
-    { userId, creatorId: MASTER_USER_ID },
-    { enabled: Boolean(userId && MASTER_USER_ID) },
-  )
+  const { data, isPending } = usePlans()
+  // a assinatura atual vem de `/api/me`, a mesma chave que o card de Ajustes usa —
+  // duas telas perguntando a mesma coisa era duas queries no Zero
+  const current = useMe().data?.subscription ?? null
 
   // qual plano está abrindo o gateway — o botão precisa saber sozinho, senão os dois
   // giram juntos
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const rows = (plans ?? []) as PlanRow[]
-  const loading = status?.type !== 'complete' && rows.length === 0
+  const rows = (data?.plans ?? []) as PlanRow[]
+  const loading = isPending
 
   const subscribe = async (planId: string) => {
     if (pending) return

@@ -4,7 +4,7 @@ Plataforma de conteúdo de **um criador só**: feed (texto/foto/vídeo/áudio), 
 conteúdo liberado por assinatura, e um admin web. Web + iOS + Android.
 
 Stack: Takeout Free v2-beta (Tamagui 2.0-rc) · One (rotas por arquivo, `app/api/*+api.ts`)
-· Zero da Rocicorp (sync reativo) · Better Auth · Drizzle + Postgres · Bun.
+· React Query · Better Auth · Drizzle + Postgres · Bun.
 
 ## Documentação
 
@@ -12,17 +12,16 @@ Stack: Takeout Free v2-beta (Tamagui 2.0-rc) · One (rotas por arquivo, `app/api
 pendências. `INDEX.md` mapeia as 10 fases; `handoffs/NN-*.md` conta o que cada uma
 entregou e por quê. Este arquivo é só o essencial que se repete; o detalhe está lá.
 
-`deploy/` — produção. `fly-app.toml` (app server), `aws/` (zero-cache). Topologia e as
+`deploy/` — produção. `fly-app.toml` (referência), `aws/` (banco, app e proxy). Topologia e as
 armadilhas de deploy estão em **`STATE.md` → Produção**.
 
 ## Ambiente
 
 O projeto vive em `F:\apps\bubble-app\mobile-bubble-app` e **roda da WSL**
-(`/mnt/f/apps/bubble-app/mobile-bubble-app`). Portas: app **8081**, Postgres **5533**,
-zero-cache **4948**.
+(`/mnt/f/apps/bubble-app/mobile-bubble-app`). Portas: app **8081**, Postgres **5533**.
 
 ```bash
-bun backend    # docker: pgdb + zero-cache + migrate
+bun backend    # docker: pgdb + migrate
 bun dev        # app em :8081
 ```
 
@@ -55,7 +54,6 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 | `bun check types` | typecheck. **`bun check` sozinho não roda nada** |
 | `bun test:unit` | 92 testes |
 | `bun run:dev scripts/x.ts` | script com env. **Sem um segundo `bun`** — `bun run:dev` já embute |
-| `bun zero:generate` | obrigatório ao criar query/mutation nova |
 | `bun env:update` | propaga o bloco `env` do package.json |
 | ~~`bun check lint`~~ | **quebrado**: `panic: unknown rule` (versão do oxlint-tsgolint no starter) |
 
@@ -64,35 +62,43 @@ Contas: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador, `role = ad
 
 ## Invariantes — quebrar qualquer uma vira bug silencioso
 
-1. **Mutation do Zero roda duas vezes** (otimista no cliente, autoritativa no servidor).
-   `newId()` e `Date.now()` saem da **tela**, nunca de dentro da mutation — senão cliente
-   e servidor geram valores diferentes e o dado diverge.
-2. **Query nova só existe depois de `bun zero:generate`.** Sem isso a tela fica vazia sem
-   erro nenhum.
-3. **`payment` é tabela privada** (`schema-private.ts`), fora da publication do Zero. Só
-   dá para lê-la no servidor.
-4. **FKs de conteúdo apontam para `userPublic`**, não para `user`. Conta sem `userPublic`
+1. **`payment` é tabela privada** (`schema-private.ts`). Só o servidor a lê — nenhuma
+   rota devolve pagamento para o cliente.
+2. **FKs de conteúdo apontam para `userPublic`**, não para `user`. Conta sem `userPublic`
    não recebe assinatura — o hook `afterCreateUser` cria a linha.
-5. **O gate de assinatura é join no servidor**, nunca claim de JWT: o token dura 3 anos.
-   Por isso as rotas `/api/admin/*` releem `user.role` do Postgres.
-6. **Cor da marca é token** (`$accent*`, `$accentBackground`/`$accentColor`). Hex dentro
+3. **O gate de assinatura é decidido no servidor**, nunca por claim de JWT: o token dura
+   3 anos. `src/server/access/contentAccess.ts` é o único lugar que decide, e
+   `loadViewer` relê `user.role` do Postgres a cada requisição.
+4. **Cor da marca é token** (`$accent*`, `$accentBackground`/`$accentColor`). Hex dentro
    de componente é bug — ver `src/tamagui/brandAccent.ts`.
-7. **Bytes de mídia não passam pelo servidor do app**: PUT direto no R2 com URL assinada,
+5. **Bytes de mídia não passam pelo servidor do app**: PUT direto no R2 com URL assinada,
    leitura por 302. A tela nunca monta URL de R2.
-8. **Uma variável de ambiente mora em UM arquivo só.** Os três carregadores (bun, vxrn,
+6. **Uma variável de ambiente mora em UM arquivo só.** Os três carregadores (bun, vxrn,
    dotenvx) discordam da ordem, então chave repetida resolve diferente conforme o
    comando. Mapa completo em `.env.local.example`.
-9. **Na web, layout usa `<Slot/>`** — nunca `Stack`/`Tabs` do react-navigation, que
+7. **Na web, layout usa `<Slot/>`** — nunca `Stack`/`Tabs` do react-navigation, que
    resetam a rota no carregamento direto de URL.
-10. **Guard de rota nunca devolve `null`.** Desmontar a árvore faz o roteador
-    reinicializar na primeira rota do grupo em ordem alfabética (hoje `/admin`). Ver
-    `app/(app)/_layout.tsx`.
-11. **Campo de senha usa `type`, nunca `secureTextEntry`.** O `Input` **web** do Tamagui
-    descarta `secureTextEntry` — a fonte dele lista a prop sob *"Native-only props
-    (ignored on web)"*. O sintoma é senha digitada **em texto puro**, sem erro e sem
-    typecheck reclamando. O nativo faz o inverso e deriva o mascaramento de `type`
-    (`Input.native.tsx`, "Convert web type to native props"), então `type` funciona nas
-    duas plataformas. Já quebrou uma vez.
+8. **Guard de rota nunca devolve `null`.** Desmontar a árvore faz o roteador
+   reinicializar na primeira rota do grupo em ordem alfabética (hoje `/admin`). Pelo
+   mesmo motivo, **nada de `key={userId}` no `QueryClientProvider`** — a separação por
+   usuário vai na query key (`src/data/client/keys.ts`), não na árvore. Ver
+   `app/(app)/_layout.tsx`.
+9. **Campo de senha usa `type`, nunca `secureTextEntry`.** O `Input` **web** do Tamagui
+   descarta `secureTextEntry` — a fonte dele lista a prop sob *"Native-only props
+   (ignored on web)"*. O sintoma é senha digitada **em texto puro**, sem erro e sem
+   typecheck reclamando. O nativo faz o inverso e deriva o mascaramento de `type`
+   (`Input.native.tsx`, "Convert web type to native props"). Já quebrou uma vez.
+10. 🔴 **Spinner só com `isPending`, nunca com `isFetching`.** É a linha que separa
+   "instantâneo" de "pisca a cada volta": revalidação em segundo plano não pode aparecer
+   na tela quando já existe dado em cache. Detalhe em `src/data/client/hooks.ts`.
+11. 🔴 **Timestamp do banco chega como string sem fuso, e é UTC.** `src/database/pgTypes.ts`
+   desliga o parser do `pg` de propósito: sem isso o driver interpreta como hora **local**
+   do processo, e numa máquina fora do UTC todo `createdAt` volta deslocado — em produção
+   (UTC) o defeito some por acaso. Converter é `toEpoch`, e o contrato com a tela é
+   **epoch em milissegundos**.
+12. **Endpoint gasta número constante de queries.** Busca os pais, `inArray` para cada
+   coleção filha, costura com `Map` em JS. Query dentro de laço é regressão — foi o N+1
+   do sync que a migração veio resolver. Confira com `DB_LOG=1`.
 
 ## Verificação
 

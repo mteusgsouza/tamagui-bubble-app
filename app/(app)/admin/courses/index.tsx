@@ -3,23 +3,18 @@ import { memo } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { adminCourses } from '~/data/queries/admin'
 import { AdminEmpty, AdminSection } from '~/features/admin/AdminShell'
+import { useAdminCourses } from '~/data/client/hooks'
 import { useAuth } from '~/features/auth/client/authClient'
 import { newId } from '~/helpers/id'
 import { Button } from '~/interface/buttons/Button'
-import { useQuery } from '~/zero/client'
 
 export const AdminCoursesPage = memo(() => {
   const router = useRouter()
   const { user } = useAuth()
   const userId = user?.id || ''
 
-  const [courses] = useQuery(
-    adminCourses,
-    { feedOwnerId: MASTER_USER_ID, userId },
-    { enabled: Boolean(userId && MASTER_USER_ID) },
-  )
+  const courses = useAdminCourses().data?.courses
 
   const rows = (courses ?? []) as any[]
 

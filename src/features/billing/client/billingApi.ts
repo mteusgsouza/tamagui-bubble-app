@@ -42,14 +42,9 @@ const PORTAL_MESSAGES: Record<string, string> = {
   'no-customer': 'Você ainda não tem assinatura para gerenciar.',
 }
 
-/** Traduz o erro cru para uma frase de tela, sem perder o código. */
-export function billingMessage(err: unknown, messages: Record<string, string>): string {
-  if (err instanceof ApiError) {
-    return messages[err.code] || err.message || 'Não deu para continuar.'
-  }
-  // rede caiu, servidor fora, DNS — falha diferente de 4xx e merece texto próprio
-  return 'Sem conexão com o servidor. Verifique a internet e tente de novo.'
-}
+// Mantido como reexport: o helper subiu para `~/helpers/apiMessage` quando o resto do
+// app passou a falar REST, e os chamadores daqui continuam válidos.
+export { apiMessage as billingMessage } from '~/helpers/apiMessage'
 
 /**
  * Começa o checkout e devolve a URL hospedada do gateway.

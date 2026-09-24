@@ -4,8 +4,8 @@ import { Configuration, isWeb } from 'tamagui'
 import { useAuth } from '~/features/auth/client/authClient'
 import { DialogProvider } from '~/interface/dialogs/Dialog'
 import { PlatformSpecificRootProvider } from '~/interface/platform/PlatformSpecificRootProvider'
+import { ProvideQueryClient } from '~/data/client/queryClient'
 import { ToastProvider } from '~/interface/toast/Toast'
-import { ProvideZero } from '~/zero/client'
 
 /**
  * Guard do app.
@@ -48,30 +48,30 @@ export function AppLayout() {
 
   return (
     <Configuration disableSSR>
-      <ProvideZero>
-        <ToastProvider>
-          <DialogProvider>
-            <PlatformSpecificRootProvider>
-              {redirectTo ? (
-                <Redirect href={redirectTo as any} />
-              ) : isWeb ? (
-                /* `isWeb`, e não `process.env.VITE_PLATFORM`: essa env var nunca é
-                   definida — nem pelo projeto, nem pelo One/vxrn — então a comparação
-                   dava `false` na web e este layout caía no ramo nativo. */
-                <Slot />
-              ) : (
-                // We need Stack here for transition animation to work on native
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="home" />
-                  <Stack.Screen name="auth" />
-                  {/* irmã de `home`, não filha: é caminho de conversão e não tem abas */}
-                  <Stack.Screen name="assinar" />
-                </Stack>
-              )}
-            </PlatformSpecificRootProvider>
-          </DialogProvider>
-        </ToastProvider>
-      </ProvideZero>
+      <ProvideQueryClient>
+          <ToastProvider>
+            <DialogProvider>
+              <PlatformSpecificRootProvider>
+                {redirectTo ? (
+                  <Redirect href={redirectTo as any} />
+                ) : isWeb ? (
+                  /* `isWeb`, e não `process.env.VITE_PLATFORM`: essa env var nunca é
+                     definida — nem pelo projeto, nem pelo One/vxrn — então a comparação
+                     dava `false` na web e este layout caía no ramo nativo. */
+                  <Slot />
+                ) : (
+                  // We need Stack here for transition animation to work on native
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="home" />
+                    <Stack.Screen name="auth" />
+                    {/* irmã de `home`, não filha: é caminho de conversão e não tem abas */}
+                    <Stack.Screen name="assinar" />
+                  </Stack>
+                )}
+              </PlatformSpecificRootProvider>
+            </DialogProvider>
+          </ToastProvider>
+      </ProvideQueryClient>
     </Configuration>
   )
 }

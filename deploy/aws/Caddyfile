@@ -1,11 +1,10 @@
-# Um bloco por subdomínio. O Caddy emite e renova os certificados sozinho; o único
-# requisito é que os dois nomes já resolvam para esta máquina antes de subir.
+# O Caddy emite e renova o certificado sozinho; o único requisito é que o nome já
+# resolva para esta máquina antes de subir.
+#
+# ℹ️ Havia um segundo bloco aqui, `zero.` → `zero:4848`, que saiu com o zero-cache.
+# O registro de DNS correspondente pode ser apagado.
 
 bubble.mateusgsouza.com.br {
 	reverse_proxy app:8092
 }
 
-zero.mateusgsouza.com.br {
-	# WebSocket é o transporte do sync — o Caddy repassa upgrade sem configuração extra
-	reverse_proxy zero:4848
-}

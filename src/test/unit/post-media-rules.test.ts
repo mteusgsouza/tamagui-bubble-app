@@ -10,7 +10,7 @@ import {
 } from '~/features/admin/postMediaRules'
 
 import type { AttachedMedia } from '~/features/admin/postMediaRules'
-import type { PostKind } from '~/data/types'
+import type { PostKind } from '~/data/enums'
 
 const link = (id: string, kind: PostKind): AttachedMedia => ({
   id: `pm-${id}`,

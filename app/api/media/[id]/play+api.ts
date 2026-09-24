@@ -20,6 +20,7 @@ import {
   POSTER_MIME,
 } from '~/constants/media'
 import { authServer } from '~/features/auth/server/authServer'
+import { fail } from '~/server/api/respond'
 import { resolveMediaAccess } from '~/server/media/mediaAccess'
 import { getSignedPlaybackUrl, isR2Configured } from '~/server/storage/r2'
 
@@ -30,8 +31,6 @@ import type { Endpoint } from 'one'
 // faz em src/features/auth/server/apiHandler.ts.
 const ID_FROM_PATH = /\/api\/media\/([^/]+)\/play\/?$/
 
-const fail = (status: number, code: string, message: string) =>
-  Response.json({ error: message, code }, { status })
 
 export const GET: Endpoint = async (request) => {
   const url = new URL(request.url)

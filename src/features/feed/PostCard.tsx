@@ -106,7 +106,7 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
           <LikeButton
             postId={post.id}
             likeCount={post.likeCount}
-            liked={(post.reactions?.length ?? 0) > 0}
+            liked={post.liked ?? false}
           />
 
           <Link href={href}>

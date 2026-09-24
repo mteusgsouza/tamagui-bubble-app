@@ -2,7 +2,7 @@
 // (para dar erro imediato) e a rota valida de novo no servidor (porque a checagem do
 // cliente não vale nada). Mudou aqui, mudou nos dois lados.
 
-import type { MediaKind } from '~/data/models/media'
+import type { MediaKind } from '~/data/enums'
 
 export const MEDIA_KINDS = ['photo', 'video', 'audio'] as const
 

@@ -7,7 +7,7 @@ import { showToast } from '~/interface/toast/Toast'
 import { plugins } from './plugins'
 
 import type { User } from 'better-auth'
-import type { AuthData } from 'on-zero'
+import type { AuthData } from '~/features/auth/types'
 
 type AppUser = User & { role?: 'admin' }
 

@@ -14,6 +14,7 @@ import { eq } from 'drizzle-orm'
 import { getDb } from '~/database'
 import { media } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
+import { fail } from '~/server/api/respond'
 import { canUploadMedia } from '~/server/media/mediaAccess'
 import { headObject, isR2Configured } from '~/server/storage/r2'
 
@@ -29,8 +30,6 @@ type CompleteRequestBody = {
   height?: unknown
 }
 
-const fail = (status: number, code: string, message: string) =>
-  Response.json({ error: message, code }, { status })
 
 const asOptionalInt = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0

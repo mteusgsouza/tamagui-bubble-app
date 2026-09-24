@@ -7,7 +7,7 @@ import { SizableText, Spinner, YStack } from 'tamagui'
 
 import { formatDuration } from './formatDuration'
 
-import type { MediaKind } from '~/data/models/media'
+import type { MediaKind } from '~/data/enums'
 import type { ReactNode } from 'react'
 import type { YStackProps } from 'tamagui'
 

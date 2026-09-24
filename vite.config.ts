@@ -21,9 +21,7 @@ export default {
     // @rocicorp/zero and @rocicorp/zero/server - they share queryInternalsTag
     // Symbol that must be the same instance for query transforms to work
     external: [
-      'on-zero',
       '@vxrn/mdx',
-      '@rocicorp/zero',
       'retext',
       'retext-smartypants',
       '@opentelemetry/api',
@@ -100,7 +98,6 @@ export default {
             build: {
               rollupOptions: {
                 external: [
-                  '@rocicorp/zero',
                   'better-auth',
                   'better-auth/plugins',
                   'sharp',

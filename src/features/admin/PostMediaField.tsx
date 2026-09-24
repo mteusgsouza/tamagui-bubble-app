@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
 
 import { formatBytes, MAX_PHOTOS_PER_POST, MAX_UPLOAD_BYTES } from '~/constants/media'
+import { adminPosts } from '~/data/client/api'
+import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { MediaView } from '~/features/media/MediaView'
 import { useMediaUpload } from '~/features/media/useMediaUpload'
-import { newId } from '~/helpers/id'
 import { Pressable } from '~/interface/buttons/Pressable'
-import { zero } from '~/zero/client'
 
 import { pickFiles } from './pickFile'
 import {
@@ -17,7 +17,7 @@ import {
   withMedia,
 } from './postMediaRules'
 
-import type { PostKind } from '~/data/types'
+import type { PostKind } from '~/data/enums'
 import type { AttachedMedia } from './postMediaRules'
 
 /**
@@ -46,6 +46,7 @@ export const PostMediaField = ({
   ensurePost: () => Promise<boolean>
 }) => {
   const { upload, error, reset } = useMediaUpload()
+  const invalidate = useInvalidateAfterAdminWrite()
   const [queue, setQueue] = useState<{ done: number; total: number } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -85,18 +86,13 @@ export const PostMediaField = ({
     // sequencial de propósito: o hook tem um XHR só, e subir 9 em paralelo estouraria
     // a fila de mutations do Zero na hora de criar os vínculos
     setQueue({ done: 0, total: accepted.length })
-    let position = items.length
-
     for (const [index, file] of accepted.entries()) {
       const mediaId = await upload({ blob: file, mime: file.type })
       if (!mediaId) break
 
-      await zero.mutate.postMedia.insert({
-        id: newId(),
-        postId,
-        mediaId,
-        position: position++,
-      })
+      // a `position` sai do servidor (`max + 1`), então `position++` local some junto
+      // com a corrida que ele tinha entre dois anexos rápidos
+      await adminPosts({ action: 'attachMedia', id: postId, mediaId })
       setQueue({ done: index + 1, total: accepted.length })
     }
 
@@ -105,7 +101,8 @@ export const PostMediaField = ({
 
   const detach = async (linkId: string) => {
     // apaga o vínculo, não a mídia: ela pode estar em outro post
-    await zero.mutate.postMedia.delete({ id: linkId })
+    await adminPosts({ action: 'detachMedia', postMediaId: linkId })
+    invalidate()
   }
 
   const busy = queue !== null

@@ -16,13 +16,12 @@ import {
   setSubscriptionStatus,
 } from '~/features/billing/server/subscriptionActions'
 import { MASTER_USER_ID } from '~/constants/creator'
+import { fail } from '~/server/api/respond'
 
 import type { Endpoint } from 'one'
 
 const PROVIDER_FROM_PATH = /\/api\/billing\/webhook\/([^/?]+)/
 
-const fail = (status: number, code: string, message: string) =>
-  Response.json({ error: message, code }, { status })
 
 export const POST: Endpoint = async (request) => {
   const url = new URL(request.url)

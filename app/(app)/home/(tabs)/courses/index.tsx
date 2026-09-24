@@ -4,13 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
-import { courses } from '~/data/queries/course'
-import { useAuth } from '~/features/auth/client/authClient'
+import { useCourses } from '~/data/client/hooks'
 import { CourseCard } from '~/features/courses/CourseCard'
 import { courseStats } from '~/features/courses/courseStats'
 import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
-import { useQuery } from '~/zero/client'
 
 import type { Course } from '~/features/courses/types'
 
@@ -24,20 +22,13 @@ type FilterId = (typeof FILTERS)[number]['id']
 
 export const CoursesPage = memo(() => {
   const insets = useSafeAreaInsets()
-  // useAuth, não useUser: o id vem do JWT na hora, sem consultar o banco
-  const { user } = useAuth()
-  const userId = user?.id || ''
-
   const [filter, setFilter] = useState<FilterId>('all')
 
-  const [rows, status] = useQuery(
-    courses,
-    { feedOwnerId: MASTER_USER_ID, userId },
-    { enabled: Boolean(userId && MASTER_USER_ID) },
-  )
+  const { data, isPending } = useCourses()
 
-  const all = (rows ?? []) as readonly Course[]
-  const isLoading = status?.type !== 'complete' && all.length === 0
+  const all = (data?.courses ?? []) as readonly Course[]
+  // 🔴 `isPending`, não `isFetching`: trocar de aba de filtro e voltar não pode piscar
+  const isLoading = isPending
 
   // o filtro é client-side de propósito: "concluído" depende do progresso do usuário,
   // que já veio junto na query — não vale uma consulta a mais

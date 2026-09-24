@@ -95,7 +95,7 @@ export const PostDetail = memo(({ post }: { post: FeedPost }) => {
             <LikeButton
               postId={post.id}
               likeCount={post.likeCount}
-              liked={(post.reactions?.length ?? 0) > 0}
+              liked={post.liked ?? false}
               size={20}
             />
 

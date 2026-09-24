@@ -9,7 +9,6 @@ const REQUIRED = [
   'BETTER_AUTH_SECRET',
   'BETTER_AUTH_URL',
   'ONE_SERVER_URL',
-  'ZERO_VERSION',
 ] as const
 
 /** Cada sonda tem prazo. Sem isto a rota trava junto com o que está diagnosticando. */
@@ -32,7 +31,7 @@ export const GET: Endpoint = async (request) => {
 
   // o app aceita qualquer um dos dois: `DATABASE_URL` é o nome que a integração
   // Neon↔Vercel injeta (ver `src/server/env-server.ts`)
-  const dbUrl = process.env.ZERO_UPSTREAM_DB || process.env.DATABASE_URL || ''
+  const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_URL || ''
   const ok = missing.length === 0 && Boolean(dbUrl)
 
   const body: Record<string, unknown> = {
@@ -42,7 +41,7 @@ export const GET: Endpoint = async (request) => {
     timestamp: new Date().toISOString(),
     config: {
       faltando: missing,
-      banco: dbUrl ? 'configurado' : 'AUSENTE (ZERO_UPSTREAM_DB ou DATABASE_URL)',
+      banco: dbUrl ? 'configurado' : 'AUSENTE (DATABASE_URL ou DATABASE_URL)',
       // sem expor credencial: só o formato, que é onde mora a confusão pooler/direto
       bancoHost: hostOf(dbUrl),
       bancoPooler: dbUrl.includes('-pooler') ? 'sim (certo para a Vercel)' : 'não',

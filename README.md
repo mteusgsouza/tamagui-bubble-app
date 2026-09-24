@@ -91,7 +91,7 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
   marcar `freePreview`
 - **Planos**: criar, editar e tirar de venda — o plano sai do catálogo mas continua
   existindo, porque é referência de posts antigos e de assinaturas já vendidas
-- **Pessoas**: usuários, assinaturas e faturamento — a única área que **não** usa Zero,
+- **Pessoas**: usuários, assinaturas e faturamento — lê `payment`, que é tabela privada,
   porque `payment` é tabela privada
 - Dois níveis: `canManage` (criador ou admin) abre o admin de conteúdo; `canManagePeople`
   (só `role = admin`) abre Pessoas e Planos
@@ -111,7 +111,7 @@ nunca o hex. Trocar a marca inteira é mexer na rampa.
 | | Estado |
 |---|---|
 | **Tela de assinar** | ⏳ Os planos existem e o gate funciona, mas **não há tela onde o usuário clique para assinar**. Hoje a assinatura é concedida pelo admin |
-| **Gateway de pagamento real** | ⏳ `BILLING_PROVIDER=manual`. O adapter e o webhook estão prontos; falta escolher o gateway (Stripe/Asaas/Pagar.me) e escrever `providers/<nome>.ts` seguindo o `generic.ts` |
+| **Gateway de pagamento real** | ⏳ `providers/stripe.ts` pronto e provado em sandbox; falta registrar o webhook de produção e pôr as chaves no `app.env` |
 | **Agendar a expiração** | ⏳ `/api/cron/expire-subscriptions` existe e é protegida por `CRON_SECRET`; falta apontar um agendador para ela, uma vez por dia |
 | **Recuperar senha / verificar e-mail** | ⏳ `magicLink` já está ligado no servidor; falta a UI |
 | **Inglês (i18n)** | ⬜ Está no escopo, sem prioridade hoje. A UI é em português e ainda não há camada de tradução |
@@ -124,10 +124,10 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 |---|---|---|
 | Framework | **[One](https://onestack.dev)** 1.14.2 | Rotas por arquivo para web **e** nativo, com API routes (`app/api/*+api.ts`) no mesmo repo |
 | UI | **[Tamagui](https://tamagui.dev)** 2.0.0-rc.34 | Um componente que compila para DOM e para React Native, com tema e tokens de verdade |
-| Sync | **[Zero](https://zero.rocicorp.dev)** 0.26.2 (Rocicorp) | Query reativa com mutation otimista: o app parece local, e o servidor continua sendo a autoridade |
-| Auth | **[Better Auth](https://www.better-auth.com)** 1.3.32 | E-mail/senha + social + JWT para o Zero, com hooks na criação de usuário |
-| ORM / schema | **[Drizzle](https://orm.drizzle.team)** 1.0.0-beta.9 | Schema em TS, migrations versionadas, e a publication do Zero derivada dele |
-| Banco | **Postgres 16** | Replicação lógica é o que alimenta o zero-cache |
+| Auth | **[Better Auth](https://www.better-auth.com)** 1.3.32 | E-mail/senha + social + JWT, com hooks na criação de usuário |
+| Dados no cliente | **[React Query](https://tanstack.com/query)** 5 | Cache em memória com stale-while-revalidate: a tela lê do cache e revalida por baixo |
+| ORM / schema | **[Drizzle](https://orm.drizzle.team)** 1.0.0-beta.9 | Schema em TS, migrations versionadas |
+| Banco | **Postgres 17** | No mesmo host do app em produção — leitura sem viagem de rede |
 | Mídia | **Cloudflare R2** | PUT assinado direto do cliente; sem egress e sem passar bytes pelo app |
 | Runtime | **Bun 1.3.9** · Node 24.3.0 | |
 | Nativo | **Expo 55** · React Native 0.83.2 · React 19.2 | |
@@ -135,13 +135,13 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 
 ### As quatro decisões que explicam o resto
 
-1. **Mutation do Zero roda duas vezes** — otimista no cliente, autoritativa no servidor.
-   Como as duas execuções precisam chegar ao mesmo resultado, tudo que varia — `newId()`,
-   `Date.now()` — é decidido na **tela** e entra na mutation como argumento.
-2. **O paywall é join no servidor.** As permissions de leitura vivem em
-   [`src/data/where/canAccessContent.ts`](src/data/where/canAccessContent.ts) e rodam
-   server-side: o direito de ver é consultado no banco a cada sync, e o cliente recebe só
-   as linhas que passam. O JWT carrega identidade, não entitlement.
+1. **Um endpoint por tela.** O feed é uma requisição, o post é uma requisição — e cada
+   uma gasta um número **constante** de queries, nunca proporcional às linhas. CRUD
+   genérico por tabela só transferiria o N+1 para o HTTP.
+2. **O paywall é decidido no servidor.** As regras vivem em
+   [`src/server/access/contentAccess.ts`](src/server/access/contentAccess.ts) como
+   predicado puro sobre o entitlement já carregado, e o cliente recebe só o que passa. O
+   JWT carrega identidade, não direito de acesso — ele dura 3 anos.
 3. **Bytes de mídia não passam pelo servidor do app.** Ele assina a URL e decide quem
    pode; o R2 entrega. Por consequência, a tela nunca monta URL de R2 — tudo vai por
    `<MediaView>` ou `/api/media/[id]/play`.
@@ -150,16 +150,16 @@ Detalhe de cada pendência em [`docs/build-log/STATE.md`](docs/build-log/STATE.m
 
 ## Modelo de dados
 
-**Público** (replicado pelo Zero, [`schema-public.ts`](src/database/schema-public.ts)):
+**Público** ([`schema-public.ts`](src/database/schema-public.ts)) — o que as telas leem:
 `userPublic` · `userState` · `plan` · `subscription` · `media` · `post` · `postMedia` ·
 `comment` · `reaction` · `course` · `courseModule` · `lesson` · `lessonProgress`
 
-**Privado** (fora da publication, [`schema-private.ts`](src/database/schema-private.ts)):
+**Privado** ([`schema-private.ts`](src/database/schema-private.ts)) — só o servidor:
 `user` · `account` · `session` · `jwks` · `verification` · **`payment`**
 
-A divisão é o que define o que o cliente enxerga: as FKs de conteúdo apontam para
-**`userPublic`**, que é replicada e chega ao app; `user` fica do lado privado, com e-mail,
-senha e papel, e só o `payment` a referencia.
+A divisão é o que define o que pode chegar ao cliente: as FKs de conteúdo apontam para
+**`userPublic`**, que é vitrine; `user` fica do lado privado, com e-mail, senha e papel, e
+só o `payment` a referencia.
 
 ## Estrutura
 
@@ -170,11 +170,14 @@ app/
 │   ├── home/(tabs)/             feed · cursos · perfil
 │   └── admin/                   posts · cursos · planos · pessoas (web-only)
 └── api/
-    └── auth/ · media/ · billing/ · admin/ · cron/ · zero/ · health
+    └── feed · post · courses · course · lesson · plans · me · reactions
+        comments · progress · auth/ · media/ · billing/ · admin/ · cron/ · health
 src/
 ├── features/                    feed, courses, media, admin, auth, billing, theme
 ├── interface/                   componentes reutilizáveis (Logo, Button, MediaView…)
-├── data/                        schema do Zero, models, queries, permissions
+├── data/client/                 React Query: chaves, hooks, cache, mutations
+├── server/access/               quem é o visitante e o que ele pode ver
+├── server/content/              os montadores de cada endpoint
 ├── database/                    schema Drizzle + migrations
 ├── server/                      env, cliente R2, gate de mídia
 └── tamagui/                     tema e a rampa da marca
@@ -188,7 +191,7 @@ Requer **Bun**, **Docker** e **Git**.
 
 ```bash
 bun install
-bun backend    # docker: postgres :5533 + zero-cache :4948 + migrate
+bun backend    # docker: postgres :5533 + migrate
 bun dev        # app em http://localhost:8081
 ```
 
@@ -222,7 +225,6 @@ convivem no mesmo aparelho.
 | `bun test:unit` | 94 testes de unidade |
 | `bun test:integration` | Playwright |
 | `bun run:dev scripts/x.ts` | roda um script com as variáveis de ambiente carregadas |
-| `bun zero:generate` | regenera models, queries e mutations do Zero — obrigatório ao criar uma query ou mutation nova |
 | `bun env:update` | propaga o bloco `env` do `package.json` |
 | `bun migrate` | aplica as migrations |
 
@@ -241,9 +243,9 @@ de Perfil lê. Ao subir a versão, mexa nos dois — o teste
 | EAS | projeto `bubble-app`, owner `mteusg` |
 | iOS mínimo | 17.0 · Xcode 26.0 |
 | Bun / Node | 1.3.9 / 24.3.0 |
-| One / Tamagui / Zero | 1.14.2 / 2.0.0-rc.34 / 0.26.2 |
+| One / Tamagui / React Query | 1.14.2 / 2.0.0-rc.34 / 5.103.2 |
 | Expo / React Native / React | 55 / 0.83.2 / 19.2.0 |
-| Postgres | 16 |
+| Postgres | 17 |
 
 ## Produção
 
@@ -251,15 +253,15 @@ Três provedores, porque cada peça exige uma coisa diferente:
 
 | Peça | Onde | Por quê |
 |---|---|---|
-| App server + zero-cache | **AWS Lightsail** ([`deploy/aws/`](deploy/aws/)) | uma máquina, um Caddy, dois subdomínios |
-| Postgres | **Neon** (`sa-east-1`) | free tier serve |
+| Banco + app server | **AWS Lightsail** ([`deploy/aws/`](deploy/aws/)) | uma máquina, um Caddy, um domínio |
+| Postgres | **container na própria máquina** | sem cota para estourar, e a leitura não cruza a rede |
 | Mídia | **Cloudflare R2** | PUT direto do navegador, com CORS por origem |
 
 O app roda em container: `Dockerfile` na raiz, Compose de produção em
 [`deploy/aws/`](deploy/aws/), e o Caddy na frente terminando o TLS.
 
 Publicar é um comando — [`scripts/deploy.sh`](scripts/deploy.sh) constrói, publica a
-imagem, troca só o container do app (Caddy e zero-cache seguem de pé) e confere o digest
+imagem, troca só o container do app (Caddy e o banco seguem de pé) e confere o digest
 no ar antes de dar por feito:
 
 ```bash

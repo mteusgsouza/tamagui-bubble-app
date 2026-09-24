@@ -3,9 +3,7 @@ import { memo } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { MASTER_USER_ID } from '~/constants/creator'
-import { courseBySlug, lessonDetail } from '~/data/queries/course'
-import { useAuth } from '~/features/auth/client/authClient'
+import { useCourse, useLesson } from '~/data/client/hooks'
 import { lessonAfter, lessonPosition, resumeAt } from '~/features/courses/courseStats'
 import { isLessonComplete } from '~/features/courses/types'
 import { useLessonProgress } from '~/features/courses/useLessonProgress'
@@ -14,7 +12,6 @@ import { MediaView } from '~/features/media/MediaView'
 import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
-import { useQuery } from '~/zero/client'
 
 import type { Course, CourseLesson } from '~/features/courses/types'
 
@@ -28,24 +25,14 @@ export const LessonPage = memo(() => {
     lessonId?: string
   }>()
 
-  const { user } = useAuth()
-  const userId = user?.id || ''
+  const lessonQuery = useLesson(lessonId || '')
+  const lesson = lessonQuery.data?.lesson
 
-  const [lesson, status] = useQuery(
-    lessonDetail,
-    { lessonId: lessonId || '', userId },
-    { enabled: Boolean(lessonId && userId) },
-  )
+  // o curso vem junto para "AULA 3 DE 24" e "Próxima aula" — resolve do cache, porque a
+  // tela anterior já carregou o currículo
+  const course = useCourse(courseSlug || '').data?.course
 
-  // o curso vem junto para "AULA 3 DE 24" e "Próxima aula" — resolve no cache local,
-  // porque a tela anterior já sincronizou essas linhas
-  const [course] = useQuery(
-    courseBySlug,
-    { feedOwnerId: MASTER_USER_ID, slug: courseSlug || '', userId },
-    { enabled: Boolean(courseSlug && userId && MASTER_USER_ID) },
-  )
-
-  const isLoading = status?.type !== 'complete' && !lesson
+  const isLoading = lessonQuery.isPending
 
   const content = (
     <YStack bg="$background" flex={1} width="100%" maxW={720} mx="auto" px="$4">
@@ -118,6 +105,8 @@ const LessonBody = ({
   const { onProgress, onEnded, markComplete, canSave } = useLessonProgress({
     lessonId: lesson.id,
     alreadyComplete: done,
+    // concluir a aula invalida o currículo; salvar posição a cada 10 s não
+    courseSlug,
   })
 
   const position = course ? lessonPosition(course, lesson.id) : { index: 0, total: 0 }

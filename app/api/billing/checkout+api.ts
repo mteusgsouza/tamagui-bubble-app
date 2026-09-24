@@ -16,11 +16,10 @@ import { getDb } from '~/database'
 import { plan } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
 import { activeProvider } from '~/features/billing/registry'
+import { fail } from '~/server/api/respond'
 
 import type { Endpoint } from 'one'
 
-const fail = (status: number, code: string, message: string) =>
-  Response.json({ error: message, code }, { status })
 
 export const POST: Endpoint = async (request) => {
   const auth = await getAuthDataFromRequest(authServer, request)

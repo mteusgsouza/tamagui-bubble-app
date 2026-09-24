@@ -20,26 +20,19 @@ import { plan, subscription } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
 import { revokeSubscription } from '~/features/billing/server/revokeSubscription'
 import { grantSubscription } from '~/features/billing/server/subscriptionActions'
+import { isAdminInDb } from '~/server/access/viewer'
+import { fail } from '~/server/api/respond'
 
 import type { AuthData } from '~/features/auth/types'
 import type { Endpoint } from 'one'
 
-const fail = (status: number, code: string, message: string) =>
-  Response.json({ error: message, code }, { status })
-
 /**
- * Autorização que **não** confia na claim do JWT: lê `user.role` do banco.
- * Devolve o id do admin, ou `null`.
+ * Autorização que **não** confia na claim do JWT. A leitura da role mora em
+ * `~/server/access/viewer` — um lugar só decide quem é admin.
  */
 async function requireAdmin(auth: AuthData | null): Promise<string | null> {
   if (!auth?.id) return null
-  const db = getDb()
-  const [row] = await db
-    .select({ role: user.role })
-    .from(user)
-    .where(eq(user.id, auth.id))
-    .limit(1)
-  return row?.role === 'admin' ? auth.id : null
+  return (await isAdminInDb(auth.id)) ? auth.id : null
 }
 
 export const GET: Endpoint = async (request) => {

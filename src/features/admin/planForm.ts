@@ -5,7 +5,7 @@
 // Com Zero, uma mutation que o servidor recusa é aplicada e **revertida** na tela —
 // então validar antes é o que impede o formulário de piscar.
 
-import type { Plan } from '~/data/models/plan'
+import type { Plan } from '~/data/enums'
 
 /**
  * "29,90" | "29.90" | "R$ 29,90" → 2990.
@@ -67,8 +67,27 @@ export type PlanDraft = {
   order: number
 }
 
+/**
+ * O que o formulário edita — declarado, não derivado.
+ *
+ * Era `Omit<Plan, 'currency'>`, herdado do tipo de **insert** do Zero, onde toda coluna
+ * opcional some do obrigatório. O `Plan` do Drizzle é o tipo de **select**: `accessDays`
+ * é `number | null`, obrigatório na leitura, e o formulário não o edita. Derivar de novo
+ * do select faria o tipo exigir um campo que esta tela não tem.
+ */
+export type PlanValues = {
+  id: string
+  name: string
+  slug: string
+  priceCents: number
+  currency: string
+  interval: Plan['interval']
+  active: boolean
+  order: number
+}
+
 export type PlanValidation =
-  | { ok: true; values: Omit<Plan, 'currency'> & { currency: string } }
+  | { ok: true; values: PlanValues }
   | { ok: false; message: string }
 
 /** Valida o rascunho contra os planos que já existem. */

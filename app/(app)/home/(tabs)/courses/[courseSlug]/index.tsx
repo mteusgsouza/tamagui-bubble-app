@@ -1,11 +1,9 @@
-import { useParams, useRouter, createRoute } from 'one'
+import { Link, useParams, useRouter, createRoute } from 'one'
 import { memo } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
-import { MASTER_USER_ID } from '~/constants/creator'
-import { courseBySlug } from '~/data/queries/course'
-import { useAuth } from '~/features/auth/client/authClient'
+import { useCourse } from '~/data/client/hooks'
 import { CourseCurriculum } from '~/features/courses/CourseCurriculum'
 import {
   courseStats,
@@ -17,7 +15,6 @@ import { MediaView } from '~/features/media/MediaView'
 import { Button } from '~/interface/buttons/Button'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { CaretLeftIcon } from '~/interface/icons/phosphor/CaretLeftIcon'
-import { useQuery } from '~/zero/client'
 
 import type { Course } from '~/features/courses/types'
 
@@ -28,17 +25,12 @@ export const CourseDetailPage = memo(() => {
   const router = useRouter()
   const { courseSlug } = useParams<{ courseSlug?: string }>()
 
-  const { user } = useAuth()
-  const userId = user?.id || ''
+  // semeado pela lista quando ela já foi carregada, então abrir um curso vindo do
+  // catálogo não mostra spinner
+  const { data, isPending } = useCourse(courseSlug || '')
 
-  const [course, status] = useQuery(
-    courseBySlug,
-    { feedOwnerId: MASTER_USER_ID, slug: courseSlug || '', userId },
-    { enabled: Boolean(courseSlug && userId && MASTER_USER_ID) },
-  )
-
-  const isLoading = status?.type !== 'complete' && !course
-  const typed = course as Course | undefined
+  const isLoading = isPending
+  const typed = data?.course as Course | undefined
 
   const content = (
     <YStack bg="$background" flex={1} width="100%" maxW={620} mx="auto" px="$4">
@@ -119,7 +111,19 @@ const CourseBody = ({ course }: { course: Course }) => {
         </YStack>
       ) : null}
 
-      {next ? (
+      {/* 🔒 Curso fechado: o currículo continua visível logo abaixo — é ele que vende —
+          e o botão leva para os planos em vez de para uma aula que daria 404. */}
+      {course.locked ? (
+        <Link href="/assinar" style={{ width: '100%' }} asChild>
+          <Button size="$4" variant="accent" width="100%">
+            <SizableText size="$4" fontWeight="600" color="$accentColor">
+              {course.lockReason === 'needs-plan'
+                ? 'Ver planos que incluem este curso'
+                : 'Assinar para abrir as aulas'}
+            </SizableText>
+          </Button>
+        </Link>
+      ) : next ? (
         <Button
           size="$4"
           variant="accent"
