@@ -1,6 +1,6 @@
 # Bubble App na AWS
 
-Tudo numa máquina só: site, API e sync, com Caddy na frente cuidando do TLS.
+Tudo numa máquina só: banco, site, API e Caddy na frente cuidando do TLS.
 
 Fora daqui ficam **Neon** (Postgres) e **Cloudflare R2** (mídia), que têm free tier de
 verdade. O Fly saiu de cena: o trial dura 7 dias e não deixa cadastrar domínio próprio —
@@ -10,7 +10,58 @@ e sem domínio não existe login com Google.
 |---|---|---|
 | `caddy` | TLS e roteamento por subdomínio | sim, 80 e 443 |
 | `app` | site + `app/api/*` (auth, mídia, billing, cron, zero) | não, só pelo Caddy |
-| `zero` | zero-cache: o sync reativo | não, só pelo Caddy |
+| `zero` | banco: o sync reativo | não, só pelo Caddy |
+
+
+## Backup — leia antes de qualquer coisa
+
+🔴 **O banco agora mora nesta máquina.** Com o Neon fora, ninguém mais faz backup por
+você: a máquina morrer passa a significar perder o produto, e um `docker compose down -v`
+distraído apaga o volume `pgdata`.
+
+O mínimo:
+
+```bash
+# na máquina, diariamente por cron
+docker compose exec -T db pg_dump -U bubble -Fc bubble > ~/backups/bubble-$(date +%F).dump
+```
+
+E **mandar o dump para fora do disco** — as credenciais do R2 já estão no `app.env`.
+Backup no mesmo disco que ele protege não é backup.
+
+⚠️ **Teste a restauração uma vez**, num banco descartável. Backup não testado é ficção.
+
+Snapshot semanal da Lightsail é um clique no console e cobre o disco inteiro.
+
+## Sequência de deploy
+
+A ordem importa, e o script não a impõe sozinho:
+
+1. `bun run build` com as `VITE_*` (elas são **embutidas no build**, não lidas em runtime)
+2. `docker build` + publicar a imagem
+3. `docker compose up -d --remove-orphans` — o serviço `migrate` roda antes do `app`
+   subir, por `depends_on: db healthy`
+4. conferir `GET /api/health` e o feed
+
+ℹ️ **Sem acesso ao registry?** Dá para pular o Docker Hub inteiro:
+
+```bash
+docker save mteusgsouza/bubble-app:latest | gzip -1   | ssh -i ~/.ssh/lightsail-bubble.pem ubuntu@bubble.mateusgsouza.com.br 'gunzip | docker load'
+```
+
+Leva alguns minutos para ~470 MB, e o `Id` da imagem dos dois lados tem que bater.
+
+## Banco novo, do zero
+
+`VITE_MASTER_USER_ID` é embutido no build e é o `feedOwnerId` de todo conteúdo. Num banco
+recém-criado esse id não existe, e `seed-posts.ts` aborta. Um cadastro normal gera id
+aleatório, e trocá-lo depois esbarra nas FKs.
+
+```bash
+docker compose exec -T app sh -c 'cd /app && bun scripts/bootstrap-creator.ts   --email criador@exemplo.com --password SENHA   --id <VITE_MASTER_USER_ID> --url http://localhost:8092'
+
+docker compose exec -T -e VITE_MASTER_USER_ID=<id> app sh -c   'cd /app && bun scripts/seed-courses.ts && bun scripts/seed-posts.ts'
+```
 
 ## Máquina
 
@@ -36,7 +87,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 ## Antes: o que não é na máquina
 
-**1. Neon.** Crie os dois bancos auxiliares — o zero-cache cria os schemas dentro deles,
+**1. Neon.** Crie os dois bancos auxiliares — o banco cria os schemas dentro deles,
 mas não cria os bancos:
 
 ```sql
@@ -44,7 +95,7 @@ CREATE DATABASE zero_cvr; CREATE DATABASE zero_cdb;
 ```
 
 E **ligue a replicação lógica**, que vem desligada: *Settings → Logical Replication →
-Enable*. Isso reinicia o compute. Sem ela o zero-cache morre no boot com
+Enable*. Isso reinicia o compute. Sem ela o banco morre no boot com
 `Postgres must be configured with "wal_level = logical"`. Confirme (`SHOW` não funciona
 no SQL Editor do Neon):
 
@@ -128,7 +179,7 @@ cp app.env.example app.env && nano app.env
 docker compose up -d && docker compose logs -f zero
 ```
 
-O primeiro boot do zero-cache demora: ele copia o banco do Neon para o replica local.
+O primeiro boot do banco demora: ele copia o banco do Neon para o replica local.
 
 **4. Confirme de fora:**
 
@@ -152,10 +203,10 @@ docker compose pull app && docker compose up -d app
   build pela WSL (o bun não roda no Windows), imagem, troca do container por SSH e
   confere o 200. Precisa da chave da Lightsail em `~/.ssh/lightsail-bubble.pem`; sem
   ela o script imprime o comando para colar no terminal do navegador.
-- **atualizar o zero-cache**: a versão da imagem tem que continuar casando com
+- **atualizar o banco**: a versão da imagem tem que continuar casando com
   `@rocicorp/zero` do `package.json` e com `ZERO_VERSION` do `app.env`
 - **backup**: o volume `zero_data` é descartável — é um replica derivado do Postgres, e
-  se sumir o zero-cache reconstrói. O que não pode se perder é o Neon.
+  se sumir o banco reconstrói. O que não pode se perder é o Neon.
 - **reboot**: o `restart: unless-stopped` cobre, desde que o Docker suba no boot
   (`sudo systemctl enable docker`)
 
@@ -165,7 +216,7 @@ Não é o recomendado (ver *Máquina*), mas se for, duas coisas que o padrão do
 faz — e que já estão nos arquivos desta pasta:
 
 - **`daemon.json`**: a bridge padrão é IPv4-only. O container sai por NAT para um IPv4
-  que ali não existe e fica sem internet — o zero-cache não alcança o Neon, o Caddy não
+  que ali não existe e fica sem internet — o banco não alcança o Neon, o Caddy não
   alcança a Let's Encrypt. (O `docker pull` funciona: roda no host.)
 
   ```bash
