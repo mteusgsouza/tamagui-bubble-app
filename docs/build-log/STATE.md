@@ -463,6 +463,17 @@ via "Nenhum curso por aqui" — a própria tela admitia a mentira num comentári
 curso fechado chega com capa, descrição e currículo; `body` e `media` da aula não. A
 amostra grátis continua abrindo.
 
+⚠️ **Correção de um engano registrado em dois commits.** As mensagens de
+`feat(feed): o feed sai do Zero` e do merge afirmam, em "Conhecido e NÃO resolvido", que
+carregar rota aninhada direto pela URL (`/home/feed/<id>`) cai no pai. **Não cai.**
+Verificado depois, com o dev server estável: `/home/feed/post-que-nao-existe` e
+`/home/courses/curso-que-nao-existe` carregam na própria URL e mostram o estado de
+indisponível.
+
+O que eu vi na hora foi bundle velho logo após reiniciar o dev server — o mesmo
+`504 Outdated Optimize Dep` que aparece depois de mexer em dependência. Confundir isso
+com comportamento de rota custou uma pendência falsa em dois commits.
+
 🔴 **Banco que já rodou o Zero não sobe com `wal_level=replica`.** O Postgres recusa:
 
 ```

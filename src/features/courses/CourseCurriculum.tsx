@@ -109,6 +109,7 @@ export const LessonRow = ({
 
   const row = (
       <XStack
+        data-testid="lesson-row"
         gap="$3"
         py="$2.5"
         items="center"
@@ -147,11 +148,7 @@ export const LessonRow = ({
   if (!open) return row
 
   return (
-    <Link
-      href={`/home/courses/${courseSlug}/${lesson.id}`}
-      data-testid="lesson-row"
-      style={{ width: '100%' }}
-    >
+    <Link href={`/home/courses/${courseSlug}/${lesson.id}`} style={{ width: '100%' }}>
       {row}
     </Link>
   )

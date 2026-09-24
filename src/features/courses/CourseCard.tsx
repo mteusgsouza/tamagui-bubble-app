@@ -20,13 +20,13 @@ export const CourseCard = memo(({ course }: { course: Course }) => {
   const started = stats.completedCount > 0
   const locked = Boolean(course.locked)
 
+  // ⚠️ O `data-testid` vai no view de dentro, não no `<Link>`: o `Link` do One descarta
+  // prop desconhecida e o `<a>` sai sem o atributo — testid no `Link` faz o teste de
+  // integração **pular** em silêncio em vez de falhar.
   return (
-    <Link
-      href={`/home/courses/${course.slug}`}
-      data-testid="course-card"
-      style={{ width: '100%' }}
-    >
+    <Link href={`/home/courses/${course.slug}`} style={{ width: '100%' }}>
       <YStack
+        data-testid="course-card"
         gap="$3"
         p="$3"
         rounded="$6"

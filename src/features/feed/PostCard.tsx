@@ -67,8 +67,13 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
       {/* só o texto abre o post: mídia dentro do link roubaria o toque do player.
           `width: 100%` porque na web o Link vira um `<a>` inline e o bloco de dentro
           não esticaria sozinho */}
-      <Link href={href} data-testid="post-link" style={{ width: '100%' }}>
-        <YStack gap="$2">
+      {/* ⚠️ O `data-testid` vai no view de dentro, não no `<Link>`: o `Link` do One
+          descarta prop desconhecida e o `<a>` sai sem o atributo. Os testes de
+          integração procuram por testid, então testid no `Link` faz o teste **pular**
+          em silêncio em vez de falhar — foi o que aconteceu com `post-link`,
+          `course-card` e `lesson-row` desde que foram escritos. */}
+      <Link href={href} style={{ width: '100%' }}>
+        <YStack gap="$2" data-testid="post-link">
           {post.title ? (
             <SizableText size="$6" fontWeight="700" lineHeight={25}>
               {post.title}
