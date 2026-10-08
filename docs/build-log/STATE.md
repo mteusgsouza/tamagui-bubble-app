@@ -519,10 +519,9 @@ achadas no bundle (sem log do aparelho) e conferidas no bytecode do próprio APK
    de varrer as dependências no dev server** — coisa que o build de release nunca faz. E
    o vxrn 1.25.16 traz **a própria cópia** do `@vxrn/compiler`: o One 1.14.2 configura a
    cópia dele, não a que empacota o APK. É o preço do 630f04d ter subido só o vxrn.
-2. **O `setupNative.ts` não entrava no bundle**, por dois motivos empilhados: o `bundle`
-   do vxrn lê o `setupFile` de um global que só a função `one()` do `vite.config.ts`
-   grava, e esse caminho não carrega o `vite.config.ts`; e mesmo com ele carregado, o
-   `"sideEffects": false` do `package.json` faz o tree-shaking apagar o
+2. **O `setupNative.ts` não entrava no bundle.** O `setupFile` chega ao vxrn certo — o
+   `bundle` dele chama o `resolveConfig` do Vite, que roda a função `one()` — mas o
+   `"sideEffects": false` do `package.json` fazia o tree-shaking apagar o
    `import "setupNative.ts"`. Sem ele: sem MMKV (a sessão não persiste), sem os setups do
    Tamagui.
 
@@ -532,12 +531,27 @@ disso fica escondido atrás dele, para sempre. O `RootErrorBoundary` do One most
 "Something went wrong" para erro de render — não ter aparecido nem isso aponta para falha
 **antes** do React, o que bate com o runtime de worklets.
 
-**Conserto:** o `react-native.config.cjs` agora embrulha o `bundle` do vxrn — carrega o
-`vite.config.ts` (como o próprio CLI do One faz) e liga o `enableReanimated` na instância
-do compilador que o vxrn importa. O `sideEffects` virou lista explícita. Medido no bundle:
-**0 worklets cruas** (593 transformadas), `setupNative.ts`, MMKV, polyfill de crypto e os
-cinco setups do `@tamagui/native` presentes. O `bun check native-bundle` passou a falhar
-nos dois casos.
+**Conserto:** o `react-native.config.cjs` agora embrulha o `bundle` do vxrn e liga o
+`enableReanimated` na instância do compilador que o vxrn importa. O `sideEffects` virou
+lista explícita. Medido no bundle: **0 worklets cruas** (593 transformadas),
+`setupNative.ts`, MMKV, polyfill de crypto e os cinco setups do `@tamagui/native`
+presentes. O `bun check native-bundle` passou a falhar nos dois casos.
+
+🔴 **A primeira versão do conserto travou o EAS até o teto de 45 min** (build
+`125ca5b1`, cancelado). Ela carregava o `vite.config.ts` no embrulho — redundante, porque
+o vxrn já o resolve — e isso construía **um segundo plugin do Tamagui**. O plugin sobe
+processos do esbuild (um carrega o `tamagui.build.ts`, outro o **observa**, feito para
+ficar vivo) que herdam o stderr do processo. A tarefa `:app:createBundleReleaseJsAndAssets`
+imprimiu `Exiting process` às 01:11:00 e nunca fechou; o Gradle executa as tarefas de um
+mesmo módulo em série, então o `:app` inteiro parou atrás dela. No build 1 a mesma tarefa
+fechou 50 s depois do `Exiting process`.
+
+⚠️ **Não reproduzido localmente:** na WSL (Node 24) o pipe fecha 1 s depois da saída
+mesmo com o segundo carregamento; o EAS roda **Node 20.19.4**. A conclusão é por
+diferença: a versão atual deixa o carregamento do config **idêntico ao do build 1**
+(medido: os mesmos 2 processos esbuild, o mesmo pipe fechando), e o build 1 terminou.
+Se travar de novo no mesmo ponto, o suspeito seguinte é o observador do Tamagui sob Node
+20 — dá para testar com um Node 20 portátil na WSL.
 
 🔴 **O mesmo `sideEffects: false` apagava o `pgTypes.ts` do servidor de produção.** O
 build de 24/09 em `dist/` não tem o `setTypeParser(TIMESTAMP, ...)`; o de agora tem. A

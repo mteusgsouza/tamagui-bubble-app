@@ -106,9 +106,10 @@ Contas: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador, `role = ad
    Fora da lista, o build de produção apaga o `import './x'` sem aviso — o dev não faz
    tree-shaking e esconde o defeito. Já custou o `setupNative.ts` no APK (MMKV e setups do
    Tamagui) e o `pgTypes.ts` no servidor de produção (a invariante 11 sumia do build).
-14. **O APK empacota pelo `react-native.config.cjs`, não pelo Vite.** Ele carrega o
-   `vite.config.ts` e liga o Reanimated no compilador do vxrn antes do `bundle`; sem isso
-   o app fica parado no splash. `bun check native-bundle` confere.
+14. **O APK empacota pelo `react-native.config.cjs`, não pelo Vite.** Ele liga o
+   Reanimated no compilador do vxrn antes do `bundle`; sem isso o app fica parado no
+   splash. **Não carregue o `vite.config.ts` ali** — travou o build do EAS até o teto.
+   `bun check native-bundle` confere.
 
 ## Verificação
 
