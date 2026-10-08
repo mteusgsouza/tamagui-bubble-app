@@ -26,8 +26,10 @@ import { join } from 'node:path'
 
 import { $ } from 'bun'
 
+type ReleaseEnv = { ONE_SERVER_URL: string; VITE_MASTER_USER_ID: string }
+
 const eas = JSON.parse(readFileSync('eas.json', 'utf8'))
-const releaseEnv: Record<string, string> = eas.build['release-base'].env
+const releaseEnv: ReleaseEnv = eas.build['release-base'].env
 
 const out = join(tmpdir(), 'bubble-native-bundle')
 rmSync(out, { recursive: true, force: true })
@@ -67,6 +69,18 @@ if (!code.includes(`process.env.ONE_SERVER_URL = ${JSON.stringify(releaseEnv.ONE
 }
 if (!code.includes(releaseEnv.VITE_MASTER_USER_ID)) {
   problems.push('VITE_MASTER_USER_ID não chegou ao bundle: o feed abriria vazio')
+}
+
+// As duas abaixo dependem do `react-native.config.cjs` passar a configuração do One ao
+// vxrn. Sem ela o APK compila e fica parado no splash — foi o build `a3ecc4c1`.
+if (!code.includes('[native] start')) {
+  problems.push('o setupNative.ts não entrou no bundle (MMKV da sessão, setups do Tamagui)')
+}
+const rawWorklets = code.match(/^\s*["']worklet["'];/gm)?.length ?? 0
+if (rawWorklets) {
+  problems.push(
+    `${rawWorklets} funções "worklet" sem transformar: o plugin do Reanimated não rodou e o primeiro componente animado quebra no render`,
+  )
 }
 
 console.info(`bundle: ${(code.length / 1024 / 1024).toFixed(1)} MB`)
