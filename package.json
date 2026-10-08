@@ -10,7 +10,15 @@
     "@react-navigation/native": "7.2.2",
     "react-native-reanimated": "4.3.0"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css",
+    "./src/setupClient.ts",
+    "./src/setupNative.ts",
+    "./src/setupServer.ts",
+    "./src/features/storage/setupStorage*.ts",
+    "./src/helpers/crypto/polyfill*.ts",
+    "./src/database/pgTypes.ts"
+  ],
   "type": "module",
   "files": [],
   "engines": {
