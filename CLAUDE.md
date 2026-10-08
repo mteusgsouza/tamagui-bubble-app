@@ -52,7 +52,7 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 
 | | |
 |---|---|
-| `bun check types` | typecheck. **`bun check` sozinho não roda nada** |
+| `bun check types` | typecheck. **`bun check` sozinho não roda nada**, e todo `bun check <x>` **sai com 0 mesmo falhando** — leia a saída, não o código |
 | `bun check native-bundle` | bundle Android de release + Hermes, ~2 min. **Antes de todo build nativo** — pega em 2 min o que o EAS leva 30 para recusar |
 | `eas build -p android --profile preview` | APK. Servidor e criador vêm do `eas.json` → `release-base`; o `app.config.ts` recusa sem eles |
 | `bun test:unit` | 158 testes |
@@ -102,6 +102,13 @@ Contas: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador, `role = ad
 12. **Endpoint gasta número constante de queries.** Busca os pais, `inArray` para cada
    coleção filha, costura com `Map` em JS. Query dentro de laço é regressão — foi o N+1
    do sync que a migração veio resolver. Confira com `DB_LOG=1`.
+13. 🔴 **Arquivo que existe pelo efeito colateral vai no `sideEffects` do `package.json`.**
+   Fora da lista, o build de produção apaga o `import './x'` sem aviso — o dev não faz
+   tree-shaking e esconde o defeito. Já custou o `setupNative.ts` no APK (MMKV e setups do
+   Tamagui) e o `pgTypes.ts` no servidor de produção (a invariante 11 sumia do build).
+14. **O APK empacota pelo `react-native.config.cjs`, não pelo Vite.** Ele carrega o
+   `vite.config.ts` e liga o Reanimated no compilador do vxrn antes do `bundle`; sem isso
+   o app fica parado no splash. `bun check native-bundle` confere.
 
 ## Verificação
 

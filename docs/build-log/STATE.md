@@ -507,8 +507,47 @@ O APK de preview estava parado desde 07/09. Retomado depois da saída do Zero.
 ✅ **Primeiro APK de release gerado.** Build `a3ecc4c1` do EAS (perfil `preview`, commit
 8c7ea1a): `BUILD SUCCESSFUL in 11m 9s`, `app-release.apk` de **36,3 MB**, só arm64.
 Fila de ~1,5 h no plano gratuito; o build em si, ~12 min — o teto de 45 min deixou de
-apertar com o arm64-only do 251a6cc. O link do EAS vence em 22/10/2026.
-🔴 **Ainda não foi instalado em aparelho.** Compilar não prova login, feed nem mídia.
+apertar com o arm64-only do 251a6cc.
+
+🔴 **Instalado no celular, ele não passou do splash — sem erro na tela.** Duas causas,
+achadas no bundle (sem log do aparelho) e conferidas no bytecode do próprio APK:
+
+1. **As worklets do Reanimated não eram transformadas.** 513 funções `"worklet"` cruas,
+   inclusive as do `@tamagui/animations-reanimated` (todo componente animado do Tamagui) e
+   as do próprio runtime do `react-native-worklets`, que roda ao carregar o bundle. O
+   compilador do vxrn nasce com `enableReanimated: false`; quem o liga é o One, **depois
+   de varrer as dependências no dev server** — coisa que o build de release nunca faz. E
+   o vxrn 1.25.16 traz **a própria cópia** do `@vxrn/compiler`: o One 1.14.2 configura a
+   cópia dele, não a que empacota o APK. É o preço do 630f04d ter subido só o vxrn.
+2. **O `setupNative.ts` não entrava no bundle**, por dois motivos empilhados: o `bundle`
+   do vxrn lê o `setupFile` de um global que só a função `one()` do `vite.config.ts`
+   grava, e esse caminho não carrega o `vite.config.ts`; e mesmo com ele carregado, o
+   `"sideEffects": false` do `package.json` faz o tree-shaking apagar o
+   `import "setupNative.ts"`. Sem ele: sem MMKV (a sessão não persiste), sem os setups do
+   Tamagui.
+
+Por que **nada** aparecia: o splash do Expo segura o desenho da tela inteira até o
+primeiro conteúdo do React (`SplashScreenManager.kt`, `CONTENT_APPEARED`). Erro antes
+disso fica escondido atrás dele, para sempre. O `RootErrorBoundary` do One mostraria
+"Something went wrong" para erro de render — não ter aparecido nem isso aponta para falha
+**antes** do React, o que bate com o runtime de worklets.
+
+**Conserto:** o `react-native.config.cjs` agora embrulha o `bundle` do vxrn — carrega o
+`vite.config.ts` (como o próprio CLI do One faz) e liga o `enableReanimated` na instância
+do compilador que o vxrn importa. O `sideEffects` virou lista explícita. Medido no bundle:
+**0 worklets cruas** (593 transformadas), `setupNative.ts`, MMKV, polyfill de crypto e os
+cinco setups do `@tamagui/native` presentes. O `bun check native-bundle` passou a falhar
+nos dois casos.
+
+🔴 **O mesmo `sideEffects: false` apagava o `pgTypes.ts` do servidor de produção.** O
+build de 24/09 em `dist/` não tem o `setTypeParser(TIMESTAMP, ...)`; o de agora tem. A
+invariante 11 simplesmente não existia em produção — as datas saíam certas só porque o
+container roda em UTC, o "certo por acaso" que ela mesma descreve. Entra no próximo
+`deploy.sh`; o `toEpoch` já trata os dois formatos (texto e `Date`).
+
+⚠️ A causa ainda é **inferida**, não lida no log do aparelho. Se o build novo também
+parar no splash, o próximo passo é `adb logcat` com o celular no USB — não há
+emulador nesta máquina, por decisão do usuário.
 
 ⚠️ O `expo doctor` falha no EAS com `EOVERRIDE` — `react-native-reanimated` está em
 `overrides` (`4.3.0`) e em `dependencies` (`^4.3.0`), e o npm acusa conflito. Não derruba
@@ -541,9 +580,11 @@ resolvido, em bundle que o Hermes recusa e em bundle sem o servidor ou o criador
 produção. Provado nos dois sentidos: passa hoje, e escondendo o `expo-network` devolve o
 erro idêntico ao do EAS. **Rode antes de todo build nativo.**
 
-⚠️ O `bun check native-bundle` saiu com código **0** mesmo falhando (medido na WSL: o bun
-imprime `script "check" exited with code 1` e o `$?` vem 0). Leia a última linha, `✓` ou
-`✗` — não encadeie com `&&`.
+⚠️ **Todo `bun check <x>` sai com código 0 mesmo falhando** — medido no `native-bundle` e
+no `types`: o bun imprime `script "check" exited with code 1` e o `$?` vem 0. Leia a
+saída, não o código, e não encadeie com `&&`. O próprio `native-bundle.ts` entrou no
+8c7ea1a com um erro de tipo (o typecheck não foi rodado de novo depois de escrevê-lo);
+apareceu no commit seguinte, lendo a saída.
 
 ℹ️ **De onde o APK tira o servidor.** Num build de release não há `.env` no aparelho:
 `ONE_SERVER_URL` é gravada no prelúdio do bundle pelo vxrn e lida pelo `getURL()` do One;
