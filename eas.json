@@ -4,6 +4,12 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "release-base": {
+      "env": {
+        "ONE_SERVER_URL": "https://bubble.mateusgsouza.com.br",
+        "VITE_MASTER_USER_ID": "5G0vqQJC5eMFAWov01cc671hsxIYR0Cy"
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",
@@ -12,6 +18,7 @@
       }
     },
     "preview": {
+      "extends": "release-base",
       "distribution": "internal",
       "android": {
         "buildType": "apk",
@@ -22,6 +29,7 @@
       }
     },
     "production": {
+      "extends": "release-base",
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "production"

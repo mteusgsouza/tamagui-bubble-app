@@ -15,6 +15,35 @@ if (
 
 const IS_DEV = APP_VARIANT === 'development'
 
+/**
+ * 🔴 **Build de release sem servidor não sai.**
+ *
+ * Num APK estas variáveis são gravadas no bundle **no momento do build** — não existe
+ * `.env` no aparelho. Sem `ONE_SERVER_URL` o app não sabe com quem falar (ver
+ * `src/constants/urls.ts`); sem `VITE_MASTER_USER_ID` o feed abre vazio. Nos dois casos
+ * o build passaria e o defeito só apareceria no celular, depois de 30 minutos de EAS.
+ *
+ * ⚠️ **"Definida" não basta: o servidor tem que ser `https`.** O Expo CLI carrega o
+ * `.env.development` sozinho quando `NODE_ENV` não é `production`, e lá mora
+ * `ONE_SERVER_URL=http://localhost:8081` — que passaria por uma checagem de presença e
+ * não serve a aparelho nenhum. E o Android de release bloqueia HTTP em texto puro.
+ *
+ * Os perfis `preview` e `production` do `eas.json` as herdam de `release-base`. Num build
+ * local, exporte as duas antes. O `development` não precisa: o dev client carrega o JS do
+ * dev server e usa o endereço dele.
+ */
+if (!IS_DEV) {
+  const problems = [
+    !/^https:\/\//.test(process.env.ONE_SERVER_URL || '') && 'ONE_SERVER_URL em https',
+    !process.env.VITE_MASTER_USER_ID && 'VITE_MASTER_USER_ID',
+  ].filter(Boolean)
+  if (problems.length) {
+    throw new Error(
+      `APP_VARIANT=${APP_VARIANT} exige ${problems.join(' e ')} (ver eas.json → release-base).`,
+    )
+  }
+}
+
 const getBundleId = () => {
   // ⚠️ Era `dev.tamagui.takeout` — o identificador do template. Publicar com ele é
   // impossível: o pacote pertence à Tamagui. Se você registrar um domínio próprio,
