@@ -500,6 +500,86 @@ custou um diagnóstico — o erro fala de `wal_level`, não de "sobrou coisa do 
 depreciado, com o fallback **invertido** — a nova ganha — para que tirar o nome antigo das
 máquinas não cause outage.
 
+## Build nativo — Android (07/10/2026)
+
+O APK de preview estava parado desde 07/09. Retomado depois da saída do Zero.
+
+✅ **Primeiro APK de release gerado.** Build `a3ecc4c1` do EAS (perfil `preview`, commit
+8c7ea1a): `BUILD SUCCESSFUL in 11m 9s`, `app-release.apk` de **36,3 MB**, só arm64.
+Fila de ~1,5 h no plano gratuito; o build em si, ~12 min — o teto de 45 min deixou de
+apertar com o arm64-only do 251a6cc. O link do EAS vence em 22/10/2026.
+🔴 **Ainda não foi instalado em aparelho.** Compilar não prova login, feed nem mídia.
+
+⚠️ O `expo doctor` falha no EAS com `EOVERRIDE` — `react-native-reanimated` está em
+`overrides` (`4.3.0`) e em `dependencies` (`^4.3.0`), e o npm acusa conflito. Não derruba
+o build (o EAS só registra), mas esconde qualquer outro aviso do doctor. Alinhar as duas
+entradas resolve.
+
+⚠️ **O One não saiu do projeto — quem saiu foi o Zero.** O One continua sendo o roteador
+e o servidor (`one dev`, `one build`, rotas em `app/`), e o bundle nativo continua saindo
+pelo vxrn. O que a migração tirou do caminho nativo foi o `@rocicorp/logger` (o `use
+strict` do 630f04d) e o `expo-sqlite`, que era a persistência do Zero no aparelho.
+
+🔴 **O bloqueio era um `import()` dinâmico de pacote não instalado.** O último build
+(`fa305ea1`, commit 251a6cc) morreu no hermesc:
+
+```
+index.android.bundle:119896:6: error: Invalid expression encountered
+  import("expo-network").then((param) => {
+```
+
+O `@better-auth/expo` pede o `expo-network` (peer opcional) para saber se há rede. O
+rolldown não acha o pacote, trata como externo, deixa o `import()` cru e **só avisa**
+(`UNRESOLVED_IMPORT`); quem recusa é o Hermes, que não aceita `import()`. Instalado o
+`expo-network` da versão do SDK 55. O `postinstall.ts` já remenda um caso da mesma classe
+no `@take-out/helpers`.
+
+✅ **`bun check native-bundle`** (`scripts/check/native-bundle.ts`) reproduz o
+`:app:createBundleReleaseJsAndAssets` fora do Gradle — bundle de release pelo vxrn +
+`hermesc` — em **~1m40s, da WSL**, contra ~30 min de EAS mais a fila. Falha em módulo não
+resolvido, em bundle que o Hermes recusa e em bundle sem o servidor ou o criador de
+produção. Provado nos dois sentidos: passa hoje, e escondendo o `expo-network` devolve o
+erro idêntico ao do EAS. **Rode antes de todo build nativo.**
+
+⚠️ O `bun check native-bundle` saiu com código **0** mesmo falhando (medido na WSL: o bun
+imprime `script "check" exited with code 1` e o `$?` vem 0). Leia a última linha, `✓` ou
+`✗` — não encadeie com `&&`.
+
+ℹ️ **De onde o APK tira o servidor.** Num build de release não há `.env` no aparelho:
+`ONE_SERVER_URL` é gravada no prelúdio do bundle pelo vxrn e lida pelo `getURL()` do One;
+`VITE_MASTER_USER_ID` é embutida como qualquer `VITE_*`. As duas moram no
+`eas.json` → `release-base`, de que `preview` e `production` herdam, e o `app.config.ts`
+recusa build de release sem elas — exigindo `https`, porque o Expo CLI carrega o
+`.env.development` sozinho e o `localhost` de lá passaria por uma checagem de presença.
+
+🔴 **Correção de um exagero no commit fdb75a1.** A mensagem diz que o APK "falaria com o
+servidor da Tamagui" e "abriria o feed vazio". **No EAS, não:** o projeto já tinha
+`ONE_SERVER_URL` e `VITE_MASTER_USER_ID` cadastradas **no painel do EAS** (ambientes
+`preview` e `production`, visibilidade *sensitive*), com os valores certos — conferido
+comparando com os do `eas.json` sem imprimi-los. O risco era real para build **local**, e
+o fallback para `takeout.tamagui.dev` em `src/constants/urls.ts` era real e saiu. O que o
+`eas.json` resolve é a configuração estar num painel invisível ao repositório.
+
+⚠️ **Hoje a mesma configuração existe em três lugares:** `eas.json` (vence), o painel do
+EAS e `scripts/deploy.sh`. O painel ainda tem quatro resquícios: `VITE_SERVER` (ninguém lê
+mais), `VITE_NATIVE` e `VITE_ZERO_HOSTNAME` (do Zero) e `VITE_WEB_HOSTNAME`. Apagar as
+seis de lá é decisão do dono da conta — não foi feito.
+
+🔴 **O retorno do checkout do Stripe para o app não funciona.** Dois defeitos:
+
+1. O cliente manda a URL **inteira** como `returnUrl`
+   (`bubble://home/feed?checkout=success`) e o `providers/stripe.ts` a trata como **base**,
+   acrescentando `/home/feed?checkout=...`. Sai
+   `.../home/feed?checkout=success/home/feed?checkout=success&session_id=...`. Na web é
+   inofensivo por acaso: ninguém lê o parâmetro `checkout`, e o caminho está certo.
+2. No nativo, a base é `bubble://`. O Stripe documenta o `success_url` como link
+   universal / **https**, com o esquema próprio só como botão de volta na página de sucesso
+   (`docs.stripe.com/mobile/digital-goods/checkout`). O desenho certo é uma rota pública
+   `https://<domínio>/checkout/retorno` que tenta abrir `bubble://` e mostra o botão.
+
+Não foi corrigido: é desenho de produto (Fase 15, item 4 — "CTA de assinar"), não
+bloqueio de build.
+
 ## Produção
 
 🔴 **Reconstruir o replica do zero-cache derruba os clientes já abertos — e o sintoma
@@ -720,9 +800,10 @@ Três provedores, porque cada peça tem uma exigência diferente:
   🔴 O `provider.cancel()` continua sendo o item mais urgente da lista: hoje
   `cancelSubscription` só marca `canceled` no nosso banco, então no dia em que houver
   gateway, revogar pelo admin **corta o acesso e segue cobrando o cliente**.
-- **Build nativo nunca validado em aparelho.** Empacota desde 07/09/2026 (os três commits
-  de `fix(eas)`/`fix(native)`), mas nunca rodou em device. Roteiro de validação e o que
-  falta para publicar — exclusão de conta, páginas legais, landing pública — na
+- **Build nativo nunca validado em aparelho.** O JS empacotava desde 07/09/2026, mas o
+  Hermes o recusava (`expo-network`, ver "Build nativo — Android"); destravado em
+  07/10/2026. Falta rodar em device. Roteiro de validação e o que falta para publicar —
+  exclusão de conta, páginas legais, landing pública — na
   [Fase 15](./plan/15-publicar.md).
 - ~~**Sintaxe de permission do Zero** (`q.or`, operador `IN`) não confirmada.~~
   **Resolvido na Fase 3:** o expression builder do `@rocicorp/zero` 0.26.2 tem

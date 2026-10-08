@@ -53,6 +53,8 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 | | |
 |---|---|
 | `bun check types` | typecheck. **`bun check` sozinho não roda nada** |
+| `bun check native-bundle` | bundle Android de release + Hermes, ~2 min. **Antes de todo build nativo** — pega em 2 min o que o EAS leva 30 para recusar |
+| `eas build -p android --profile preview` | APK. Servidor e criador vêm do `eas.json` → `release-base`; o `app.config.ts` recusa sem eles |
 | `bun test:unit` | 158 testes |
 | `bun run:dev scripts/x.ts` | script com env. **Sem um segundo `bun`** — `bun run:dev` já embute |
 | `bun env:update` | propaga o bloco `env` do package.json |
