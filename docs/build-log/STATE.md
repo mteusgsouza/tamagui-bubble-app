@@ -506,8 +506,9 @@ O APK de preview estava parado desde 07/09. Retomado depois da saída do Zero.
 
 ✅ **Primeiro APK de release gerado.** Build `a3ecc4c1` do EAS (perfil `preview`, commit
 8c7ea1a): `BUILD SUCCESSFUL in 11m 9s`, `app-release.apk` de **36,3 MB**, só arm64.
-Fila de ~1,5 h no plano gratuito; o build em si, ~12 min — o teto de 45 min deixou de
-apertar com o arm64-only do 251a6cc.
+Do envio ao APK, **~12 min** (criado 00:22:58, pronto 00:34:40). ⚠️ Uma versão anterior
+deste parágrafo dizia "fila de ~1,5 h": era o `buildQueueTime` lido como segundos — o
+campo vem em **milissegundos**, a fila foi de 5 s.
 
 🔴 **Instalado no celular, ele não passou do splash — sem erro na tela.** Duas causas,
 achadas no bundle (sem log do aparelho) e conferidas no bytecode do próprio APK:
@@ -537,21 +538,47 @@ lista explícita. Medido no bundle: **0 worklets cruas** (593 transformadas),
 `setupNative.ts`, MMKV, polyfill de crypto e os cinco setups do `@tamagui/native`
 presentes. O `bun check native-bundle` passou a falhar nos dois casos.
 
-🔴 **A primeira versão do conserto travou o EAS até o teto de 45 min** (build
-`125ca5b1`, cancelado). Ela carregava o `vite.config.ts` no embrulho — redundante, porque
-o vxrn já o resolve — e isso construía **um segundo plugin do Tamagui**. O plugin sobe
-processos do esbuild (um carrega o `tamagui.build.ts`, outro o **observa**, feito para
-ficar vivo) que herdam o stderr do processo. A tarefa `:app:createBundleReleaseJsAndAssets`
-imprimiu `Exiting process` às 01:11:00 e nunca fechou; o Gradle executa as tarefas de um
-mesmo módulo em série, então o `:app` inteiro parou atrás dela. No build 1 a mesma tarefa
-fechou 50 s depois do `Exiting process`.
+🔴 **Depois do conserto, dois builds bateram no teto de 45 min** e o EAS os marcou como
+*Canceled* (`125ca5b1` e `960bb1f4`). *Canceled* aqui **não é cancelamento manual nem cota
+mensal**: no plano gratuito cada build pode durar no máximo 45 min, e quem passa é parado
+e marcado assim ([pricing](https://expo.dev/pricing),
+[limitations](https://docs.expo.dev/build-reference/limitations/)). Os dois duraram
+45,00 min cravados — o mesmo dos dois de 07/09.
 
-⚠️ **Não reproduzido localmente:** na WSL (Node 24) o pipe fecha 1 s depois da saída
-mesmo com o segundo carregamento; o EAS roda **Node 20.19.4**. A conclusão é por
-diferença: a versão atual deixa o carregamento do config **idêntico ao do build 1**
-(medido: os mesmos 2 processos esbuild, o mesmo pipe fechando), e o build 1 terminou.
-Se travar de novo no mesmo ponto, o suspeito seguinte é o observador do Tamagui sob Node
-20 — dá para testar com um Node 20 portátil na WSL.
+Nos dois, a tarefa `:app:createBundleReleaseJsAndAssets` imprimiu `Exiting process` e
+nunca fechou; o Gradle executa as tarefas de um módulo em série, então o `:app` inteiro
+parou atrás dela. No build que terminou, ela fechava 50 s depois.
+
+**Causa, reproduzida na WSL** com os três comandos do `BundleHermesCTask` (bundle com
+`--sourcemap-output`, `hermesc -O -output-source-map`, `compose-source-maps.js`) e a
+saída num pipe: o node saiu, mas o pipe ficou **10 min** aberto, preso por um esbuild
+órfão (`@tamagui/static/.../esbuild --service --ping`). Matando o órfão, o pipe fechou na
+hora, o `hermesc` levou 3 s e o `compose` 5 s.
+
+O órfão é o **observador do config do Tamagui**. O `bundle` do vxrn chama o
+`resolveConfig` do Vite (para ver se o projeto usa Metro); isso roda o hook `config` do
+plugin do Tamagui, que abre um `watchTamaguiConfig` (esbuild em processo filho, herdando o
+stderr). Quem o fecha é o hook `buildEnd`, que esse caminho nunca chama. É uma **corrida**:
+o observador nasce durante o bundle. Antes do conserto o bundle era curto e terminava
+antes dele; com 593 worklets passando pelo Babel ficou longo o bastante para perder. Na
+WSL travou 1 vez em 4; no EAS, 2 em 2.
+
+**Conserto, em duas camadas:**
+- `tamagui.build.ts` → `disableWatchTamaguiConfig` quando `BUBBLE_NATIVE_BUNDLE=1`, que o
+  `react-native.config.cjs` define. Medido: durante o bundle nasce 1 esbuild em vez de 2.
+- rede de segurança no `react-native.config.cjs`: na saída, `pkill -P` nos filhos
+  diretos. Medido com o observador **religado de propósito**: `encerrando 2 processo(s)
+  filho(s)`, zero esbuild vivo depois, pipe fechando junto com o node.
+
+⚠️ Dois enganos meus no caminho, registrados no histórico: o 67e19b8 carregava o
+`vite.config.ts` no embrulho (redundante — o vxrn já o resolve — e criava um segundo
+plugin do Tamagui), e o 524bebf tirou esse carregamento concluindo "por diferença" que
+era a causa. Não era: o observador nasce do carregamento do próprio vxrn.
+
+⚠️ O `bun check native-bundle` agora empacota com os argumentos do Gradle e falha se a
+saída ficar aberta 15 s depois do node sair. Mas como o defeito é corrida, **passar não
+prova a ausência dele** — com o observador religado, a checagem passou nas vezes em que
+a corrida não aconteceu.
 
 🔴 **O mesmo `sideEffects: false` apagava o `pgTypes.ts` do servidor de produção.** O
 build de 24/09 em `dist/` não tem o `setTypeParser(TIMESTAMP, ...)`; o de agora tem. A
