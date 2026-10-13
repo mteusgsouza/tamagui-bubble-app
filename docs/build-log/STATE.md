@@ -11,6 +11,7 @@
 | Última fase concluída | **Fase 13 — Funil de assinatura** ([handoff](./handoffs/13-funil-assinatura.md)) |
 | Próxima fase | **Fase 14 — E-mail transacional** ([plano](./plan/14-email-transacional.md)) — mas antes vale **validar 11–13 no navegador**, que nunca foi feito |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
+| Em andamento | **APK Android** (Fase 15, item 4): abre desde o build `e1522615`; faltam a tela inicial sem sessão e o login com Google — [handoff](./handoffs/15-apk-android.md) |
 
 **As fases 11–17 foram planejadas em 12/09/2026** a partir de uma varredura do código
 contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a existir para
@@ -575,6 +576,11 @@ WSL travou 1 vez em 4; no EAS, 2 em 2.
 plugin do Tamagui), e o 524bebf tirou esse carregamento concluindo "por diferença" que
 era a causa. Não era: o observador nasce do carregamento do próprio vxrn.
 
+✅ **Confirmado no EAS:** o build `e1522615` (commit `cf4cb3f`, 12/10) terminou em 8,9 min
+e o APK **abre** no aparelho do usuário. Ficaram dois defeitos de comportamento — abre na
+home em vez do login sem sessão, e o Google não loga — no
+[handoff 15-apk-android](./handoffs/15-apk-android.md).
+
 ⚠️ O `bun check native-bundle` agora empacota com os argumentos do Gradle e falha se a
 saída ficar aberta 15 s depois do node sair. Mas como o defeito é corrida, **passar não
 prova a ausência dele** — com o observador religado, a checagem passou nas vezes em que
@@ -904,3 +910,4 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - [`handoffs/08-admin.md`](./handoffs/08-admin.md)
 - [`handoffs/09-billing.md`](./handoffs/09-billing.md)
 - [`handoffs/10-auth.md`](./handoffs/10-auth.md)
+- [`handoffs/15-apk-android.md`](./handoffs/15-apk-android.md) — em andamento
