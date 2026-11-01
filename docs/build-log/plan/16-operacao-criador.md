@@ -1,13 +1,14 @@
 # Fase 16 — Operação do criador
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** projeto Firebase para push no Android
-(gratuito) · **Depende de:** 12 (o teaser é o que a notificação anuncia) e 14 (transporte
-de e-mail)
+**Status:** ⬜ pendente · **Pré-requisito humano:** — (o Firebase foi junto com o aviso
+para a [Fase 22](./22-aviso-de-conteudo-novo.md)) · **Depende de:** nada
 
 ## Objetivo
 
-O criador publica e não tem como moderar, avisar ninguém, nem programar. São as três
-lacunas que aparecem no dia 2 de uso, não no dia 1.
+O criador publica e não tem como moderar nem programar. São lacunas que aparecem no dia 2
+de uso, não no dia 1. (A terceira — avisar — virou a
+[Fase 22](./22-aviso-de-conteudo-novo.md), porque aviso de post e de aula são o mesmo
+sistema.)
 
 ## Escopo
 
@@ -35,27 +36,18 @@ Tela: lista dos comentários recentes do feed do criador, com apagar. Reaproveit
 ⚠️ `softDelete` já decrementa `post.commentCount` na mesma transação. Não mexa nessa conta
 por fora.
 
-### 2. Aviso de post novo
+### 2. ~~Aviso de post novo~~ → **moveu para a [Fase 22](./22-aviso-de-conteudo-novo.md)**
 
-O assinante só descobre post novo se abrir o app. Para produto de assinatura, é retenção
-jogada fora.
+Não é desta fase mais. O aviso de **post** e o de **aula** viraram um sistema só: mesmo
+job de cron, mesma tabela de token, mesma marca de idempotência, mesmo opt-out. Escrever
+aqui o de post e depois o de aula noutro lugar seria duplicar as quatro coisas.
 
-Push (`expo-notifications` + FCM no Android, sem custo) e e-mail pelo transporte da Fase 14.
-Tabela **privada** `pushToken (userId, token, platform, updatedAt)` — token de device não
-tem nada a fazer no Zero, e privada não mexe na publication.
+A Fase 22 também depende da 19 (matrícula), que é quem diz **quem** recebe aviso de aula —
+e isso não existia quando esta fase foi planejada.
 
-Cuidados que decidem se isso presta:
-
-- 🔴 **O fan-out não pode estar no caminho do request.** Publicar um post não pode esperar
-  N envios. Rota `app/api/cron/*` protegida por `CRON_SECRET` varrendo o que foi publicado
-  e ainda não avisado — o mesmo padrão do `expire-subscriptions`, e a coluna "já avisei"
-  é o que torna o job idempotente
-- **Exatamente uma vez por post.** Despublicar e republicar não pode disparar de novo. Sem
-  a marca de envio, um retry do job avisa a base inteira duas vezes
-- **O que o aviso mostra é o `teaser`**, nunca o `body` — a Fase 12 separou os dois
-  justamente para isso, e notificação é o lugar mais fácil de vazar conteúdo pago sem
-  perceber
-- Preferência por usuário, e um jeito de desligar. Push sem opt-out é desinstalação
+Os cuidados continuam valendo e estão lá, com mais detalhe: fan-out fora do caminho do
+request, exatamente uma vez por item, o aviso mostra o `teaser` e nunca o `body`, e
+preferência por usuário.
 
 ### 3. Publicação programada
 
@@ -74,8 +66,7 @@ esqueleto comum em vez de copiar pela terceira vez.
 1. Comentário de terceiro apagado **pelo criador** — e confirmado no Postgres, não só na
    tela. É o que nunca foi provado
 2. Terceiro tentando apagar comentário de outro → rejeitado
-3. Post publicado → push chega num device físico; rodar o job de novo **não** manda
-   segundo aviso
+3. ~~Post publicado → push chega num device físico~~ — é da [Fase 22](./22-aviso-de-conteudo-novo.md)
 4. Post agendado para 5 min à frente: antes da hora não aparece para assinante nenhum
    (confira na CVR, não na tela); depois do job, aparece
 5. `bun check types` limpo; `bun test:unit` cobrindo a idempotência do aviso e a permission

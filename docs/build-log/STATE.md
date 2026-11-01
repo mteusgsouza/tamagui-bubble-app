@@ -9,7 +9,10 @@
 | | |
 |---|---|
 | Última fase concluída | **Fase 13 — Funil de assinatura** ([handoff](./handoffs/13-funil-assinatura.md)) |
-| Próxima fase | **Fase 14 — E-mail transacional** ([plano](./plan/14-email-transacional.md)) — mas antes vale **validar 11–13 no navegador**, que nunca foi feito |
+| Último trabalho entregue | **Composer, mídia e contas de teste** (01/11/2026, commit `6616078`) — prévia do post, ponto focal da foto, admin no celular e 4 contas de teste com atalho no login. [handoff](./handoffs/composer-midia.md) |
+| Próxima fase | 🔴 **Fase 18 — Editor de aula** ([plano](./plan/18-editor-de-aula.md)). **Não existe onde pôr o vídeo da aula**: o currículo cria título e nada mais, as 5 aulas do banco têm `mediaId = NULL` e o player diz "Esta aula ainda não tem vídeo". Enquanto isso não existir, o curso não é produto |
+| Fases novas | **18 a 22** planejadas em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
+| Validar no navegador | 11–13 nunca foram clicadas. **Ficou mais barato**: há 4 contas de teste (Criador, Admin, Assinante, Visitante) com atalho de um clique na tela de login |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 | Em andamento | **APK Android** (Fase 15, item 4): abre desde o build `e1522615`; faltam a tela inicial sem sessão e o login com Google — [handoff](./handoffs/15-apk-android.md) |
 
@@ -45,8 +48,11 @@ Estado real da Fase 12:
 - ✅ typecheck limpo; **114 testes**; publication com **14 tabelas**; replica reconstruído
 - 🔴 **O gate nunca rodou em runtime.** A prova é a CVR nos três estados, e falta cobaia:
   o `backend:clean` apagou `test-user-b`, e o `demo` é o criador. Roteiro no handoff
-- ⚠️ **Curso não recebeu o mesmo tratamento** — `canAccessCourse` ainda filtra a linha
-  inteira, então curso pago segue invisível para quem não assina
+- ~~⚠️ **Curso não recebeu o mesmo tratamento** — `canAccessCourse` ainda filtra a linha
+  inteira, então curso pago segue invisível para quem não assina~~ **Vencido:** a Fase 13
+  fechou isso. `courses.ts` devolve `locked`/`lockReason`, o `CourseCard` mostra o
+  cadeado, o detalhe oferece "Assinar para abrir as aulas" e o currículo continua visível
+  — conferido no navegador em 01/11/2026
 - ⚠️ Sem a Fase 13, o post bloqueado aparece mostrando só o teaser, **sem dizer que está
   bloqueado e sem CTA**. A conversão ainda não existe
 
@@ -918,3 +924,6 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - [`handoffs/09-billing.md`](./handoffs/09-billing.md)
 - [`handoffs/10-auth.md`](./handoffs/10-auth.md)
 - [`handoffs/15-apk-android.md`](./handoffs/15-apk-android.md) — em andamento
+- [`handoffs/composer-midia.md`](./handoffs/composer-midia.md) — composer, mídia e contas
+  de teste (01/11/2026, commit `6616078`). **Leia antes da Fase 18**: é o "Contrato pro
+  próximo" dele que diz o que reaproveitar em vez de reescrever

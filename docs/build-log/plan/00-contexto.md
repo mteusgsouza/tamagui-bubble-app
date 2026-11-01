@@ -3,6 +3,12 @@
 Este arquivo + `docs/build-log/STATE.md` + o arquivo da **sua** fase são tudo que você
 precisa ler. Não leia os arquivos das outras fases.
 
+> 🔴 **Atualizado em 01/11/2026: o Zero saiu.** Este arquivo descrevia o Zero (Rocicorp)
+> como camada de dados, e a migração de 23/09/2026 o removeu — não há mais `zero-cache`,
+> nem publication, nem replica, nem `bun zero:generate`. As seções abaixo foram
+> corrigidas; se encontrar menção a Zero em algum plano de fase antigo, leia como
+> histórico. O que ficou no lugar está em `STATE.md` → "Migração: o Zero saiu".
+
 ## O produto
 
 Plataforma de conteúdo privado de um único criador ("usuário mestre"): feed com texto,
@@ -13,30 +19,37 @@ usuários, assinaturas e faturamento. Web + iOS + Android.
 
 | Camada | O que já vem pronto |
 |---|---|
-| Framework universal | **One** (`app/` roteia web + native, `app/api/` são rotas de servidor) |
-| Dados / sync | **Zero** (Rocicorp) — queries reativas, permissions server-side, cache local |
+| Framework universal | **One** (`app/` roteia web + native, `app/api/*+api.ts` são rotas de servidor) |
+| Dados | **React Query** no cliente (`src/data/client/`) contra rotas de API; o gate roda no servidor (`src/server/access/`) |
 | Banco | **Postgres + Drizzle** (`src/database/schema-public.ts` / `-private.ts`) |
 | Auth | **Better Auth** (email/senha, magic link, plugin `admin` com roles) |
+| Cobrança | **Stripe** por trás de um adapter (`src/features/billing/`) |
 | UI | **Tamagui 2.0-rc** + Reanimated, componentes em `src/interface/` |
-| Infra local | `docker-compose.yml` → postgres :5533 + zero-cache :4948 + migrate |
+| Infra local | `docker-compose.yml` → postgres :5533 + migrate |
 
-Documentação embutida no repo: `docs/takeout.md`, `docs/zero.md`, `docs/tamagui.md`.
+Documentação embutida no repo: `docs/takeout.md`, `docs/tamagui.md` e
+`docs/zero-historico.md` (só histórico — o Zero não está mais no projeto).
 Mais: `bun tko docs list`.
 
 ## Decisões travadas
 
 | Decisão | Escolha | Consequência |
 |---|---|---|
-| Repositório | **Repo único**, sem monorepo | O backend é `app/api` + `src/data/server` + Zero |
+| Repositório | **Repo único**, sem monorepo | O backend é `app/api/*+api.ts` + `src/server/` |
 | Pagamento | **Abstrair** (`plan`/`subscription` agnósticos + adapter) | MVP usa concessão manual pelo admin |
 | Vídeo | **R2 + arquivo direto** | Sem transcoding/HLS. `media.provider` permite trocar depois |
 | Escopo do MVP | Fundação (feed + mídia) + cursos | Paywall depois, mas o schema já nasce com `visibility` |
 
-**Por que o backend não é separado:** `docs/zero.md` exige que as mutations rodem com o
-mesmo código no cliente (otimista) e no servidor (autoritativo). Um backend HTTP à parte
-custaria sync reativo, cache local, updates otimistas e offline — trocaria de
-arquitetura, não só de pastas. Repo único ≠ processo único: em produção rodam três
-serviços independentes (app One, zero-cache, Postgres).
+**Por que o backend não é separado:** as rotas de API vivem em `app/api/` e compartilham
+tipos, enums e DTOs com a tela sem publicar pacote nenhum — é o que mantém o contrato
+honesto entre os dois lados. Repo único ≠ processo único: em produção rodam dois serviços
+(app One e Postgres).
+
+🔴 **Uma regra, um lugar.** O gate de acesso mora em `src/server/access/contentAccess.ts`
+e é **puro** — sem I/O, sem SQL —, o que o torna testável sem banco. Quem carrega as
+linhas é o endpoint; quem decide é essa função. Se precisar da mesma regra noutro canto,
+**chame**, não copie: já houve uma cópia (em `mediaAccess.ts`) com o comentário "mudou
+lá, muda aqui", e foi eliminada.
 
 ## Modelo de execução
 
@@ -54,9 +67,13 @@ Uma fase por agente, em série. Cada agente começa com contexto limpo. O handof
 5. Parar. Se esbarrar em decisão humana, escrever a pergunta no handoff em vez de
    escolher sozinho.
 
-**Quem valida é o usuário.** O agente não roda `bun install`, `backend`, `dev`,
-`migrate`, `zero:generate` nem build nativo — deixa no handoff a lista exata de
-comandos, em ordem, com o resultado esperado de cada um.
+**Quem valida é o usuário**, salvo quando ele disser o contrário na conversa. O agente
+não roda `bun install`, `backend`, `dev`, `migrate` nem build nativo por conta própria —
+deixa no handoff a lista exata de comandos, em ordem, com o resultado esperado de cada um.
+
+⚠️ **O projeto roda da WSL** (`/mnt/f/...`), onde **file watching não funciona**: toda
+edição exige reiniciar o `bun dev`, e o servidor antigo continua servindo o módulo velho
+se não for morto com `pkill -f "Onejs:dev"`. As três armadilhas estão no `CLAUDE.md`.
 
 ### Formato do handoff
 
@@ -67,17 +84,9 @@ helpers, rotas e tipos que a fase seguinte vai consumir).
 
 ### Sequência
 
-| Fase | Escopo | Pré-requisito humano |
-|---|---|---|
-| 1 | Repositório | — |
-| 2 | Limpar demo + `id.ts` | — |
-| 3 | Schema + migrations | — |
-| 4 | Camada Zero | — |
-| 5 | Mídia R2 | **Conta Cloudflare R2 + credenciais no `.env.local`** |
-| 6 | Feed UI | — |
-| 7 | Cursos UI | — |
-| 8 | Admin | — |
-| 9 | Billing (adapter + provider `manual`) | — |
+**A lista viva é o [`INDEX.md`](../INDEX.md)** — status, dependências e pré-requisito
+humano de cada fase, de 1 a 22. Esta seção tinha uma cópia da tabela até a fase 9, e a
+cópia envelheceu: mantê-la aqui garantia que uma das duas estivesse errada.
 
 ## Riscos conhecidos
 
@@ -88,8 +97,8 @@ helpers, rotas e tipos que a fase seguinte vai consumir).
    diverge do starter.
 3. **Takeout Free é v2-beta** — "APIs may change", Tamagui em `2.0.0-rc`. Fixar versões
    e atualizar em janelas conscientes (`upgradeSets` no `package.json`).
-4. **Sintaxe de permission do Zero** (`q.or`, operador `IN`) não confirmada. Checar em
-   `bun tko docs list` antes da Fase 4.
+4. ~~**Sintaxe de permission do Zero**~~ — não se aplica mais; o gate é código TypeScript
+   puro em `src/server/access/`, com teste em `src/test/unit/content-access.test.ts`.
 5. **JWT de 3 anos** congela `role`: promover alguém a admin não tem efeito até o token
    renovar. Checar se o plugin `admin` do Better Auth contorna, ou validar admin no
    servidor a partir do banco.

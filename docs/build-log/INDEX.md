@@ -4,8 +4,10 @@ Plano de construção fatiado em fases, uma por agente. Cada agente começa com 
 limpo; o handoff é a única ponte entre eles.
 
 As fases 2–10 construíram a fundação (schema, sync, mídia, feed, cursos, admin, auth) e
-estão fechadas. As **11–17** levam o produto a faturar e a ser publicável — foram
-planejadas em 12/09/2026, a partir de uma varredura do código contra este build log.
+estão fechadas. As **11–17** levam o produto a faturar e a ser publicável — planejadas em
+12/09/2026. As **18–22** fazem o curso virar produto (aula com vídeo, matrícula, venda
+avulsa, certificado, aviso) — planejadas em 01/11/2026. Cada bloco saiu de uma varredura
+do código contra este build log.
 
 ## Se você é o agente da vez, leia nesta ordem
 
@@ -36,10 +38,33 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ✅ | 13 — Funil de assinatura (UI) | [plano](./plan/13-funil-assinatura.md) | [handoff](./handoffs/13-funil-assinatura.md) | — |
 | ⬜ | 14 — E-mail transacional | [plano](./plan/14-email-transacional.md) | — | ⚠️ provedor de e-mail + domínio com SPF/DKIM |
 | ⬜ | 15 — Publicar (web + Android) | [plano](./plan/15-publicar.md) | — | ⚠️ Google Play, US$ 25 |
-| ⬜ | 16 — Operação do criador | [plano](./plan/16-operacao-criador.md) | — | ⚠️ projeto Firebase (push Android, gratuito) |
+| ⬜ | 16 — Operação do criador (moderação + agendamento) | [plano](./plan/16-operacao-criador.md) | — | — |
 | ⬜ | 17 — Higiene e observabilidade | [plano](./plan/17-higiene.md) | — | — |
+| ⬜ | **18 — Editor de aula** | [plano](./plan/18-editor-de-aula.md) | — | — |
+| ⬜ | **19 — Matrícula e acesso ao curso** | [plano](./plan/19-matricula-e-acesso.md) | — | — |
+| ⬜ | **20 — Curso avulso** | [plano](./plan/20-curso-avulso.md) | — | ⚠️ Stripe (a mesma conta da 11) |
+| ⬜ | **21 — Certificado de conclusão** | [plano](./plan/21-certificado.md) | — | — |
+| ⬜ | **22 — Aviso de conteúdo novo** | [plano](./plan/22-aviso-de-conteudo-novo.md) | — | ⚠️ provedor de e-mail · projeto Firebase (push Android, gratuito) |
 
 ✅ concluída · ⬜ pendente · ⏭️ pulada
+
+## Fases 18–22 — o curso vira produto
+
+Planejadas em 01/11/2026, depois de uma varredura das telas de curso. O que elas resolvem,
+em uma linha cada:
+
+| | |
+|---|---|
+| 18 | 🔴 **não existe onde pôr o vídeo da aula** — o currículo cria título e mais nada |
+| 19 | acesso a curso vira **matrícula**: retroativo, cortesia e "desde quando" |
+| 20 | vender curso **fora da assinatura** |
+| 21 | **certificado** por curso, com mínimo de aulas para curso sem fim |
+| 22 | avisar post **e aula** nova — um sistema só (absorveu o item 2 da Fase 16) |
+
+**Caminho crítico: 18 → 19 → 20.** A 21 precisa da 19 (matrícula) e da 18 (aula com
+conteúdo); a 22 precisa da 14 (e-mail) e da 19 (quem recebe aviso de aula). A 18 não
+depende de ninguém e é a que destrava o resto — sem ela, as outras quatro decoram um curso
+vazio.
 
 ## Ordem e paralelismo das fases 11–17
 
