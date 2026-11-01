@@ -8,10 +8,10 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 13 — Funil de assinatura** ([handoff](./handoffs/13-funil-assinatura.md)) |
+| Última fase concluída | **Fase 18 — Editor de aula** ([handoff](./handoffs/18-editor-de-aula.md)) |
 | Último trabalho entregue | **Composer, mídia e contas de teste** (01/11/2026, commit `6616078`) — prévia do post, ponto focal da foto, admin no celular e 4 contas de teste com atalho no login. [handoff](./handoffs/composer-midia.md) |
-| Próxima fase | 🔴 **Fase 18 — Editor de aula** ([plano](./plan/18-editor-de-aula.md)). **Não existe onde pôr o vídeo da aula**: o currículo cria título e nada mais, as 5 aulas do banco têm `mediaId = NULL` e o player diz "Esta aula ainda não tem vídeo". Enquanto isso não existir, o curso não é produto |
-| Fases novas | **18 a 22** planejadas em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
+| Próxima fase | **Fase 19 — Matrícula e acesso ao curso** ([plano](./plan/19-matricula-e-acesso.md)). Caminho crítico **19 → 20**. O curso já tem vídeo, texto e capa, então a matrícula pode ser provada ponta a ponta |
+| Fases novas | **18 a 22** planejadas (a 18 está entregue) em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
 | Validar no navegador | 11–13 nunca foram clicadas. **Ficou mais barato**: há 4 contas de teste (Criador, Admin, Assinante, Visitante) com atalho de um clique na tela de login |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
 | Em andamento | **APK Android** (Fase 15, item 4): abre desde o build `e1522615`; faltam a tela inicial sem sessão e o login com Google — [handoff](./handoffs/15-apk-android.md) |
@@ -21,6 +21,20 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 18:
+
+- ✅ **a aula tem onde pôr o vídeo**: `/admin/lessons/<id>` com mídia, título, texto, módulo,
+  situação e "grátis"; o curso tem **capa**; o currículo **reordena** (setas ↑ ↓) e
+  **renomeia módulo** — tudo numa transação, sem buraco e sem empate em `lesson.order`
+- ✅ `durationSec` agora sai da mídia (`media.durationSec ?? lesson.durationSec`); a coluna da
+  aula é resíduo e nenhuma escrita nova a toca
+- ✅ typecheck limpo; **199 testes** (+13 de `lesson-order`)
+- ✅ **validado no navegador** com as contas de teste: upload no R2, `mediaId` e duração no
+  Postgres, capa no card, reordenação e, como Assinante, o vídeo tocando e concluindo a aula
+- ⚠️ `src/test/integration/lesson-editor.test.ts` foi escrito e **nunca executado**
+- ⚠️ Retomada "de onde parou" não foi exercida (vídeo de teste de 1 s); sobra mídia órfã no
+  R2 a cada troca; `app/routes.d.ts` editado à mão
 
 Estado real da Fase 13:
 

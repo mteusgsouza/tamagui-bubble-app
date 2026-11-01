@@ -36,4 +36,7 @@ export const ADMIN_MESSAGES: Record<string, string> = {
   'invalid-price': 'Preço inválido.',
   'missing-fields': 'Faltam campos obrigatórios.',
   'not-found': 'Esse item não existe mais.',
+  'ordem-desatualizada': 'O currículo mudou enquanto você editava. Recarregue a página.',
+  'invalid-module': 'Esse módulo não é deste curso.',
+  'missing-title': 'Falta o nome.',
 }

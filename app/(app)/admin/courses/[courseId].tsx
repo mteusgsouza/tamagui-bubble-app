@@ -6,6 +6,7 @@ import { MASTER_USER_ID } from '~/constants/creator'
 import { AdminSection } from '~/features/admin/AdminShell'
 import { CourseCurriculumEditor } from '~/features/admin/CourseCurriculumEditor'
 import { OptionRow, TextField } from '~/features/admin/fields'
+import { LessonMediaField } from '~/features/admin/LessonMediaField'
 import { adminCourses as adminCoursesApi } from '~/data/client/api'
 import { useAdminCourse, usePlans } from '~/data/client/hooks'
 import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
@@ -154,6 +155,27 @@ export const AdminCourseEditPage = memo(() => {
         }
       >
         <YStack gap="$4">
+          {/* a capa grava na hora (`setCourseCover`); o "Salvar" não mexe nela. Só existe
+              depois do primeiro salvamento: sem a linha do curso não há onde ligá-la. */}
+          {exists ? (
+            <LessonMediaField
+              label="Capa"
+              media={row.coverMedia ?? null}
+              accept="photo"
+              emptyHint="foto — aparece no card do curso em 16:9"
+              focal
+              testID="course-cover"
+              onChange={async (mediaId) => {
+                await adminCoursesApi({
+                  action: 'setCourseCover',
+                  courseId: courseId!,
+                  mediaId,
+                })
+                invalidate()
+              }}
+            />
+          ) : null}
+
           <TextField
             label="Título"
             value={draft.title}

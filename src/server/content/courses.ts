@@ -111,17 +111,30 @@ async function loadProgress(lessonIds: string[], userId: string) {
 
 type LessonRow = typeof lesson.$inferSelect
 
+/**
+ * 🔴 **A duração é da mídia.** `media.durationSec` é medida do arquivo no upload;
+ * `lesson.durationSec` era coluna solta preenchida pelo seed — duas verdades para o
+ * mesmo número, e a tela mostrava "12:04" numa aula sem vídeo. A coluna fica como
+ * resíduo (cobre as aulas semeadas) e nenhuma escrita nova a toca.
+ *
+ * Vem do `leftJoin` direto, não do `MediaDTO`: duração é vitrine e chega mesmo quando a
+ * mídia, que é produto, foi retirada por causa do paywall.
+ */
+const lessonDuration = (row: LessonRow, mediaDurationSec: number | null) =>
+  mediaDurationSec ?? row.durationSec
+
 const toLesson = (
   row: LessonRow,
   mediaRow: MediaDTO | null,
   progress: LessonProgressDTO[],
+  mediaDurationSec: number | null,
 ): LessonDTO => ({
   id: row.id,
   courseId: row.courseId,
   moduleId: row.moduleId,
   title: row.title,
   body: row.body,
-  durationSec: row.durationSec,
+  durationSec: lessonDuration(row, mediaDurationSec),
   order: row.order,
   published: row.published,
   freePreview: row.freePreview,
@@ -200,6 +213,7 @@ export async function loadCourses(
       row.lesson,
       open ? toMedia(row) : null,
       progress.get(row.lesson.id) ?? [],
+      row.mediaDurationSec,
     )
     // título, ordem e duração são vitrine; corpo e mídia são produto
     const list = lessonsByCourse.get(row.lesson.courseId) ?? []
@@ -286,7 +300,12 @@ export async function loadLessonDetail(
   const progress = await loadProgress([lessonId], viewer.id)
 
   return {
-    ...toLesson(row.lesson, toMedia(row), progress.get(lessonId) ?? []),
+    ...toLesson(
+      row.lesson,
+      toMedia(row),
+      progress.get(lessonId) ?? [],
+      row.mediaDurationSec,
+    ),
     module: row.moduleId
       ? { id: row.moduleId, title: row.moduleTitle ?? '', order: row.moduleOrder ?? 0 }
       : null,

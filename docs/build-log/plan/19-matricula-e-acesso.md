@@ -1,7 +1,7 @@
 # Fase 19 — Matrícula e acesso ao curso
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** — · **Depende de:** 18 (vender curso
-vazio não faz sentido, mas tecnicamente são independentes)
+**Status:** ⬜ pendente · **Pré-requisito humano:** — · **Depende de:** 18 ✅ (entregue: a aula já tem
+vídeo e texto, então dá para provar o acesso ponta a ponta com `aula-objecoes`)
 
 ## Objetivo
 

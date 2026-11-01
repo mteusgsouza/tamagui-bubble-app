@@ -40,7 +40,7 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ⬜ | 15 — Publicar (web + Android) | [plano](./plan/15-publicar.md) | — | ⚠️ Google Play, US$ 25 |
 | ⬜ | 16 — Operação do criador (moderação + agendamento) | [plano](./plan/16-operacao-criador.md) | — | — |
 | ⬜ | 17 — Higiene e observabilidade | [plano](./plan/17-higiene.md) | — | — |
-| ⬜ | **18 — Editor de aula** | [plano](./plan/18-editor-de-aula.md) | — | — |
+| ✅ | **18 — Editor de aula** | [plano](./plan/18-editor-de-aula.md) | [handoff](./handoffs/18-editor-de-aula.md) | — |
 | ⬜ | **19 — Matrícula e acesso ao curso** | [plano](./plan/19-matricula-e-acesso.md) | — | — |
 | ⬜ | **20 — Curso avulso** | [plano](./plan/20-curso-avulso.md) | — | ⚠️ Stripe (a mesma conta da 11) |
 | ⬜ | **21 — Certificado de conclusão** | [plano](./plan/21-certificado.md) | — | — |

@@ -1,6 +1,6 @@
 # Fase 18 — Editor de aula
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** — · **Depende de:** nada
+**Status:** ✅ concluída ([handoff](../handoffs/18-editor-de-aula.md)) · **Pré-requisito humano:** — · **Depende de:** nada
 
 ## Objetivo
 

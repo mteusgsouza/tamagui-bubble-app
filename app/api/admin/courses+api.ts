@@ -1,5 +1,5 @@
 // GET  /api/admin/courses — o catálogo do editor, com curso e aula despublicados
-// POST /api/admin/courses — curso, módulos e aulas
+// POST /api/admin/courses — curso, capa, módulos, aulas e ordem
 
 import { getAuthDataFromRequest } from '@take-out/better-auth-utils/server'
 
@@ -14,9 +14,13 @@ import {
   loadAdminCourses,
   removeLesson,
   removeModule,
+  reorderLessons,
+  reorderModules,
   saveCourse,
+  setCourseCover,
   setCoursePublished,
   updateLesson,
+  updateModule,
 } from '~/server/content/adminCourses'
 
 import type { Endpoint } from 'one'
@@ -41,6 +45,8 @@ type Body = Record<string, unknown>
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '')
 const orNull = (value: unknown) => (typeof value === 'string' && value ? value : null)
+const strList = (value: unknown) =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 const bool = (value: unknown) => (typeof value === 'boolean' ? value : undefined)
 
 export const POST: Endpoint = async (request) => {
@@ -67,7 +73,8 @@ export const POST: Endpoint = async (request) => {
           description: orNull(p.description),
           visibility: isVisibility(p.visibility) ? p.visibility : 'subscribers',
           requiredPlanId: orNull(p.requiredPlanId),
-          coverMediaId: orNull(p.coverMediaId),
+          // ausente = não mexe na capa; o formulário não a carrega
+          coverMediaId: p.coverMediaId === undefined ? undefined : orNull(p.coverMediaId),
         })
         return result.ok
           ? Response.json({ ok: true, courseId: result.courseId })
@@ -81,6 +88,46 @@ export const POST: Endpoint = async (request) => {
         })
         return result.ok
           ? Response.json({ ok: true, courseId: result.courseId, published: result.published })
+          : fail(result.status, result.code, result.message)
+      }
+
+      case 'setCourseCover': {
+        const result = await setCourseCover(viewer, {
+          courseId: str(p.courseId),
+          mediaId: orNull(p.mediaId),
+        })
+        return result.ok
+          ? Response.json({ ok: true, courseId: result.courseId })
+          : fail(result.status, result.code, result.message)
+      }
+
+      case 'reorderLessons': {
+        const result = await reorderLessons(viewer, {
+          courseId: str(p.courseId),
+          lessonIds: strList(p.lessonIds),
+        })
+        return result.ok
+          ? Response.json({ ok: true, courseId: result.courseId })
+          : fail(result.status, result.code, result.message)
+      }
+
+      case 'reorderModules': {
+        const result = await reorderModules(viewer, {
+          courseId: str(p.courseId),
+          moduleIds: strList(p.moduleIds),
+        })
+        return result.ok
+          ? Response.json({ ok: true, courseId: result.courseId })
+          : fail(result.status, result.code, result.message)
+      }
+
+      case 'updateModule': {
+        const result = await updateModule(viewer, {
+          moduleId: str(p.moduleId),
+          title: str(p.title),
+        })
+        return result.ok
+          ? Response.json({ ok: true, moduleId: result.moduleId })
           : fail(result.status, result.code, result.message)
       }
 
@@ -118,8 +165,6 @@ export const POST: Endpoint = async (request) => {
           title: typeof p.title === 'string' ? p.title : undefined,
           body: p.body === undefined ? undefined : orNull(p.body),
           mediaId: p.mediaId === undefined ? undefined : orNull(p.mediaId),
-          durationSec:
-            p.durationSec === undefined ? undefined : (Number(p.durationSec) || null),
           moduleId: p.moduleId === undefined ? undefined : orNull(p.moduleId),
           published: bool(p.published),
           freePreview: bool(p.freePreview),

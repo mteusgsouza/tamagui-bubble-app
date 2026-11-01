@@ -13,6 +13,7 @@ declare module 'one' {
         | `/(app)/admin/`
         | `/(app)/admin/courses`
         | `/(app)/admin/courses/`
+        | `/(app)/admin/lessons`
         | `/(app)/admin/people`
         | `/(app)/admin/plans`
         | `/(app)/admin/posts`
@@ -44,6 +45,7 @@ declare module 'one' {
         | `/admin/`
         | `/admin/courses`
         | `/admin/courses/`
+        | `/admin/lessons`
         | `/admin/people`
         | `/admin/plans`
         | `/admin/posts`
@@ -72,6 +74,7 @@ declare module 'one' {
         | `/home/settings/edit-profile`
       DynamicRoutes: 
         | `/(app)/admin/courses/${OneRouter.SingleRoutePart<T>}`
+        | `/(app)/admin/lessons/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/admin/posts/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/auth/signup/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}`
@@ -81,6 +84,7 @@ declare module 'one' {
         | `/(app)/home/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
         | `/(app)/home/feed/${OneRouter.SingleRoutePart<T>}`
         | `/admin/courses/${OneRouter.SingleRoutePart<T>}`
+        | `/admin/lessons/${OneRouter.SingleRoutePart<T>}`
         | `/admin/posts/${OneRouter.SingleRoutePart<T>}`
         | `/auth/signup/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}`
@@ -91,6 +95,7 @@ declare module 'one' {
         | `/home/feed/${OneRouter.SingleRoutePart<T>}`
       DynamicRouteTemplate: 
         | `/(app)/admin/courses/[courseId]`
+        | `/(app)/admin/lessons/[lessonId]`
         | `/(app)/admin/posts/[postId]`
         | `/(app)/auth/signup/[method]`
         | `/(app)/home/(tabs)/courses/[courseSlug]`
@@ -100,6 +105,7 @@ declare module 'one' {
         | `/(app)/home/courses/[courseSlug]/[lessonId]`
         | `/(app)/home/feed/[postId]`
         | `/admin/courses/[courseId]`
+        | `/admin/lessons/[lessonId]`
         | `/admin/posts/[postId]`
         | `/auth/signup/[method]`
         | `/home/(tabs)/courses/[courseSlug]`
@@ -111,6 +117,7 @@ declare module 'one' {
       IsTyped: true
       RouteTypes: {
         '/(app)/admin/courses/[courseId]': RouteInfo<{ courseId: string }>
+        '/(app)/admin/lessons/[lessonId]': RouteInfo<{ lessonId: string }>
         '/(app)/admin/posts/[postId]': RouteInfo<{ postId: string }>
         '/(app)/auth/signup/[method]': RouteInfo<{ method: string }>
         '/(app)/home/(tabs)/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
@@ -120,6 +127,7 @@ declare module 'one' {
         '/(app)/home/courses/[courseSlug]/[lessonId]': RouteInfo<{ courseSlug: string; lessonId: string }>
         '/(app)/home/feed/[postId]': RouteInfo<{ postId: string }>
         '/admin/courses/[courseId]': RouteInfo<{ courseId: string }>
+        '/admin/lessons/[lessonId]': RouteInfo<{ lessonId: string }>
         '/admin/posts/[postId]': RouteInfo<{ postId: string }>
         '/auth/signup/[method]': RouteInfo<{ method: string }>
         '/home/(tabs)/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
