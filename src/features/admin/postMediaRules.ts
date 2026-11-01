@@ -9,13 +9,23 @@
 import { MAX_PHOTOS_PER_POST } from '~/constants/media'
 
 import type { PostKind } from '~/data/enums'
-import type { PickKind } from './pickFile'
+import type { PickKind } from './pickedFile'
 
 /** O que a query do admin entrega em `post.media` — o vínculo, com a mídia dentro. */
 export type AttachedMedia = {
   id: string
   position?: number
-  media?: { id: string; kind: PostKind; durationSec?: number | null } | null
+  media?: {
+    id: string
+    kind: PostKind
+    durationSec?: number | null
+    // dimensão e ponto focal: o editor de recorte precisa dos quatro, e sem eles a
+    // tela voltaria a tratar foto como se fosse sempre 16/9
+    width?: number | null
+    height?: number | null
+    focalX?: number | null
+    focalY?: number | null
+  } | null
 }
 
 /** Só os vínculos que têm mídia de verdade, na ordem em que vieram. */

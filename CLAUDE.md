@@ -60,8 +60,17 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 | `bun env:update` | propaga o bloco `env` do package.json |
 | ~~`bun check lint`~~ | **quebrado**: `panic: unknown rule` (versão do oxlint-tsgolint no starter) |
 
-Contas: `demo@takeout.tamagui.dev` / `demopassword123` (é o criador, `role = admin`) e
-`teste@bubble.local` / `teste123456`.
+**Contas de teste: não digite senha.** A tela de login tem um bloco *Contas de teste* em
+desenvolvimento — Criador, Admin, Assinante e Visitante, um clique cada. A lista (com as
+senhas) está em `src/constants/devAccounts.ts`, e `bun run:dev
+scripts/seed-dev-accounts.ts` faz o Admin nascer com `role = 'admin'` e o Assinante com
+assinatura ativa. Os botões criam a conta que faltar, então funcionam logo depois de um
+`backend:clean` — só a role e a assinatura é que dependem do seed.
+
+O Criador é `demo@takeout.tamagui.dev` (id `demo-user-id`, o `VITE_MASTER_USER_ID`), e a
+role dele no banco é `user`: quem abre o `/admin` para ele é o `MASTER_USER_ID`
+(`canManage`), e é por isso que as abas **Planos e Pessoas não aparecem** — elas exigem
+`role = 'admin'` de verdade, que é o que a conta Admin existe para dar.
 
 ## Invariantes — quebrar qualquer uma vira bug silencioso
 

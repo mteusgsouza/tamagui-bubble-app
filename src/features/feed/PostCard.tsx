@@ -13,6 +13,8 @@ import { LikeButton } from './LikeButton'
 import { PostMediaCarousel } from './PostMediaCarousel'
 import { isPostLocked, postMediaItems } from './types'
 
+import type { Href } from 'one'
+import type { ReactNode } from 'react'
 import type { FeedPost } from './types'
 
 // acima disso o corpo é cortado e ganha "… ver mais". Corte por caractere, e não
@@ -26,7 +28,24 @@ const KIND_LABEL: Record<string, string> = {
   audio: 'Áudio',
 }
 
-export const PostCard = memo(({ post }: { post: FeedPost }) => {
+type Props = {
+  post: FeedPost
+  /**
+   * Prévia do composer: **desenha igual, mas não age**.
+   *
+   * Sem isto a prévia seria uma armadilha em vez de uma ajuda. Dois motivos concretos,
+   * os dois dentro deste componente: o título e o texto vivem num `Link` para
+   * `/home/feed/<id>` — num rascunho, isso tira o criador do editor e o joga num post
+   * que nem existe; e o `LikeButton` chama a mutation de verdade, porque quem está
+   * olhando a prévia está logado.
+   *
+   * Prop, e não um segundo card: card imitado diverge do original na terceira mudança,
+   * e aí a prévia passa a mentir — que é o oposto do que ela existe para fazer.
+   */
+  preview?: boolean
+}
+
+export const PostCard = memo(({ post, preview = false }: Props) => {
   const author = post.feedOwner
   const name = author?.name || 'Criador'
   const media = postMediaItems(post)
@@ -72,8 +91,8 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
           integração procuram por testid, então testid no `Link` faz o teste **pular**
           em silêncio em vez de falhar — foi o que aconteceu com `post-link`,
           `course-card` e `lesson-row` desde que foram escritos. */}
-      <Link href={href} style={{ width: '100%' }}>
-        <YStack gap="$2" data-testid="post-link">
+      <OpenPost href={href} preview={preview}>
+        <YStack gap="$2" data-testid={preview ? 'preview-post' : 'post-link'}>
           {post.title ? (
             <SizableText size="$6" fontWeight="700" lineHeight={25}>
               {post.title}
@@ -92,7 +111,7 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
             </SizableText>
           ) : null}
         </YStack>
-      </Link>
+      </OpenPost>
 
       {/* bloqueado nunca monta mídia: sem `postMedia` não há `storageKey`, e a tela não
           inventa URL de R2 (invariante 7) */}
@@ -105,28 +124,58 @@ export const PostCard = memo(({ post }: { post: FeedPost }) => {
       ) : null}
 
       {locked ? (
-        <LockedActions />
+        <LockedActions preview={preview} />
       ) : (
         <XStack gap="$5" items="center" pt="$1">
           <LikeButton
             postId={post.id}
             likeCount={post.likeCount}
             liked={post.liked ?? false}
+            readOnly={preview}
           />
 
-          <Link href={href}>
+          <OpenPost href={href} preview={preview} inline>
             <XStack gap="$1.5" items="center">
               <ChatCircleIcon size={18} color="$color10" />
               <SizableText size="$3" fontWeight="600" color="$color11">
                 {post.commentCount}
               </SizableText>
             </XStack>
-          </Link>
+          </OpenPost>
         </XStack>
       )}
     </YStack>
   )
 })
+
+/**
+ * Abre o post — ou não abre nada, na prévia.
+ *
+ * `inline` é para o contador de comentário, que mora dentro de uma linha e não deve
+ * esticar: o `Link` da web vira `<a>` inline e precisa do `width: 100%` só onde embrulha
+ * um bloco.
+ */
+const OpenPost = ({
+  href,
+  preview,
+  inline,
+  children,
+}: {
+  href: Href
+  preview: boolean
+  inline?: boolean
+  children: ReactNode
+}) => {
+  if (preview) {
+    return inline ? <>{children}</> : <YStack width="100%">{children}</YStack>
+  }
+
+  return (
+    <Link href={href} style={inline ? undefined : { width: '100%' }}>
+      {children}
+    </Link>
+  )
+}
 
 /**
  * O lugar da mídia num post bloqueado.
@@ -159,7 +208,7 @@ const LockedSlot = ({ kind }: { kind: string }) => (
  * quebrou. E a recusa de verdade está no servidor desde a Fase 12 — isto aqui é cortesia,
  * não segurança.
  */
-const LockedActions = () => (
+const LockedActions = ({ preview }: { preview: boolean }) => (
   <XStack gap="$3" items="center" justify="space-between" pt="$1" flexWrap="wrap">
     <XStack gap="$1.5" items="center" flex={1}>
       <LockIcon size={15} color="$color10" />
@@ -168,11 +217,19 @@ const LockedActions = () => (
       </SizableText>
     </XStack>
 
-    <Link href="/assinar" data-testid="post-card-cta" asChild>
-      <Button variant="accent" size="$2">
+    {/* na prévia o botão aparece (é parte do que o criador precisa ver) mas não leva a
+        `/assinar`: quem está olhando é o dono do conteúdo */}
+    {preview ? (
+      <Button variant="accent" size="$2" disabled>
         Assinar
       </Button>
-    </Link>
+    ) : (
+      <Link href="/assinar" data-testid="post-card-cta" asChild>
+        <Button variant="accent" size="$2">
+          Assinar
+        </Button>
+      </Link>
+    )}
   </XStack>
 )
 

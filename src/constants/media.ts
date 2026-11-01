@@ -72,6 +72,17 @@ export const UPLOAD_URL_TTL_SEC = 900
  */
 export const MAX_PHOTOS_PER_POST = 9
 
+/**
+ * O centro da imagem — o ponto focal de quem nunca ajustou o recorte.
+ *
+ * Isomórfico porque os dois lados precisam dele: o servidor coalesce com isto ao montar
+ * o DTO (`media` entra por `leftJoin`, então as colunas chegam anuláveis mesmo sendo
+ * `NOT NULL` na tabela) e a tela usa como padrão em `focalPoint.ts`. É o mesmo valor do
+ * `DEFAULT` da coluna — mudar aqui sem mudar a migration faria imagem nova e imagem
+ * antiga serem recortadas diferente.
+ */
+export const FOCAL_CENTER = 0.5
+
 /** Poster (frame de capa) é sempre imagem, independente do `kind` da mídia. */
 export const POSTER_MIME = 'image/jpeg'
 

@@ -14,6 +14,7 @@
 
 import { and, asc, eq, inArray } from 'drizzle-orm'
 
+import { FOCAL_CENTER } from '~/constants/media'
 import { getDb } from '~/database'
 import {
   course,
@@ -44,6 +45,9 @@ type MediaColumns = {
   mediaDurationSec: number | null
   mediaWidth: number | null
   mediaHeight: number | null
+  // anuláveis por causa do `leftJoin` da `media`, não da coluna (que é `NOT NULL`)
+  mediaFocalX: number | null
+  mediaFocalY: number | null
 }
 
 const MEDIA_COLUMNS = {
@@ -54,6 +58,8 @@ const MEDIA_COLUMNS = {
   mediaDurationSec: media.durationSec,
   mediaWidth: media.width,
   mediaHeight: media.height,
+  mediaFocalX: media.focalX,
+  mediaFocalY: media.focalY,
 }
 
 const toMedia = (row: MediaColumns): MediaDTO | null =>
@@ -66,6 +72,8 @@ const toMedia = (row: MediaColumns): MediaDTO | null =>
         durationSec: row.mediaDurationSec,
         width: row.mediaWidth,
         height: row.mediaHeight,
+        focalX: row.mediaFocalX ?? FOCAL_CENTER,
+        focalY: row.mediaFocalY ?? FOCAL_CENTER,
       }
     : null
 

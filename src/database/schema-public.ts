@@ -3,6 +3,7 @@ import {
   index,
   integer,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -120,6 +121,17 @@ export const media = pgTable(
     durationSec: integer('durationSec'),
     width: integer('width'),
     height: integer('height'),
+    /**
+     * O ponto da imagem que **tem** que sobreviver ao recorte, normalizado em `0..1`
+     * (`0.5/0.5` = centro, que é o comportamento de quem nunca ajustou).
+     *
+     * Mora aqui, e não em `postMedia`, porque recorte é propriedade da imagem: a mesma
+     * linha serve o feed, a grade do composer e a capa de curso
+     * (`course.coverMediaId` aponta direto para cá). O preço é que ajustar uma imagem
+     * usada em dois lugares muda nos dois — e a tela diz isso.
+     */
+    focalX: real('focalX').notNull().default(0.5),
+    focalY: real('focalY').notNull().default(0.5),
     status: text('status', { enum: ['pending', 'ready', 'failed'] })
       .notNull()
       .default('pending'),

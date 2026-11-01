@@ -13,6 +13,7 @@
 import { memo } from 'react'
 import { YStack } from 'tamagui'
 
+import { focalPosition } from './focalPoint'
 import {
   DurationBadge,
   defaultAspectRatio,
@@ -38,11 +39,14 @@ export const MediaView = memo((props: MediaViewProps) => {
   if (media.kind === 'photo') {
     return (
       <MediaFrame aspectRatio={ratio} rounded={rounded}>
+        {/* `objectFit: cover` sempre corta algo, porque a moldura raramente tem a
+            proporção da imagem. `objectPosition` é quem escolhe **o que** sobra: sem
+            ele o corte é pelo centro, e foto em pé perde a cabeça de quem está nela. */}
         <img
           src={mediaPlaybackUrl(media.id)}
           alt={alt || ''}
           loading="lazy"
-          style={FILL}
+          style={{ ...FILL, objectPosition: focalPosition(media) }}
         />
       </MediaFrame>
     )

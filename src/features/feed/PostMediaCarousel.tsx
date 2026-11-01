@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { ScrollView, SizableText, XStack, YStack } from 'tamagui'
 
+import { postRatio } from '~/features/media/focalPoint'
 import { MediaView } from '~/features/media/MediaView'
 
 import type { MediaViewMedia } from '~/features/media/MediaFrame'
@@ -19,6 +20,15 @@ type Props = {
  * A largura vem do `onLayout` porque `pagingEnabled` precisa que cada slide tenha
  * exatamente a largura do viewport — percentual não serve dentro de um ScrollView
  * horizontal. Por isso nada é renderizado antes da primeira medição.
+ *
+ * 🔴 **Uma proporção para o post inteiro** (`postRatio`), não a de cada foto. Enquanto
+ * `media.width` era `NULL` em tudo, toda foto caía em 16/9 e os slides tinham a mesma
+ * altura por acidente; com a dimensão real gravada, misturar retrato e paisagem faria o
+ * card **pular a cada swipe** e empurrar o resto do feed. A proporção também é limitada,
+ * senão uma foto 9:16 ocuparia uma tela e meia de celular — ver `focalPoint.ts`.
+ *
+ * O que não couber na proporção é recortado, e quem decide o que sobra é o ponto focal
+ * que o criador escolheu no composer.
  */
 export const PostMediaCarousel = memo(({ items, enabled = true, alt }: Props) => {
   const [width, setWidth] = useState(0)
@@ -26,9 +36,13 @@ export const PostMediaCarousel = memo(({ items, enabled = true, alt }: Props) =>
 
   if (items.length === 0) return null
 
+  const ratio = postRatio(items)
+
   // uma mídia só não é carrossel: sem ScrollView, sem medir, sem indicador
   if (items.length === 1) {
-    return <MediaView media={items[0]!} enabled={enabled} alt={alt} />
+    return (
+      <MediaView media={items[0]!} aspectRatio={ratio} enabled={enabled} alt={alt} />
+    )
   }
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -51,13 +65,18 @@ export const PostMediaCarousel = memo(({ items, enabled = true, alt }: Props) =>
         >
           {items.map((media) => (
             <YStack key={media.id} width={width}>
-              <MediaView media={media} enabled={enabled} alt={alt} />
+              <MediaView
+                media={media}
+                aspectRatio={ratio}
+                enabled={enabled}
+                alt={alt}
+              />
             </YStack>
           ))}
         </ScrollView>
       ) : (
         // reserva a altura antes de medir, para o feed não pular
-        <YStack aspectRatio={16 / 9} bg="$color2" rounded="$6" />
+        <YStack aspectRatio={ratio ?? 16 / 9} bg="$color2" rounded="$6" />
       )}
 
       <XStack
@@ -73,6 +92,21 @@ export const PostMediaCarousel = memo(({ items, enabled = true, alt }: Props) =>
         <SizableText size="$1" color="white" fontWeight="600">
           {index + 1}/{items.length}
         </SizableText>
+      </XStack>
+
+      {/* Pontinhos abaixo da mídia, e não sobre ela: em cima dependeriam da cor da foto
+          para ter contraste. Eles dizem "arraste" — o "1/3" do canto só conta quantas
+          são, e num post de duas fotos ninguém arrasta sem saber que pode. */}
+      <XStack gap="$1.5" justify="center" py="$2" pointerEvents="none">
+        {items.map((media, dot) => (
+          <YStack
+            key={media.id}
+            width={6}
+            height={6}
+            rounded={999}
+            bg={dot === index ? '$accent9' : '$color6'}
+          />
+        ))}
       </XStack>
     </YStack>
   )

@@ -6,6 +6,7 @@
 
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
+import { FOCAL_CENTER } from '~/constants/media'
 import { getDb } from '~/database'
 import { media, post, postContent, postMedia, plan } from '~/database/schema-public'
 import { requireContentAdmin } from '~/server/access/viewer'
@@ -64,6 +65,8 @@ async function loadPostMedia(ids: string[]) {
       durationSec: media.durationSec,
       width: media.width,
       height: media.height,
+      focalX: media.focalX,
+      focalY: media.focalY,
     })
     .from(postMedia)
     .leftJoin(media, eq(media.id, postMedia.mediaId))
@@ -80,6 +83,10 @@ async function loadPostMedia(ids: string[]) {
           durationSec: row.durationSec,
           width: row.width,
           height: row.height,
+          // `media` entra por `leftJoin`, então o tipo chega anulável mesmo a coluna
+          // sendo `NOT NULL DEFAULT 0.5`. Dentro deste ramo a mídia existe.
+          focalX: row.focalX ?? FOCAL_CENTER,
+          focalY: row.focalY ?? FOCAL_CENTER,
         }
       : null
     const list = byPost.get(row.postId) ?? []
@@ -340,4 +347,65 @@ export async function detachMedia(
   const db = getDb()
   await db.delete(postMedia).where(eq(postMedia.id, args.postMediaId))
   return { ok: true, postMediaId: args.postMediaId }
+}
+
+/** Prende em `0..1`; valor ausente ou absurdo volta ao centro. */
+const asFocal = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(1, Math.max(0, value))
+    : FOCAL_CENTER
+
+/**
+ * Move o ponto focal da imagem — o pedaço que tem que sobreviver ao recorte.
+ *
+ * ⚠️ Escreve em `media`, não no vínculo: o recorte é propriedade da imagem, então
+ * mexer aqui muda **todo** lugar onde ela aparece (feed, grade do composer, capa de
+ * curso). A tela avisa; o servidor não tem como adivinhar qual uso o criador tinha em
+ * mente.
+ *
+ * Dono conferido como em `/api/media/complete`: ser admin de conteúdo abre o editor,
+ * mas não dá para reenquadrar imagem de outra pessoa.
+ */
+export async function setMediaFocal(
+  viewer: Viewer,
+  args: { mediaId: string; focalX: unknown; focalY: unknown },
+): Promise<WriteResult<{ mediaId: string; focalX: number; focalY: number }>> {
+  if (!requireContentAdmin(viewer)) return forbidden()
+  if (!args.mediaId) {
+    return { ok: false, status: 400, code: 'missing-id', message: 'Falta o id da mídia.' }
+  }
+
+  const db = getDb()
+  const [row] = await db
+    .select({ ownerId: media.ownerId, kind: media.kind })
+    .from(media)
+    .where(eq(media.id, args.mediaId))
+    .limit(1)
+
+  if (!row) return notFound('Mídia não encontrada.')
+  if (row.ownerId !== viewer.id && !viewer.isAdmin) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'forbidden',
+      message: 'Essa mídia não é sua.',
+    }
+  }
+  // vídeo e áudio não são recortados — o player usa `contain`. Aceitar aqui gravaria um
+  // ajuste que nunca aparece, e o criador voltaria procurando o bug.
+  if (row.kind !== 'photo') {
+    return {
+      ok: false,
+      status: 422,
+      code: 'not-a-photo',
+      message: 'Só foto tem recorte para ajustar.',
+    }
+  }
+
+  const focalX = asFocal(args.focalX)
+  const focalY = asFocal(args.focalY)
+
+  await db.update(media).set({ focalX, focalY }).where(eq(media.id, args.mediaId))
+
+  return { ok: true, mediaId: args.mediaId, focalX, focalY }
 }

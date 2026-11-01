@@ -3,16 +3,20 @@ import { useState } from 'react'
 import { Separator, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { APP_NAME } from '~/constants/app'
+import { DEV_ACCOUNTS, isDevAccountsEnabled } from '~/constants/devAccounts'
 import { authClient } from '~/features/auth/client/authClient'
-import { signInAsDemo } from '~/features/auth/client/signInAsDemo'
+import { signInAsDemo, signInWithPassword } from '~/features/auth/client/signInAsDemo'
 import { isDemoMode } from '~/helpers/isDemoMode'
 import { Link } from '~/interface/app/Link'
 import { Logo } from '~/interface/app/Logo'
 import { Button } from '~/interface/buttons/Button'
+import { Pressable } from '~/interface/buttons/Pressable'
 import { AppleIcon } from '~/interface/icons/AppleIcon'
 import { GoogleIcon } from '~/interface/icons/GoogleIcon'
 import { H1, SubHeading } from '~/interface/text/Headings'
 import { showToast } from '~/interface/toast/helpers'
+
+import type { DevAccount } from '~/constants/devAccounts'
 
 /**
  * Entrada de autenticação.
@@ -31,6 +35,25 @@ import { showToast } from '~/interface/toast/helpers'
 export const LoginPage = () => {
   const [demoLoading, setDemoLoading] = useState<boolean>(false)
   const [socialLoading, setSocialLoading] = useState<boolean>(false)
+  /** e-mail da conta de teste que está entrando — só uma gira por vez */
+  const [devLoading, setDevLoading] = useState<string | null>(null)
+
+  const enterAs = async (account: DevAccount) => {
+    if (devLoading) return
+    setDevLoading(account.email)
+    const { error } = await signInWithPassword({
+      name: account.name,
+      email: account.email,
+      password: account.password,
+    })
+    setDevLoading(null)
+
+    if (error) {
+      showToast(`Não entrou como ${account.label}`, { type: 'error' })
+      return
+    }
+    router.replace('/home/feed')
+  }
 
   /**
    * Login social.
@@ -131,8 +154,12 @@ export const LoginPage = () => {
             Continuar com Apple
           </Button>
 
-          {/* modo DEMO — ligado em dev ou com VITE_DEMO_MODE=1 */}
-          {isDemoMode && (
+          {/*
+            Modo DEMO — ligado em dev ou com `VITE_DEMO_MODE=1`. Em desenvolvimento ele
+            dá lugar ao bloco de contas de teste logo abaixo, que faz o mesmo e mais:
+            o primeiro atalho de lá é esta mesma conta, com o mesmo `data-testid`.
+          */}
+          {isDemoMode && !isDevAccountsEnabled && (
             <Button
               size="$4"
               variant="transparent"
@@ -153,6 +180,62 @@ export const LoginPage = () => {
             </Button>
           )}
         </YStack>
+
+        {/*
+          🔴 Atalho de desenvolvimento. `isDevAccountsEnabled` é `NODE_ENV ===
+          'development'`, constante de build — em produção a condição é `false` e este
+          bloco (com as senhas que ele importa) sai no tree-shaking.
+
+          Existe porque provar este produto exige olhar a mesma tela como três pessoas
+          diferentes, e trocar de conta a cada vez era caro o bastante para ninguém
+          fazer: as Fases 11 a 13 foram entregues sem um clique.
+        */}
+        {isDevAccountsEnabled ? (
+          <YStack gap="$2">
+            <Divider>contas de teste</Divider>
+
+            {DEV_ACCOUNTS.map((account, index) => (
+              <Pressable
+                key={account.email}
+                onPress={() => void enterAs(account)}
+                disabled={Boolean(devLoading)}
+                role="button"
+                px="$3"
+                py="$2.5"
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                hoverStyle={{ borderColor: '$accent7', bg: '$color2' }}
+                opacity={devLoading && devLoading !== account.email ? 0.5 : 1}
+                // o primeiro é o criador, a mesma conta do botão de demonstração — e o
+                // `loginAsDemo` dos testes de integração procura por este testid
+                data-testid={
+                  index === 0
+                    ? 'login-as-demo'
+                    : `login-as-${account.label.toLowerCase()}`
+                }
+              >
+                <XStack items="center" gap="$2" flexWrap="wrap">
+                  {devLoading === account.email ? <Spinner size="small" /> : null}
+                  <SizableText size="$3" fontWeight="700">
+                    {account.label}
+                  </SizableText>
+                  <SizableText size="$1" color="$color10">
+                    {account.detail}
+                  </SizableText>
+                </XStack>
+              </Pressable>
+            ))}
+
+            <SizableText size="$1" color="$color9" text="center">
+              Só no ambiente local. Admin e Assinante nascem completos com{' '}
+              <SizableText size="$1" color="$color10" fontFamily="$mono">
+                bun run:dev scripts/seed-dev-accounts.ts
+              </SizableText>
+              .
+            </SizableText>
+          </YStack>
+        ) : null}
 
         <XStack items="center" justify="center" gap="$2" flexWrap="wrap">
           <SizableText size="$3" color="$color10">

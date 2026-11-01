@@ -6,6 +6,7 @@
 // Na web é diferente — lá o cookie viaja sozinho e a foto vai direto na rota.
 
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
+import { Image as ExpoImage } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { memo, useEffect, useRef } from 'react'
 import { SizableText, XStack, YStack } from 'tamagui'
@@ -13,8 +14,8 @@ import { SizableText, XStack, YStack } from 'tamagui'
 import { Pressable } from '~/interface/buttons/Pressable'
 import { PauseIcon } from '~/interface/icons/PauseIcon'
 import { PlayIcon } from '~/interface/icons/PlayIcon'
-import { Image } from '~/interface/image/Image'
 
+import { focalContentPosition } from './focalPoint'
 import {
   defaultAspectRatio,
   DurationBadge,
@@ -29,6 +30,9 @@ import type { MediaViewProps } from './MediaFrame'
 
 /** de quanto em quanto tempo o player nativo emite `timeUpdate`, em segundos */
 const TIME_UPDATE_INTERVAL_SEC = 1
+
+/** a foto ocupa a moldura inteira; quem reserva o espaço é o `MediaFrame` */
+const FILL_STYLE = { width: '100%', height: '100%' } as const
 
 /**
  * Guarda o callback mais recente numa ref.
@@ -67,7 +71,19 @@ export const MediaView = memo((props: MediaViewProps) => {
   if (media.kind === 'photo') {
     return (
       <MediaFrame aspectRatio={ratio} rounded={rounded}>
-        <Image src={url} alt={alt || ''} width="100%" height="100%" objectFit="cover" />
+        {/*
+          `expo-image` e não o `Image` do Tamagui **só** por causa do ponto focal: o
+          `Image` daqui deriva de `RN.Image`, que não tem equivalente de
+          `objectPosition` — recorta sempre pelo centro, e o ajuste feito no admin não
+          apareceria no celular. `contentPosition` é o nome disso aqui.
+        */}
+        <ExpoImage
+          source={{ uri: url }}
+          accessibilityLabel={alt || undefined}
+          style={FILL_STYLE}
+          contentFit="cover"
+          contentPosition={focalContentPosition(media)}
+        />
       </MediaFrame>
     )
   }

@@ -11,6 +11,7 @@
 
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 
+import { FOCAL_CENTER } from '~/constants/media'
 import { getDb } from '~/database'
 import {
   comment,
@@ -118,6 +119,8 @@ async function loadMedia(ids: string[]) {
       durationSec: media.durationSec,
       width: media.width,
       height: media.height,
+      focalX: media.focalX,
+      focalY: media.focalY,
     })
     .from(postMedia)
     .leftJoin(media, eq(media.id, postMedia.mediaId))
@@ -134,6 +137,9 @@ async function loadMedia(ids: string[]) {
           durationSec: row.durationSec,
           width: row.width,
           height: row.height,
+          // anulável por causa do `leftJoin`, não da coluna (que é `NOT NULL`)
+          focalX: row.focalX ?? FOCAL_CENTER,
+          focalY: row.focalY ?? FOCAL_CENTER,
         }
       : null
 

@@ -26,6 +26,9 @@ export type MediaDTO = {
   durationSec: number | null
   width: number | null
   height: number | null
+  /** ponto focal do recorte, `0..1`; `0.5/0.5` é o centro — ver `focalPoint.ts` */
+  focalX: number
+  focalY: number
 }
 
 export type PostMediaDTO = {

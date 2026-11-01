@@ -1,5 +1,5 @@
 import { Link, usePathname } from 'one'
-import { SizableText, XStack, YStack } from 'tamagui'
+import { ScrollView, SizableText, XStack, YStack } from 'tamagui'
 
 import { canManagePeople } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
@@ -36,7 +36,9 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   return (
     <YStack bg="$background" flex={1} {...({ minHeight: '100vh' } as any)}>
-      <YStack width="100%" maxW={980} mx="auto" px="$4" pb="$8">
+      {/* `px` menor no celular: em 360px, `$4` nas duas beiradas come 10% da largura
+          útil, e é aí que a grade de fotos do composer fica apertada */}
+      <YStack width="100%" maxW={980} mx="auto" px="$3" pb="$8" $md={{ px: '$4' }}>
         <XStack items="center" gap="$3" py="$4">
           {/*
             Volta no histórico, como todo caret do app. Antes era um `Link` fixo para
@@ -45,43 +47,55 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
             direto e não tem para onde voltar.
           */}
           <HeaderBackButton fallbackHref="/home/feed" ml="$-2" />
-          <SizableText size="$7" fontWeight="700">
+          <SizableText size="$6" fontWeight="700" $md={{ size: '$7' }}>
             Admin
           </SizableText>
         </XStack>
 
-        <XStack gap="$2" pb="$4" flexWrap="wrap">
-          {items.map((item) => {
-            // `/admin` casaria com tudo; exige igualdade para a raiz
-            const active =
-              item.href === '/admin'
-                ? pathname === '/admin' || pathname === '/admin/'
-                : pathname.startsWith(item.href as string)
+        {/*
+          Faixa que rola, não pílulas que quebram linha: em 360px as cinco abas viravam
+          três linhas e empurravam o conteúdo da tela para baixo da dobra. No desktop
+          elas cabem, então não há o que rolar e nada muda.
+        */}
+        {/* o `YStack` carrega a margem: o `ScrollView` do Tamagui não aceita props de
+            caixa como `mb`/`flexGrow` — elas são omitidas do tipo dele */}
+        <YStack mb="$4">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <XStack gap="$2" flexWrap="nowrap">
+              {items.map((item) => {
+                // `/admin` casaria com tudo; exige igualdade para a raiz
+                const active =
+                  item.href === '/admin'
+                    ? pathname === '/admin' || pathname === '/admin/'
+                    : pathname.startsWith(item.href as string)
 
-            return (
-              <Link key={item.href as string} href={item.href}>
-                <Pressable
-                  px="$3"
-                  py="$1.5"
-                  rounded="$12"
-                  borderWidth={1}
-                  borderColor={active ? '$accent7' : '$borderColor'}
-                  bg={active ? '$accent3' : 'transparent'}
-                  hoverStyle={{ bg: active ? '$accent3' : '$color2' }}
-                  role="button"
-                >
-                  <SizableText
-                    size="$2"
-                    fontWeight="600"
-                    color={active ? '$accent11' : '$color10'}
-                  >
-                    {item.label}
-                  </SizableText>
-                </Pressable>
-              </Link>
-            )
-          })}
-        </XStack>
+                return (
+                  <Link key={item.href as string} href={item.href}>
+                    <Pressable
+                      px="$3"
+                      py="$2"
+                      rounded="$12"
+                      borderWidth={1}
+                      borderColor={active ? '$accent7' : '$borderColor'}
+                      bg={active ? '$accent3' : 'transparent'}
+                      hoverStyle={{ bg: active ? '$accent3' : '$color2' }}
+                      role="button"
+                    >
+                      <SizableText
+                        size="$2"
+                        fontWeight="600"
+                        color={active ? '$accent11' : '$color10'}
+                        whiteSpace="nowrap"
+                      >
+                        {item.label}
+                      </SizableText>
+                    </Pressable>
+                  </Link>
+                )
+              })}
+            </XStack>
+          </ScrollView>
+        </YStack>
 
         {children}
       </YStack>
@@ -117,6 +131,51 @@ export const AdminSection = ({
     </XStack>
     {children}
   </YStack>
+)
+
+/**
+ * Altura da barra de ação do celular. Mora aqui pelo mesmo motivo que
+ * `BOTTOM_BAR_HEIGHT` mora em `constants/navigation`: a barra é `fixed`, **sai do
+ * fluxo**, e quem desenha debaixo dela precisa compensar na mão.
+ */
+export const ADMIN_ACTION_BAR_HEIGHT = 64
+
+/**
+ * As ações da tela, grudadas embaixo — no celular.
+ *
+ * Por que existe: "Salvar" e "Publicar" vivem no cabeçalho do `AdminSection`, que no
+ * desktop está sempre à vista. Numa tela de celular, escrever o texto do post empurra o
+ * cabeçalho para fora da rolagem, e o criador acaba procurando o botão de salvar. A
+ * barra resolve isso sem mexer no desktop, onde ela não aparece.
+ *
+ * Desenha o espaçador junto, de propósito: separar os dois faria com que a próxima tela
+ * a usar a barra esquecesse o `padding` e deixasse o último campo embaixo dela.
+ */
+export const AdminActionBar = ({ children }: { children: ReactNode }) => (
+  <>
+    <YStack height={ADMIN_ACTION_BAR_HEIGHT} />
+    <XStack
+      b={0}
+      l={0}
+      r={0}
+      z={50}
+      items="center"
+      justify="flex-end"
+      gap="$2"
+      px="$4"
+      py="$2.5"
+      bg="$background"
+      borderTopWidth={1}
+      borderColor="$borderColor"
+      $platform-web={{
+        position: 'fixed',
+        // faixa do gesto no iPhone; sem isto o botão fica debaixo dela
+        paddingBottom: 'env(safe-area-inset-bottom)' as any,
+      }}
+    >
+      {children}
+    </XStack>
+  </>
 )
 
 export const AdminEmpty = ({ children }: { children: string }) => (

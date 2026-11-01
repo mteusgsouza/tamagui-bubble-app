@@ -4,8 +4,15 @@
 // `node_modules/expo/bundledNativeModules.json`), que não está instalado. O admin é
 // web-only por decisão do plano da Fase 8, então isto existe só para o bundle nativo
 // compilar caso alguém importe o módulo por engano.
+//
+// Quando for implementado: `launchImageLibraryAsync` devolve `uri`, `width`, `height`,
+// `mimeType` e `duration`, e `fetch(uri).then((r) => r.blob())` fecha o `PickedFile` —
+// ou seja, no nativo a dimensão **já vem pronta** do seletor, sem a medição que a web
+// faz em `pickFile.ts`.
 
-export type PickKind = 'photo' | 'video' | 'audio' | 'any'
+import type { PickedFile, PickKind } from './pickedFile'
+
+export type { PickedFile, PickKind } from './pickedFile'
 
 const unsupported = () => {
   throw new Error(
@@ -14,10 +21,13 @@ const unsupported = () => {
   )
 }
 
-export function pickFiles(_kind: PickKind = 'any', _multiple = false): Promise<File[]> {
+export function pickFiles(
+  _kind: PickKind = 'any',
+  _multiple = false,
+): Promise<PickedFile[]> {
   return unsupported()
 }
 
-export function pickFile(_kind: PickKind = 'any'): Promise<File | null> {
+export function pickFile(_kind: PickKind = 'any'): Promise<PickedFile | null> {
   return unsupported()
 }

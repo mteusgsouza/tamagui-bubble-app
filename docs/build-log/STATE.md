@@ -843,9 +843,16 @@ Três provedores, porque cada peça tem uma exigência diferente:
   `signInAsDemo.ts` dentro de `passwordLogin`. **Não feito: decisão pendente**, porque
   signUp-primeiro faz e-mail com typo virar conta nova. O certo mesmo é separar as telas
   de login e cadastro numa fase de auth.~~
-- **Contas existentes hoje:** `demo@takeout.tamagui.dev` / `demopassword123`
-  (id `demo-user-id`, é o criador) e `teste@bubble.local` / `teste123456`
-  (id `test-user-b`, cobaia do teste de paywall, criada à mão no banco).
+- ~~**Contas existentes hoje:** `demo@takeout.tamagui.dev` e `teste@bubble.local`
+  (id `test-user-b`, cobaia do paywall, criada à mão no banco).~~ **Desatualizado:** o
+  `test-user-b` sumiu num `backend:clean` e a cobaia do paywall voltou a não existir —
+  que é metade da razão de 11–13 nunca terem sido clicadas. Agora são **quatro contas de
+  teste**, declaradas em `src/constants/devAccounts.ts` e com atalho de um clique na tela
+  de login (só em `NODE_ENV=development`): Criador (`demo@takeout.tamagui.dev`, id
+  `demo-user-id`), Admin (`role = 'admin'`, destrava Planos e Pessoas), Assinante
+  (`plan-mensal` ativo) e Visitante (bate no paywall). `bun run:dev
+  scripts/seed-dev-accounts.ts` cria e reconverge as quatro — é idempotente e cadastra
+  pelo servidor, porque o hash de senha é do Better Auth.
 - ~~**Seed: metade resolvida.**~~ **Fechado.** `scripts/seed-courses.ts` recria planos,
   curso, módulos e aulas; `scripts/seed-posts.ts` recria os 5 posts. Os dois são
   idempotentes e leem o dono de `VITE_MASTER_USER_ID`, o que é o ponto: em produção o

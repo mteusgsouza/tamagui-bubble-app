@@ -1,28 +1,37 @@
 import { createRoute, useParams, useRouter } from 'one'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { SizableText, Spinner, XStack, YStack } from 'tamagui'
+import { SizableText, Spinner, useMedia, XStack, YStack } from 'tamagui'
 
 import { MASTER_USER_ID } from '~/constants/creator'
 import { adminPosts } from '~/data/client/api'
 import { useAdminPost, usePlans } from '~/data/client/hooks'
 import { ADMIN_MESSAGES } from '~/data/client/messages'
 import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
-import { AdminSection } from '~/features/admin/AdminShell'
+import { AdminActionBar, AdminSection } from '~/features/admin/AdminShell'
 import { OptionRow, TextField } from '~/features/admin/fields'
 import { PostMediaField } from '~/features/admin/PostMediaField'
 import { deriveKind } from '~/features/admin/postMediaRules'
+import { draftToFeedPost, PREVIEW_OPTIONS } from '~/features/admin/postPreview'
 import { useAuth } from '~/features/auth/client/authClient'
+import { PostCard } from '~/features/feed/PostCard'
 import { Button } from '~/interface/buttons/Button'
 import { apiMessage } from '~/helpers/apiMessage'
 import { showToast } from '~/interface/toast/helpers'
 
 import type { PostKind, Visibility } from '~/data/enums'
+import type { PreviewAs } from '~/features/admin/postPreview'
 
 const route = createRoute<'/(app)/admin/posts/[postId]'>()
 
 const VISIBILITIES: { id: Visibility; label: string }[] = [
   { id: 'subscribers', label: 'Assinantes' },
   { id: 'public', label: 'Aberto a todos' },
+]
+
+/** As duas metades da tela no celular, onde elas não cabem lado a lado. */
+const PANES: { id: 'editar' | 'previa'; label: string }[] = [
+  { id: 'editar', label: 'Editar' },
+  { id: 'previa', label: 'Prévia' },
 ]
 
 /**
@@ -47,7 +56,6 @@ export const AdminPostEditPage = memo(() => {
   const router = useRouter()
   const { postId, novo } = useParams<{ postId?: string; novo?: string }>()
   const { user } = useAuth()
-  const userId = user?.id || ''
 
   const isNew = novo === '1'
 
@@ -55,6 +63,15 @@ export const AdminPostEditPage = memo(() => {
   const post = postQuery.data?.post
   const plans = usePlans().data?.plans
   const invalidate = useInvalidateAfterAdminWrite()
+
+  // `$md` é `minWidth: 768` nesta config (Tamagui v5, mobile-first), então fora dele é
+  // celular. `useMedia` e não prop `$md` porque a diferença é de **estrutura**: lado a
+  // lado o formulário e a prévia coexistem; no celular um substitui o outro. Mesmo
+  // motivo do `CommentList`.
+  const media = useMedia()
+  const wide = media.md
+  const [pane, setPane] = useState<'editar' | 'previa'>('editar')
+  const [previewAs, setPreviewAs] = useState<PreviewAs>('subscriber')
 
   // rascunho local: o servidor é a fonte, mas digitar não pode disparar requisição por tecla.
   // `kind` NÃO entra aqui — ele é deduzido da mídia, nunca escolhido.
@@ -238,138 +255,245 @@ export const AdminPostEditPage = memo(() => {
     audio: 'Áudio',
   }
 
-  return (
-    <AdminSection
-      title={isNew && !exists ? 'Novo post' : 'Editar post'}
-      detail={
-        exists
-          ? `${row.deleted ? 'Apagado — só você vê' : row.published ? 'Publicado' : 'Rascunho'} · ${KIND_LABEL[kind]}`
-          : 'Ainda não salvo'
-      }
-      action={
-        <XStack gap="$2">
-          {exists ? (
-            <Button
-              size="$3"
-              variant="outlined"
-              onPress={togglePublish}
-              disabled={busy}
-            >
-              {row.published ? 'Despublicar' : 'Publicar'}
-            </Button>
-          ) : null}
-          <Button
-            size="$3"
-            variant="accent"
-            onPress={save}
-            disabled={saving}
-            data-testid="save-post"
-          >
-            <SizableText size="$3" fontWeight="600" color="$accentColor">
-              {saving ? 'Salvando…' : 'Salvar'}
-            </SizableText>
-          </Button>
-        </XStack>
-      }
-    >
-      <YStack gap="$5">
-        {/* a mídia é o campo principal: vem primeiro, o tipo do post sai dela, e ela
-            funciona desde o primeiro instante — `ensurePost` materializa o rascunho */}
-        <PostMediaField
-          postId={postId!}
-          attached={attached}
-          onKindChange={onKindChange}
-          ensurePost={ensurePost}
-        />
+  const actions = (
+    <XStack gap="$2">
+      {exists ? (
+        <Button size="$3" variant="outlined" onPress={togglePublish} disabled={busy}>
+          {row.published ? 'Despublicar' : 'Publicar'}
+        </Button>
+      ) : null}
+      <Button
+        size="$3"
+        variant="accent"
+        onPress={save}
+        disabled={saving}
+        data-testid="save-post"
+      >
+        <SizableText size="$3" fontWeight="600" color="$accentColor">
+          {saving ? 'Salvando…' : 'Salvar'}
+        </SizableText>
+      </Button>
+    </XStack>
+  )
 
-        <TextField
-          label="Título"
-          value={draft.title}
-          onChange={(title) => setDraft((d) => ({ ...d, title }))}
-          placeholder="O que este post diz em uma linha"
-          testID="post-title"
-          size="lg"
-        />
+  const form = (
+    <YStack flex={1} minW={0} gap="$5">
+      {/* a mídia é o campo principal: vem primeiro, o tipo do post sai dela, e ela
+          funciona desde o primeiro instante — `ensurePost` materializa o rascunho */}
+      <PostMediaField
+        postId={postId!}
+        attached={attached}
+        onKindChange={onKindChange}
+        ensurePost={ensurePost}
+      />
 
+      <TextField
+        label="Título"
+        value={draft.title}
+        onChange={(title) => setDraft((d) => ({ ...d, title }))}
+        placeholder="O que este post diz em uma linha"
+        testID="post-title"
+        size="lg"
+      />
+
+      <TextField
+        label="Texto"
+        value={draft.body}
+        onChange={(body) => setDraft((d) => ({ ...d, body }))}
+        placeholder="Escreva aqui. Linha em branco separa parágrafos."
+        multiline
+        testID="post-body"
+      />
+
+      {/* Só faz diferença em post de assinante: no post público não há o que bloquear,
+          e o texto inteiro já aparece. */}
+      {draft.visibility === 'subscribers' ? (
         <TextField
-          label="Texto"
-          value={draft.body}
-          onChange={(body) => setDraft((d) => ({ ...d, body }))}
-          placeholder="Escreva aqui. Linha em branco separa parágrafos."
+          label="Isca (quem não assina vê isto)"
+          value={draft.teaser}
+          onChange={(teaser) => setDraft((d) => ({ ...d, teaser }))}
+          placeholder="Uma ou duas linhas que dão vontade de assinar."
+          hint="A prévia em “Quem não assina” mostra exatamente onde ela aparece."
           multiline
-          testID="post-body"
+          testID="post-teaser"
+        />
+      ) : null}
+
+      <YStack
+        gap="$4"
+        p="$3"
+        rounded="$6"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$color1"
+      >
+        <SizableText size="$3" fontWeight="700">
+          Publicação
+        </SizableText>
+
+        <OptionRow
+          label="Quem vê"
+          options={VISIBILITIES}
+          value={draft.visibility}
+          onChange={(visibility) => setDraft((d) => ({ ...d, visibility }))}
         />
 
-        {/* Só faz diferença em post de assinante: no post público não há o que bloquear,
-            e o texto inteiro já aparece. */}
+        {/* plano não faz sentido em post aberto */}
         {draft.visibility === 'subscribers' ? (
-          <TextField
-            label="Isca (quem não assina vê isto)"
-            value={draft.teaser}
-            onChange={(teaser) => setDraft((d) => ({ ...d, teaser }))}
-            placeholder="Uma ou duas linhas que dão vontade de assinar."
-            multiline
-            testID="post-teaser"
-          />
-        ) : null}
-
-        <YStack
-          gap="$4"
-          p="$3"
-          rounded="$6"
-          borderWidth={1}
-          borderColor="$borderColor"
-          bg="$color1"
-        >
-          <SizableText size="$3" fontWeight="700">
-            Publicação
-          </SizableText>
-
           <OptionRow
-            label="Quem vê"
-            options={VISIBILITIES}
-            value={draft.visibility}
-            onChange={(visibility) => setDraft((d) => ({ ...d, visibility }))}
+            label="Exige plano"
+            hint="Sem plano, qualquer assinatura ativa libera. Com plano, só aquele."
+            options={[
+              { id: '', label: 'Qualquer assinatura' },
+              ...(plans ?? []).map((p: any) => ({ id: p.id, label: p.name })),
+            ]}
+            value={draft.requiredPlanId ?? ''}
+            onChange={(id) => setDraft((d) => ({ ...d, requiredPlanId: id || null }))}
           />
-
-          {/* plano não faz sentido em post aberto */}
-          {draft.visibility === 'subscribers' ? (
-            <OptionRow
-              label="Exige plano"
-              hint="Sem plano, qualquer assinatura ativa libera. Com plano, só aquele."
-              options={[
-                { id: '', label: 'Qualquer assinatura' },
-                ...(plans ?? []).map((p: any) => ({ id: p.id, label: p.name })),
-              ]}
-              value={draft.requiredPlanId ?? ''}
-              onChange={(id) => setDraft((d) => ({ ...d, requiredPlanId: id || null }))}
-            />
-          ) : null}
-        </YStack>
-
-        {/* apagar é a única ação da tela que tira conteúdo do ar: ganha uma faixa
-            própria, separada por linha, com o que acontece escrito antes do botão */}
-        {exists && !row.deleted ? (
-          <YStack gap="$2" pt="$4" borderTopWidth={1} borderColor="$borderColor">
-            <SizableText size="$2" color="$color10">
-              Apagar tira o post do feed e dos assinantes. Ele continua aqui, visível só
-              para você.
-            </SizableText>
-            {/* o XStack impede o botão de esticar na largura toda */}
-            <XStack>
-              <Button
-                size="$3"
-                variant="danger"
-                onPress={remove}
-                disabled={busy}
-                data-testid="delete-post"
-              >
-                Apagar post
-              </Button>
-            </XStack>
-          </YStack>
         ) : null}
       </YStack>
-    </AdminSection>
+
+      {/* apagar é a única ação da tela que tira conteúdo do ar: ganha uma faixa
+          própria, separada por linha, com o que acontece escrito antes do botão */}
+      {exists && !row.deleted ? (
+        <YStack gap="$2" pt="$4" borderTopWidth={1} borderColor="$borderColor">
+          <SizableText size="$2" color="$color10">
+            Apagar tira o post do feed e dos assinantes. Ele continua aqui, visível só
+            para você.
+          </SizableText>
+          {/* o XStack impede o botão de esticar na largura toda */}
+          <XStack>
+            <Button
+              size="$3"
+              variant="danger"
+              onPress={remove}
+              disabled={busy}
+              data-testid="delete-post"
+            >
+              Apagar post
+            </Button>
+          </XStack>
+        </YStack>
+      ) : null}
+    </YStack>
+  )
+
+  return (
+    <>
+      <AdminSection
+        title={isNew && !exists ? 'Novo post' : 'Editar post'}
+        detail={
+          exists
+            ? `${row.deleted ? 'Apagado — só você vê' : row.published ? 'Publicado' : 'Rascunho'} · ${KIND_LABEL[kind]}`
+            : 'Ainda não salvo'
+        }
+        // no celular as ações moram na barra fixa de baixo, não no cabeçalho: digitar o
+        // texto do post empurra o cabeçalho para fora da rolagem
+        action={wide ? actions : null}
+      >
+        <YStack gap="$4">
+          {!wide ? (
+            <OptionRow options={PANES} value={pane} onChange={setPane} />
+          ) : null}
+
+          <XStack gap="$6" items="flex-start">
+            {wide || pane === 'editar' ? form : null}
+
+            {wide || pane === 'previa' ? (
+              <PostPreview
+                draft={draft}
+                attached={attached}
+                author={
+                  user
+                    ? { id: user.id, name: user.name, image: user.image }
+                    : null
+                }
+                postId={postId}
+                as={previewAs}
+                onChangeAs={setPreviewAs}
+                wide={wide}
+              />
+            ) : null}
+          </XStack>
+        </YStack>
+      </AdminSection>
+
+      {!wide ? <AdminActionBar>{actions}</AdminActionBar> : null}
+    </>
   )
 })
+
+/**
+ * A prévia: o `PostCard` do feed, montado do rascunho.
+ *
+ * O alternador vale só em post de assinante — post aberto não tem estado bloqueado (o
+ * gate do servidor olha `visibility = 'subscribers'`), então oferecer "quem não assina"
+ * ali seria um botão que não muda nada.
+ */
+const PostPreview = ({
+  draft,
+  attached,
+  author,
+  postId,
+  as,
+  onChangeAs,
+  wide,
+}: {
+  draft: Parameters<typeof draftToFeedPost>[0]
+  attached: any[]
+  author: { id: string; name?: string | null; image?: string | null } | null
+  postId?: string
+  as: PreviewAs
+  onChangeAs: (value: PreviewAs) => void
+  wide: boolean
+}) => {
+  const canToggle = draft.visibility === 'subscribers'
+  const post = draftToFeedPost(draft, attached, author, { as, id: postId })
+
+  return (
+    <YStack
+      width={wide ? 380 : '100%'}
+      flexShrink={0}
+      gap="$3"
+      {...(wide
+        ? ({ '$platform-web': { position: 'sticky', top: 16 } } as any)
+        : null)}
+    >
+      <YStack gap="$1">
+        <SizableText size="$3" fontWeight="700">
+          Prévia
+        </SizableText>
+        <SizableText size="$1" color="$color10">
+          {canToggle
+            ? 'É o card do feed, montado do rascunho — inclusive o que falta.'
+            : 'Post aberto: todo mundo vê isto, assinante ou não.'}
+        </SizableText>
+      </YStack>
+
+      {canToggle ? (
+        <OptionRow options={PREVIEW_OPTIONS} value={as} onChange={onChangeAs} />
+      ) : null}
+
+      {/* `$background` e não `$color1`: o card tem que aparecer sobre o fundo do feed,
+          senão a prévia promete um contraste que o feed não tem */}
+      <YStack
+        bg="$background"
+        rounded="$6"
+        borderWidth={1}
+        borderColor="$borderColor"
+        px="$3"
+        overflow="hidden"
+        data-testid="post-preview"
+      >
+        <PostCard post={post} preview />
+      </YStack>
+
+      {as === 'visitor' && canToggle && !draft.teaser.trim() ? (
+        <SizableText size="$1" color="$orange10">
+          Sem isca, quem não assina vê só o título e o cadeado — e não tem motivo para
+          assinar.
+        </SizableText>
+      ) : null}
+    </YStack>
+  )
+}

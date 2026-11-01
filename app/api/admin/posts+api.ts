@@ -1,5 +1,6 @@
 // GET  /api/admin/posts  — a lista do editor, com rascunho e apagado
-// POST /api/admin/posts  — salvar, publicar, apagar, anexar e desanexar mídia
+// POST /api/admin/posts  — salvar, publicar, apagar, anexar/desanexar mídia e mover o
+//                          ponto focal da foto
 //
 // Uma rota com `action` no corpo, como `app/api/admin/people+api.ts`: cada segmento
 // dinâmico custaria uma regex, porque o `Endpoint` do One só declara `(req)`.
@@ -17,6 +18,7 @@ import {
   detachMedia,
   loadAdminPosts,
   savePost,
+  setMediaFocal,
   setPostPublished,
 } from '~/server/content/adminPosts'
 
@@ -50,6 +52,8 @@ type Body = {
   published?: unknown
   mediaId?: unknown
   postMediaId?: unknown
+  focalX?: unknown
+  focalY?: unknown
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '')
@@ -123,6 +127,24 @@ export const POST: Endpoint = async (request) => {
         const result = await detachMedia(viewer, { postMediaId: str(payload.postMediaId) })
         return result.ok
           ? Response.json({ ok: true, postMediaId: result.postMediaId })
+          : fail(result.status, result.code, result.message)
+      }
+
+      case 'setMediaFocal': {
+        // os números são presos em `0..1` no servidor, não aqui: a mesma função que
+        // grava é a que normaliza, então nenhum caminho de escrita escapa do limite
+        const result = await setMediaFocal(viewer, {
+          mediaId: str(payload.mediaId),
+          focalX: payload.focalX,
+          focalY: payload.focalY,
+        })
+        return result.ok
+          ? Response.json({
+              ok: true,
+              mediaId: result.mediaId,
+              focalX: result.focalX,
+              focalY: result.focalY,
+            })
           : fail(result.status, result.code, result.message)
       }
 

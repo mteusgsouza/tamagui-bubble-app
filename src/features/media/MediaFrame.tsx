@@ -19,6 +19,12 @@ export type MediaViewMedia = {
   durationSec?: number | null
   width?: number | null
   height?: number | null
+  /**
+   * Ponto focal normalizado em `0..1` — o pedaço que tem que sobreviver ao recorte.
+   * Ausente ou fora da faixa vira centro (`focalPoint.ts` resolve isso).
+   */
+  focalX?: number | null
+  focalY?: number | null
 }
 
 export type MediaViewProps = {

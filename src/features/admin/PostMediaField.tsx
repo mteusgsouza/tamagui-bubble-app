@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { SizableText, XStack, YStack } from 'tamagui'
+import { isWeb, SizableText, XStack, YStack } from 'tamagui'
 
 import { formatBytes, MAX_PHOTOS_PER_POST, MAX_UPLOAD_BYTES } from '~/constants/media'
 import { adminPosts } from '~/data/client/api'
 import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
+import { postRatio } from '~/features/media/focalPoint'
 import { MediaView } from '~/features/media/MediaView'
 import { useMediaUpload } from '~/features/media/useMediaUpload'
 import { Pressable } from '~/interface/buttons/Pressable'
 
+import { FocalPointEditor } from './FocalPointEditor'
 import { pickFiles } from './pickFile'
 import {
   acceptKind,
@@ -18,6 +20,7 @@ import {
 } from './postMediaRules'
 
 import type { PostKind } from '~/data/enums'
+import type { MediaViewMedia } from '~/features/media/MediaFrame'
 import type { AttachedMedia } from './postMediaRules'
 
 /**
@@ -49,10 +52,18 @@ export const PostMediaField = ({
   const invalidate = useInvalidateAfterAdminWrite()
   const [queue, setQueue] = useState<{ done: number; total: number } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
+  /** id da **mídia** (não do vínculo) em ajuste de recorte; `null` = ninguém */
+  const [editing, setEditing] = useState<string | null>(null)
+  const [focalSaving, setFocalSaving] = useState(false)
 
   const items = withMedia(attached)
   const kind = deriveKind(attached)
   const slots = remainingSlots(attached)
+
+  const photos = items.map((entry) => entry.media as MediaViewMedia)
+  // a proporção que o post vai usar de verdade, para a prévia do recorte não mentir
+  const ratio = postRatio(photos) ?? 16 / 9
+  const editingMedia = photos.find((media) => media.id === editing) ?? null
 
   // o pai grava `post.kind` assim que a mídia muda — não dá para esperar o "Salvar",
   // senão o card do feed mostra o rótulo errado nesse meio-tempo
@@ -87,7 +98,16 @@ export const PostMediaField = ({
     // a fila de mutations do Zero na hora de criar os vínculos
     setQueue({ done: 0, total: accepted.length })
     for (const [index, file] of accepted.entries()) {
-      const mediaId = await upload({ blob: file, mime: file.type })
+      // 🔴 `width`/`height` vêm medidos do seletor (`pickFile.ts`). Sem eles,
+      // `media.width` nascia `NULL`, `defaultAspectRatio` caía em 16/9 e **toda foto em
+      // pé aparecia cortada** — era esse o bug do enquadramento, e ele começava aqui.
+      const mediaId = await upload({
+        blob: file.blob,
+        mime: file.mime,
+        width: file.width,
+        height: file.height,
+        durationSec: file.durationSec,
+      })
       if (!mediaId) break
 
       // a `position` sai do servidor (`max + 1`), então `position++` local some junto
@@ -103,6 +123,26 @@ export const PostMediaField = ({
     // apaga o vínculo, não a mídia: ela pode estar em outro post
     await adminPosts({ action: 'detachMedia', postMediaId: linkId })
     invalidate()
+  }
+
+  const saveFocal = async (point: { x: number; y: number }) => {
+    if (!editing) return
+    setFocalSaving(true)
+    setLocalError(null)
+    try {
+      await adminPosts({
+        action: 'setMediaFocal',
+        mediaId: editing,
+        focalX: point.x,
+        focalY: point.y,
+      })
+      invalidate()
+      setEditing(null)
+    } catch {
+      setLocalError('Não deu para salvar o recorte.')
+    } finally {
+      setFocalSaving(false)
+    }
   }
 
   const busy = queue !== null
@@ -121,14 +161,48 @@ export const PostMediaField = ({
         ) : null}
       </XStack>
 
-      {items.length === 0 ? (
+      {editingMedia ? (
+        <FocalPointEditor
+          media={editingMedia}
+          postRatio={ratio}
+          saving={focalSaving}
+          onCancel={() => setEditing(null)}
+          onSave={saveFocal}
+        />
+      ) : items.length === 0 ? (
         <EmptyDropArea onPress={onAdd} busy={busy} queue={queue} />
       ) : kind === 'photo' ? (
         <XStack flexWrap="wrap" gap="$2">
+          {/* duas colunas no celular, três no desktop. `$md` é `minWidth: 768` nesta
+              config (Tamagui v5, mobile-first), então o valor base é o do celular */}
           {items.map((entry) => (
-            <YStack key={entry.id} width="31.5%" minW={96} gap="$1">
+            <YStack
+              key={entry.id}
+              width="48%"
+              minW={96}
+              gap="$1"
+              $md={{ width: '31.5%' }}
+            >
               <MediaView media={entry.media as any} aspectRatio={1} rounded="$4" />
-              <RemoveLink onPress={() => detach(entry.id)} />
+              <XStack justify="space-between" items="center" gap="$2">
+                {/* 🔴 `isWeb`: o `FocalPointEditor` é DOM cru (precisa de
+                    `setPointerCapture` para o arrasto não grudar). O admin é web-only
+                    hoje, mas o código dele entra no bundle nativo — e o dia em que
+                    alguém tirar o redirect de `admin/_layout.tsx`, um `<div>`
+                    renderizado no nativo quebra a tela. Não oferecer é melhor que
+                    oferecer e quebrar; habilitar no nativo é escrever
+                    `FocalPointEditor.native.tsx`. */}
+                {isWeb ? (
+                  <TileAction
+                    label="ajustar"
+                    onPress={() => setEditing(entry.media!.id)}
+                    testID="focal-open"
+                  />
+                ) : (
+                  <YStack />
+                )}
+                <TileAction label="remover" danger onPress={() => detach(entry.id)} />
+              </XStack>
             </YStack>
           ))}
 
@@ -195,8 +269,9 @@ const AddTile = ({ onPress, busy, queue }: BusyProps & { onPress: () => void }) 
     onPress={busy ? undefined : onPress}
     role="button"
     data-testid="add-media"
-    width="31.5%"
+    width="48%"
     minW={96}
+    $md={{ width: '31.5%' }}
     aspectRatio={1}
     rounded="$4"
     borderWidth={1.5}
@@ -216,6 +291,25 @@ const RemoveLink = ({ onPress }: { onPress: () => void }) => (
   <Pressable onPress={onPress} role="button" self="flex-end">
     <SizableText size="$1" fontWeight="600" color="$red10">
       remover
+    </SizableText>
+  </Pressable>
+)
+
+/** Ação de um tile da grade. Alvo de toque com folga: no celular é o dedo. */
+const TileAction = ({
+  label,
+  onPress,
+  danger,
+  testID,
+}: {
+  label: string
+  onPress: () => void
+  danger?: boolean
+  testID?: string
+}) => (
+  <Pressable onPress={onPress} role="button" py="$1" px="$1" data-testid={testID}>
+    <SizableText size="$1" fontWeight="600" color={danger ? '$red10' : '$accent11'}>
+      {label}
     </SizableText>
   </Pressable>
 )

@@ -13,6 +13,12 @@ type Props = {
   /** vem de `post.liked` — o servidor já achata a reação de quem está olhando */
   liked: boolean
   size?: number
+  /**
+   * Desenha, mas não escreve. É a prévia do composer: lá o criador está logado, então o
+   * botão **funcionaria** — um clique curtindo o próprio rascunho grava em `reaction` de
+   * verdade, e o número volta diferente do que a prévia prometeu.
+   */
+  readOnly?: boolean
 }
 
 /**
@@ -25,31 +31,37 @@ type Props = {
  * que exigia `newId()` aqui era uma restrição do Zero, que executava a mutation duas
  * vezes.
  */
-export const LikeButton = memo(({ postId, likeCount, liked, size = 18 }: Props) => {
-  const { user } = useAuth()
-  const toggle = useToggleLike()
+export const LikeButton = memo(
+  ({ postId, likeCount, liked, size = 18, readOnly = false }: Props) => {
+    const { user } = useAuth()
+    const toggle = useToggleLike()
 
-  const onPress = () => {
-    if (!user?.id) return
-    toggle.mutate({ postId, liked: !liked })
-  }
+    const onPress = () => {
+      if (readOnly || !user?.id) return
+      toggle.mutate({ postId, liked: !liked })
+    }
 
-  const Icon = liked ? HeartFillIcon : HeartIcon
+    const Icon = liked ? HeartFillIcon : HeartIcon
 
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!user?.id}
-      role="button"
-      aria-label={liked ? 'Descurtir' : 'Curtir'}
-      hoverStyle={{ opacity: 0.7 }}
-    >
-      <XStack gap="$1.5" items="center">
-        <Icon size={size} color={liked ? '$accent9' : '$color10'} />
-        <SizableText size="$3" fontWeight="600" color={liked ? '$accent11' : '$color11'}>
-          {likeCount}
-        </SizableText>
-      </XStack>
-    </Pressable>
-  )
-})
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={readOnly || !user?.id}
+        role="button"
+        aria-label={liked ? 'Descurtir' : 'Curtir'}
+        hoverStyle={readOnly ? undefined : { opacity: 0.7 }}
+      >
+        <XStack gap="$1.5" items="center">
+          <Icon size={size} color={liked ? '$accent9' : '$color10'} />
+          <SizableText
+            size="$3"
+            fontWeight="600"
+            color={liked ? '$accent11' : '$color11'}
+          >
+            {likeCount}
+          </SizableText>
+        </XStack>
+      </Pressable>
+    )
+  },
+)

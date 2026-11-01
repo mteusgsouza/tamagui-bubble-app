@@ -63,7 +63,8 @@ export function OptionRow<T extends string>({
   value,
   onChange,
 }: {
-  label: string
+  /** opcional: sem rótulo, as pílulas servem de alternador (prévia, abas do composer) */
+  label?: string
   hint?: string
   options: readonly { id: T; label: string }[]
   value: T
@@ -71,7 +72,7 @@ export function OptionRow<T extends string>({
 }) {
   return (
     <YStack gap="$1.5">
-      <FieldLabel label={label} hint={hint} />
+      {label || hint ? <FieldLabel label={label ?? ''} hint={hint} /> : null}
       <XStack gap="$2" flexWrap="wrap">
         {options.map((option) => {
           const active = option.id === value
