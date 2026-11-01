@@ -24,6 +24,10 @@ export const COMMENT_MESSAGES: Record<string, string> = {
 export const COURSE_MESSAGES: Record<string, string> = {
   unauthenticated: 'Sua sessão expirou. Entre de novo.',
   'not-found': 'Curso indisponível.',
+  'needs-subscription': 'Assine para abrir este curso.',
+  'needs-plan': 'Seu plano não inclui este curso.',
+  'needs-purchase': 'Este curso não está incluído na sua assinatura.',
+  'enroll-failed': 'Não deu para abrir o curso. Tente de novo.',
   'courses-failed': 'Não deu para carregar os cursos.',
 }
 

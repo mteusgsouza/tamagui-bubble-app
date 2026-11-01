@@ -24,6 +24,8 @@ export const qk = (userId: string) => ({
     courses: () => ['u', userId, 'admin', 'courses'] as const,
     course: (courseId: string) => ['u', userId, 'admin', 'course', courseId] as const,
     plans: () => ['u', userId, 'admin', 'plans'] as const,
+    enrollments: (courseId: string) =>
+      ['u', userId, 'admin', 'enrollments', courseId] as const,
   },
 })
 

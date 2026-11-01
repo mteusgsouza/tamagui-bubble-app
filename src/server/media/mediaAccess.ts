@@ -22,6 +22,7 @@ import {
   postMedia,
   subscription,
 } from '~/database/schema-public'
+import { loadEnrolledCourseIds } from '~/server/content/enrollments'
 import { getIsAdmin } from '~/server/getIsAdmin'
 
 import type { AuthData } from '~/features/auth/types'
@@ -48,6 +49,14 @@ export const canUploadMedia = (auth: AuthData | null | undefined) =>
  * **qualquer** portão liberar — a mesma foto pode estar num post aberto e num curso pago.
  */
 type Gate = {
+  /** curso a que o portão pertence — a matrícula ativa nele libera */
+  courseId?: string
+  /**
+   * 🔴 portão de aula: a **assinatura sozinha não abre**. O acesso ao curso é a matrícula
+   * (`since-subscription` e `none` não deixam o assinante entrar), então o atalho por
+   * tier aqui furaria a regra que `courseAccess` aplica.
+   */
+  enrollmentOnly?: boolean
   feedOwnerId: string
   requiredPlanId: string | null
   /** true = não precisa de assinatura nenhuma (post público, aula de amostra) */
@@ -59,6 +68,7 @@ export type MediaAccessReason =
   | 'admin'
   | 'free'
   | 'subscription'
+  | 'enrollment'
   | 'media-not-found'
   | 'no-published-attachment'
   | 'needs-subscription'
@@ -94,6 +104,7 @@ async function collectGates(mediaId: string): Promise<Gate[]> {
     // 2. vídeo/áudio de aula (lesson.mediaId), com o curso que a contém
     db
       .select({
+        courseId: course.id,
         feedOwnerId: course.feedOwnerId,
         visibility: course.visibility,
         requiredPlanId: course.requiredPlanId,
@@ -108,6 +119,7 @@ async function collectGates(mediaId: string): Promise<Gate[]> {
     // 3. capa de curso (course.coverMediaId)
     db
       .select({
+        courseId: course.id,
         feedOwnerId: course.feedOwnerId,
         visibility: course.visibility,
         requiredPlanId: course.requiredPlanId,
@@ -133,6 +145,8 @@ async function collectGates(mediaId: string): Promise<Gate[]> {
     // curso em rascunho (mesma regra de `canAccessLesson`)
     if (!row.coursePublished || !row.lessonPublished) continue
     gates.push({
+      courseId: row.courseId,
+      enrollmentOnly: true,
       feedOwnerId: row.feedOwnerId,
       requiredPlanId: row.requiredPlanId,
       free: row.freePreview || row.visibility === 'public',
@@ -142,6 +156,7 @@ async function collectGates(mediaId: string): Promise<Gate[]> {
   for (const row of fromCovers) {
     if (!row.published) continue
     gates.push({
+      courseId: row.courseId,
       feedOwnerId: row.feedOwnerId,
       requiredPlanId: row.requiredPlanId,
       free: row.visibility === 'public',
@@ -181,6 +196,14 @@ export async function resolveMediaAccess(
     return { allowed: true, media: row, reason: 'free' }
   }
 
+  const enrolledIds = await loadEnrolledCourseIds(
+    auth.id,
+    gates.flatMap((gate) => (gate.courseId ? [gate.courseId] : [])),
+  )
+  if (gates.some((gate) => gate.courseId && enrolledIds.has(gate.courseId))) {
+    return { allowed: true, media: row, reason: 'enrollment' }
+  }
+
   const creatorIds = [...new Set(gates.map((gate) => gate.feedOwnerId))]
 
   const subs = await db
@@ -200,7 +223,9 @@ export async function resolveMediaAccess(
   const activePlans = new Set(subs.map((sub) => `${sub.creatorId}:${sub.planId}`))
 
   const allowed = gates.some((gate) =>
-    gate.requiredPlanId
+    gate.enrollmentOnly
+      ? false
+      : gate.requiredPlanId
       ? activePlans.has(`${gate.feedOwnerId}:${gate.requiredPlanId}`)
       : activeCreators.has(gate.feedOwnerId),
   )

@@ -23,6 +23,7 @@ import {
   updateModule,
 } from '~/server/content/adminCourses'
 
+import type { SubscriberAccess } from '~/server/access/contentAccess'
 import type { Endpoint } from 'one'
 
 export const GET: Endpoint = async (request) => {
@@ -42,6 +43,9 @@ export const GET: Endpoint = async (request) => {
 }
 
 type Body = Record<string, unknown>
+
+const isSubscriberAccess = (value: unknown): value is SubscriberAccess =>
+  value === 'included' || value === 'since-subscription' || value === 'none'
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '')
 const orNull = (value: unknown) => (typeof value === 'string' && value ? value : null)
@@ -73,6 +77,7 @@ export const POST: Endpoint = async (request) => {
           description: orNull(p.description),
           visibility: isVisibility(p.visibility) ? p.visibility : 'subscribers',
           requiredPlanId: orNull(p.requiredPlanId),
+          subscriberAccess: isSubscriberAccess(p.subscriberAccess) ? p.subscriberAccess : undefined,
           // ausente = não mexe na capa; o formulário não a carrega
           coverMediaId: p.coverMediaId === undefined ? undefined : orNull(p.coverMediaId),
         })

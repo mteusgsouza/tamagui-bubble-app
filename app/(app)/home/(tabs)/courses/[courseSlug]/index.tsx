@@ -4,6 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { useCourse } from '~/data/client/hooks'
+import { useEnroll } from '~/data/client/mutations'
+import { COURSE_MESSAGES } from '~/data/client/messages'
+import { ApiError } from '~/helpers/apiFetch'
 import { CourseCurriculum } from '~/features/courses/CourseCurriculum'
 import {
   courseStats,
@@ -86,6 +89,23 @@ const CourseBody = ({ course }: { course: Course }) => {
   const stats = courseStats(course)
   const next = nextLesson(course)
   const percent = Math.round(stats.ratio * 100)
+  const enroll = useEnroll(course.slug)
+
+  const start = async () => {
+    try {
+      await enroll.mutateAsync(course.id)
+      if (next) router.push(`/home/courses/${course.slug}/${next.id}`)
+    } catch {
+      // a mensagem sai de `enroll.error`, logo abaixo do botão
+    }
+  }
+
+  const enrollError = (() => {
+    const error = enroll.error
+    if (!error) return null
+    const code = error instanceof ApiError ? error.code : ''
+    return COURSE_MESSAGES[code] ?? COURSE_MESSAGES['enroll-failed']
+  })()
 
   return (
     <YStack gap="$4" pb="$6" data-testid="course-detail">
@@ -113,7 +133,34 @@ const CourseBody = ({ course }: { course: Course }) => {
 
       {/* 🔒 Curso fechado: o currículo continua visível logo abaixo — é ele que vende —
           e o botão leva para os planos em vez de para uma aula que daria 404. */}
-      {course.locked ? (
+      {course.locked && course.lockReason === 'needs-enrollment' ? (
+        // tem direito (assinatura cobre, ou curso aberto) — falta o ato de se matricular
+        <Button
+          size="$4"
+          variant="accent"
+          onPress={start}
+          disabled={enroll.isPending}
+          data-testid="enroll-course"
+        >
+          <SizableText size="$4" fontWeight="600" color="$accentColor">
+            {enroll.isPending ? 'Abrindo…' : 'Começar o curso'}
+          </SizableText>
+        </Button>
+      ) : course.locked && course.lockReason === 'needs-purchase' ? (
+        // a assinatura não cobre este curso. O checkout avulso é da Fase 20: até lá o
+        // estado existe e diz a verdade, sem levar a uma tela de assinatura que não ajuda
+        <YStack gap="$1.5">
+          <Button size="$4" variant="accent" disabled data-testid="buy-course">
+            <SizableText size="$4" fontWeight="600" color="$accentColor">
+              Comprar este curso
+            </SizableText>
+          </Button>
+          <SizableText size="$2" color="$color10">
+            Este curso é vendido à parte — não está incluído na sua assinatura. A compra
+            avulsa chega em breve.
+          </SizableText>
+        </YStack>
+      ) : course.locked ? (
         <Link href="/assinar" style={{ width: '100%' }} asChild>
           <Button size="$4" variant="accent" width="100%">
             <SizableText size="$4" fontWeight="600" color="$accentColor">
@@ -139,6 +186,12 @@ const CourseBody = ({ course }: { course: Course }) => {
       ) : stats.lessonCount > 0 ? (
         <SizableText size="$3" color="$accent11" fontWeight="600">
           Curso concluído.
+        </SizableText>
+      ) : null}
+
+      {enrollError ? (
+        <SizableText size="$3" color="$red10" data-testid="enroll-error">
+          {enrollError}
         </SizableText>
       ) : null}
 

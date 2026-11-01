@@ -45,6 +45,34 @@ export function useToggleLike() {
   })
 }
 
+/**
+ * Matricular. O servidor decide; o 422 (`needs-purchase` etc.) sobe como `ApiError` para a
+ * tela mostrar a mensagem.
+ *
+ * Depois do sucesso o curso e as aulas já vistos como fechados ficam velhos: invalida só
+ * eles (e não o feed inteiro).
+ */
+export function useEnroll(slug: string) {
+  const client = useQueryClient()
+  const { keys, userId } = useKeys()
+
+  return useMutation({
+    mutationFn: (courseId: string) => api.enroll(courseId),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: keys.courses() }),
+        client.invalidateQueries({ queryKey: keys.course(slug) }),
+        client.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'u' &&
+            query.queryKey[1] === userId &&
+            query.queryKey[2] === 'lesson',
+        }),
+      ])
+    },
+  })
+}
+
 export function useCreateComment(postId: string) {
   const client = useQueryClient()
   const { keys } = useKeys()

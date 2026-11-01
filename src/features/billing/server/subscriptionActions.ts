@@ -14,6 +14,8 @@ import { getDb } from '~/database'
 import { payment, user } from '~/database/schema-private'
 import { subscription, userPublic } from '~/database/schema-public'
 
+import { revokeEnrollmentsForSubscription } from '~/server/content/enrollments'
+
 import type { SubscriptionStatus } from '../types'
 
 const ACTIVE = [...ACTIVE_SUBSCRIPTION_STATUSES]
@@ -120,6 +122,8 @@ export async function cancelSubscription(subscriptionId: string) {
     .update(subscription)
     .set({ status: 'canceled', updatedAt: now() })
     .where(eq(subscription.id, subscriptionId))
+  // perdeu a assinatura, perde as matrículas que vieram dela (compra e concessão ficam)
+  await revokeEnrollmentsForSubscription(subscriptionId)
 }
 
 /** Muda só o status — é o que o webhook faz em `past_due`, `active`, etc. */
@@ -139,6 +143,11 @@ export async function setSubscriptionStatus(
       updatedAt: now(),
     })
     .where(eq(subscription.id, subscriptionId))
+
+  // mesmo critério do gate: fora de `active`/`trialing` não há acesso
+  if (!(ACTIVE as readonly string[]).includes(status)) {
+    await revokeEnrollmentsForSubscription(subscriptionId)
+  }
 }
 
 /** Acha a nossa assinatura a partir do id do gateway. */
@@ -267,6 +276,8 @@ export async function expireOverdueSubscriptions(): Promise<{ expired: number }>
       ),
     )
     .returning({ id: subscription.id })
+
+  await revokeEnrollmentsForSubscription(rows.map((row) => row.id))
 
   return { expired: rows.length }
 }

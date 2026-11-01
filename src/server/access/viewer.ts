@@ -16,9 +16,19 @@ import { getDb } from '~/database'
 import { user } from '~/database/schema-private'
 import { subscription } from '~/database/schema-public'
 
+import { toEpoch } from '~/server/api/serialize'
+
 import type { AuthData } from '~/features/auth/types'
 
 const ACTIVE = [...ACTIVE_SUBSCRIPTION_STATUSES]
+
+/** A assinatura ativa de um criador — o que `since-subscription` precisa saber. */
+export type ViewerSubscription = {
+  id: string
+  planId: string
+  /** epoch ms de `subscription.createdAt` */
+  startedAt: number
+}
 
 export type Viewer = {
   id: string
@@ -28,6 +38,8 @@ export type Viewer = {
   creators: Set<string>
   /** pares `criador:plano` das assinaturas ativas — é o que `requiredPlanId` exige */
   plans: Set<string>
+  /** a assinatura ativa por criador. `creators`/`plans` saem daqui: uma leitura, uma verdade */
+  subscriptions: Map<string, ViewerSubscription>
 }
 
 /**
@@ -60,7 +72,12 @@ export async function loadViewer(auth: AuthData): Promise<Viewer> {
   const [isAdmin, subs] = await Promise.all([
     isAdminInDb(auth.id),
     db
-      .select({ creatorId: subscription.creatorId, planId: subscription.planId })
+      .select({
+        id: subscription.id,
+        creatorId: subscription.creatorId,
+        planId: subscription.planId,
+        createdAt: subscription.createdAt,
+      })
       .from(subscription)
       .where(and(eq(subscription.userId, auth.id), inArray(subscription.status, ACTIVE))),
   ])
@@ -68,6 +85,12 @@ export async function loadViewer(auth: AuthData): Promise<Viewer> {
   return {
     id: auth.id,
     isAdmin,
+    subscriptions: new Map(
+      subs.map((sub) => [
+        sub.creatorId,
+        { id: sub.id, planId: sub.planId, startedAt: toEpoch(sub.createdAt) ?? 0 },
+      ]),
+    ),
     creators: new Set(subs.map((sub) => sub.creatorId)),
     plans: new Set(subs.map((sub) => `${sub.creatorId}:${sub.planId}`)),
   }
@@ -95,4 +118,5 @@ export const anonymousViewer = (id = ''): Viewer => ({
   isAdmin: false,
   creators: new Set(),
   plans: new Set(),
+  subscriptions: new Map(),
 })

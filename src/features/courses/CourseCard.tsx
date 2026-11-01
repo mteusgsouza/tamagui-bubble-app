@@ -55,7 +55,11 @@ export const CourseCard = memo(({ course }: { course: Course }) => {
               <SizableText size="$2" fontWeight="600" color="$accent11">
                 {course.lockReason === 'needs-plan'
                   ? 'Seu plano não inclui este curso'
-                  : 'Assine para abrir as aulas'}
+                  : course.lockReason === 'needs-purchase'
+                    ? 'Curso à parte — não está na assinatura'
+                    : course.lockReason === 'needs-enrollment'
+                      ? 'Toque para começar o curso'
+                      : 'Assine para abrir as aulas'}
               </SizableText>
             </XStack>
           ) : null}

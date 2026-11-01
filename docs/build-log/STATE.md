@@ -8,9 +8,9 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 18 — Editor de aula** ([handoff](./handoffs/18-editor-de-aula.md)) |
+| Última fase concluída | **Fase 19 — Matrícula e acesso ao curso** ([handoff](./handoffs/19-matricula-e-acesso.md)) |
 | Último trabalho entregue | **Composer, mídia e contas de teste** (01/11/2026, commit `6616078`) — prévia do post, ponto focal da foto, admin no celular e 4 contas de teste com atalho no login. [handoff](./handoffs/composer-midia.md) |
-| Próxima fase | **Fase 19 — Matrícula e acesso ao curso** ([plano](./plan/19-matricula-e-acesso.md)). Caminho crítico **19 → 20**. O curso já tem vídeo, texto e capa, então a matrícula pode ser provada ponta a ponta |
+| Próxima fase | **Fase 20 — Curso avulso** ([plano](./plan/20-curso-avulso.md)). Caminho crítico **19 → 20**: o `needs-purchase` já existe como estado e como texto, falta preço e checkout |
 | Fases novas | **18 a 22** planejadas (a 18 está entregue) em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
 | Validar no navegador | 11–13 nunca foram clicadas. **Ficou mais barato**: há 4 contas de teste (Criador, Admin, Assinante, Visitante) com atalho de um clique na tela de login |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
@@ -21,6 +21,21 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 19:
+
+- ✅ **acesso a curso é matrícula**: tabela `enrollment` (`subscription` | `purchase` | `grant` | `free`),
+  criada por ato explícito (`POST /api/enroll`, botão "Começar o curso"). Assinar **não** abre o
+  curso; matricular abre — na aula e nos bytes (`mediaAccess`)
+- ✅ `course.subscriberAccess` (`included` | `since-subscription` | `none`) + `publishedAt`; regra
+  pura `subscriberAccessAllows`, 24 testes novos (**223** no total); typecheck limpo
+- ✅ perder a assinatura revoga **só** as matrículas de `source = subscription`
+  (`revokeEnrollmentsForSubscription`, chamado de `subscriptionActions`); concessão e compra ficam
+- ✅ admin: "Quem tem acesso" e lista de **Inscritos** com conceder (por e-mail) e revogar
+- ✅ **validado** no navegador/Postgres com as contas de teste — ver o handoff
+- ⚠️ `needs-purchase` mostra "Comprar este curso" **desabilitado** até a Fase 20
+- ⚠️ conceder/revogar na tela de inscritos foi exercido pela API, não por clique; bytes de aula por
+  matrícula não foram exercidos em `/api/media/<id>/play`
 
 Estado real da Fase 18:
 

@@ -47,6 +47,9 @@ export type Course = {
   visibility: string
   requiredPlanId?: string | null
   published?: boolean
+  subscriberAccess?: 'included' | 'since-subscription' | 'none'
+  /** matrícula ativa do visitante — a tela lê, nunca recalcula a regra */
+  enrolled?: boolean
   order: number
   coverMedia?: MediaViewMedia | null
   requiredPlan?: CoursePlan | null
@@ -61,7 +64,12 @@ export type Course = {
    * vem é `body` e `media` da aula. É o mesmo desenho do post bloqueado da Fase 12.
    */
   locked?: boolean
-  lockReason?: 'needs-subscription' | 'needs-plan' | null
+  lockReason?:
+    | 'needs-subscription'
+    | 'needs-plan'
+    | 'needs-purchase'
+    | 'needs-enrollment'
+    | null
 }
 
 /** A linha de progresso do usuário nesta aula, ou `undefined`. */

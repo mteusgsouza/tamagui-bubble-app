@@ -11,6 +11,8 @@
 // carregava uma cópia da mesma lógica, com o comentário "mudou lá, muda aqui". Agora ela
 // chama `tierAllows` daqui — a divergência deixa de ser possível por construção.
 
+import { toEpoch } from '~/server/api/serialize'
+
 import type { Viewer } from './viewer'
 
 /** As colunas que decidem o tier. Qualquer linha que as tenha serve. */
@@ -20,7 +22,17 @@ export type GatedRow = {
   requiredPlanId: string | null
 }
 
-export type LockReason = 'needs-subscription' | 'needs-plan'
+/**
+ * - `needs-subscription` — não assina o criador
+ * - `needs-plan` — assina, mas o curso exige outro plano
+ * - `needs-purchase` — a assinatura não cobre este curso: só compra avulsa
+ * - `needs-enrollment` — tem direito, falta o ato de se matricular (`POST /api/enroll`)
+ */
+export type LockReason =
+  | 'needs-subscription'
+  | 'needs-plan'
+  | 'needs-purchase'
+  | 'needs-enrollment'
 
 export type Access = { allowed: true } | { allowed: false; reason: LockReason }
 
@@ -102,13 +114,88 @@ export const canWriteToPost = (viewer: Viewer, post: PostRow): boolean =>
 // Curso e aula
 // ---------------------------------------------------------------------------
 
-export type CourseRow = GatedRow & { published: boolean }
+export type SubscriberAccess = 'included' | 'since-subscription' | 'none'
 
-/** Mesma regra do post, sem `deleted` — curso não tem essa coluna. */
-export function courseAccess(viewer: Viewer, course: CourseRow): Access {
+export type CourseRow = GatedRow & {
+  id: string
+  published: boolean
+  /** como vem do banco (UTC sem fuso); `toEpoch` converte */
+  publishedAt: string | null
+  subscriberAccess: SubscriberAccess
+}
+
+/**
+ * A assinatura ativa cobre este curso? **Não decide acesso** — decide se pode MATRICULAR.
+ *
+ * | `subscriberAccess`    | assinatura ativa                             | sem assinatura |
+ * |------------------------|----------------------------------------------|----------------|
+ * | `included`           | cobre                                        | não cobre      |
+ * | `since-subscription` | cobre **se** `publishedAt >= startedAt`    | não cobre      |
+ * | `none`               | não cobre, mesmo assinando                   | não cobre      |
+ *
+ * 🔴 Vale dinheiro: `publishedAt` nulo **nega** (nunca libera), e o empate libera (`>=`).
+ * Tempos em epoch ms.
+ */
+export function subscriberAccessAllows(
+  course: { subscriberAccess: SubscriberAccess; publishedAt: number | null },
+  subscription: { startedAt: number } | null,
+): boolean {
+  if (!subscription) return false
+  switch (course.subscriberAccess) {
+    case 'included':
+      return true
+    case 'since-subscription':
+      return course.publishedAt !== null && course.publishedAt >= subscription.startedAt
+    default:
+      return false
+  }
+}
+
+/**
+ * Por qual origem este visitante poderia se matricular **agora, sem pagar** — ou `null`.
+ * É o que `POST /api/enroll` consulta; a tela só lê o resultado no DTO.
+ */
+export function enrollmentSource(viewer: Viewer, course: CourseRow): 'free' | 'subscription' | null {
+  if (course.visibility === 'public') return 'free'
+  const sub = viewer.subscriptions.get(course.feedOwnerId) ?? null
+  if (!sub) return null
+  if (!tierAllows(viewer, course)) return null
+  const covers = subscriberAccessAllows(
+    { subscriberAccess: course.subscriberAccess, publishedAt: toEpoch(course.publishedAt) },
+    sub,
+  )
+  return covers ? 'subscription' : null
+}
+
+/** Por que o curso está fechado para quem **não** está matriculado. Pura. */
+export function courseLockReason(viewer: Viewer, course: CourseRow): LockReason {
+  if (enrollmentSource(viewer, course)) return 'needs-enrollment'
+  if (course.subscriberAccess === 'none') return 'needs-purchase'
+  if (!viewer.creators.has(course.feedOwnerId)) return 'needs-subscription'
+  // assina, mas o plano não serve → plano; serve, mas o curso veio antes → compra
+  return tierAllows(viewer, course) ? 'needs-purchase' : 'needs-plan'
+}
+
+const denyCourse = (viewer: Viewer, course: CourseRow): Access => ({
+  allowed: false,
+  reason: courseLockReason(viewer, course),
+})
+
+/**
+ * Curso: dono/admin → publicado → público → **matrícula ativa** → nega.
+ *
+ * Quem carrega as matrículas é o endpoint (uma query com `inArray`); aqui só chega o
+ * `Set` de ids de curso — o arquivo continua sem I/O.
+ */
+export function courseAccess(
+  viewer: Viewer,
+  course: CourseRow,
+  enrolled: ReadonlySet<string>,
+): Access {
   if (isPrivileged(viewer, course)) return ALLOWED
-  if (!course.published) return deny(viewer, course)
-  return tierAllows(viewer, course) ? ALLOWED : deny(viewer, course)
+  if (!course.published) return denyCourse(viewer, course)
+  if (course.visibility === 'public') return ALLOWED
+  return enrolled.has(course.id) ? ALLOWED : denyCourse(viewer, course)
 }
 
 export type LessonRow = { published: boolean; freePreview: boolean }
@@ -123,11 +210,12 @@ export function lessonAccess(
   viewer: Viewer,
   lesson: LessonRow,
   course: CourseRow,
+  enrolled: ReadonlySet<string>,
 ): Access {
   if (isPrivileged(viewer, course)) return ALLOWED
-  if (!lesson.published || !course.published) return deny(viewer, course)
+  if (!lesson.published || !course.published) return denyCourse(viewer, course)
   if (lesson.freePreview) return ALLOWED
-  return courseAccess(viewer, course)
+  return courseAccess(viewer, course, enrolled)
 }
 
 // ---------------------------------------------------------------------------

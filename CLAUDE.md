@@ -55,7 +55,7 @@ curl -s "http://localhost:8081/src/features/app/AppNav.tsx" | grep -c AppBottomB
 | `bun check types` | typecheck. **`bun check` sozinho não roda nada**, e todo `bun check <x>` **sai com 0 mesmo falhando** — leia a saída, não o código |
 | `bun check native-bundle` | bundle Android de release + Hermes, ~2 min. **Antes de todo build nativo** — pega em 2 min o que o EAS leva 30 para recusar |
 | `eas build -p android --profile preview` | APK. Servidor e criador vêm do `eas.json` → `release-base`; o `app.config.ts` recusa sem eles |
-| `bun test:unit` | 199 testes |
+| `bun test:unit` | 223 testes |
 | `bun run:dev scripts/x.ts` | script com env. **Sem um segundo `bun`** — `bun run:dev` já embute |
 | `bun env:update` | propaga o bloco `env` do package.json |
 | ~~`bun check lint`~~ | **quebrado**: `panic: unknown rule` (versão do oxlint-tsgolint no starter) |
@@ -80,7 +80,10 @@ role dele no banco é `user`: quem abre o `/admin` para ele é o `MASTER_USER_ID
    não recebe assinatura — o hook `afterCreateUser` cria a linha.
 3. **O gate de assinatura é decidido no servidor**, nunca por claim de JWT: o token dura
    3 anos. `src/server/access/contentAccess.ts` é o único lugar que decide, e
-   `loadViewer` relê `user.role` do Postgres a cada requisição.
+   `loadViewer` relê `user.role` do Postgres a cada requisição. **Acesso a curso é a
+   matrícula** (`enrollment`), não a assinatura: `courseAccess` recebe o `Set` de cursos
+   matriculados, e revogar por perda de assinatura mora em **um** lugar
+   (`revokeEnrollmentsForSubscription`).
 4. **Cor da marca é token** (`$accent*`, `$accentBackground`/`$accentColor`). Hex dentro
    de componente é bug — ver `src/tamagui/brandAccent.ts`.
 5. **Bytes de mídia não passam pelo servidor do app**: PUT direto no R2 com URL assinada,

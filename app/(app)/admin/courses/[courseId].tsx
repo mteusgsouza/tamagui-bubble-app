@@ -5,6 +5,7 @@ import { SizableText, Spinner, XStack, YStack } from 'tamagui'
 import { MASTER_USER_ID } from '~/constants/creator'
 import { AdminSection } from '~/features/admin/AdminShell'
 import { CourseCurriculumEditor } from '~/features/admin/CourseCurriculumEditor'
+import { CourseEnrollments } from '~/features/admin/CourseEnrollments'
 import { OptionRow, TextField } from '~/features/admin/fields'
 import { LessonMediaField } from '~/features/admin/LessonMediaField'
 import { adminCourses as adminCoursesApi } from '~/data/client/api'
@@ -21,6 +22,21 @@ const VISIBILITIES: { id: Visibility; label: string }[] = [
   { id: 'subscribers', label: 'Assinantes' },
   { id: 'public', label: 'Aberto a todos' },
 ]
+
+type SubscriberAccess = 'included' | 'since-subscription' | 'none'
+
+const SUBSCRIBER_ACCESS: { id: SubscriberAccess; label: string }[] = [
+  { id: 'included', label: 'Incluído' },
+  { id: 'since-subscription', label: 'Só o que sair depois' },
+  { id: 'none', label: 'Venda avulsa' },
+]
+
+const SUBSCRIBER_ACCESS_HINT: Record<SubscriberAccess, string> = {
+  included: 'Todo assinante ativo pode começar este curso.',
+  'since-subscription':
+    'Só quem assinou antes da publicação do curso. Quem assinou depois compra à parte.',
+  none: 'A assinatura não abre este curso: só a compra avulsa. ⚠️ Sem preço (Fase 20) ele fica inalcançável para assinantes.',
+}
 
 /** "Aquisição sem Anúncio!" vira "aquisicao-sem-anuncio". */
 const toSlug = (value: string) =>
@@ -51,6 +67,7 @@ export const AdminCourseEditPage = memo(() => {
     description: '',
     visibility: 'subscribers' as Visibility,
     requiredPlanId: null as string | null,
+    subscriberAccess: 'included' as SubscriberAccess,
   })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -66,6 +83,7 @@ export const AdminCourseEditPage = memo(() => {
       description: row.description || '',
       visibility: row.visibility,
       requiredPlanId: row.requiredPlanId ?? null,
+      subscriberAccess: row.subscriberAccess ?? 'included',
     })
     setSlugTouched(true)
     setLoaded(true)
@@ -88,6 +106,7 @@ export const AdminCourseEditPage = memo(() => {
         description: draft.description.trim() || undefined,
         visibility: draft.visibility,
         requiredPlanId: draft.requiredPlanId ?? undefined,
+        subscriberAccess: draft.subscriberAccess,
       }
 
       // upsert: `on conflict (id)` decide entre criar e atualizar, e a `order` sai do
@@ -226,8 +245,20 @@ export const AdminCourseEditPage = memo(() => {
             value={draft.requiredPlanId ?? ''}
             onChange={(id) => setDraft((d) => ({ ...d, requiredPlanId: id || null }))}
           />
+
+          {draft.visibility === 'subscribers' ? (
+            <OptionRow
+              label="Quem tem acesso"
+              hint={SUBSCRIBER_ACCESS_HINT[draft.subscriberAccess]}
+              options={SUBSCRIBER_ACCESS}
+              value={draft.subscriberAccess}
+              onChange={(subscriberAccess) => setDraft((d) => ({ ...d, subscriberAccess }))}
+            />
+          ) : null}
         </YStack>
       </AdminSection>
+
+      {exists ? <CourseEnrollments courseId={courseId!} /> : null}
 
       {exists ? (
         <CourseCurriculumEditor

@@ -27,6 +27,8 @@ import {
 import { courseAccess, lessonAccess } from '~/server/access/contentAccess'
 import { toEpoch } from '~/server/api/serialize'
 
+import { loadEnrolledCourseIds } from './enrollments'
+
 import type {
   CourseDTO,
   CourseModuleDTO,
@@ -172,15 +174,12 @@ export async function loadCourses(
     )
     .orderBy(asc(course.order))
 
-  // o tier decide em memória, e agora decide o **conteúdo**, não a existência
-  const access = new Map(
-    courseRows.map((row) => [row.course.id, courseAccess(viewer, row.course)] as const),
-  )
-
   const courseIds = courseRows.map((row) => row.course.id)
   if (!courseIds.length) return []
 
-  const [moduleRows, lessonRows] = await Promise.all([
+  const [enrolled, moduleRows, lessonRows] = await Promise.all([
+    // uma query para todos os cursos — a matrícula é o que abre o conteúdo
+    loadEnrolledCourseIds(viewer.id, courseIds),
     db
       .select()
       .from(courseModule)
@@ -197,6 +196,13 @@ export async function loadCourses(
       )
       .orderBy(asc(lesson.order)),
   ])
+
+  // a matrícula decide o **conteúdo**, não a existência
+  const access = new Map(
+    courseRows.map(
+      (row) => [row.course.id, courseAccess(viewer, row.course, enrolled)] as const,
+    ),
+  )
 
   const progress = await loadProgress(
     lessonRows.map((row) => row.lesson.id),
@@ -244,7 +250,9 @@ export async function loadCourses(
     visibility: row.course.visibility,
     requiredPlanId: row.course.requiredPlanId,
     published: row.course.published,
+    subscriberAccess: row.course.subscriberAccess,
     order: row.course.order,
+    enrolled: enrolled.has(row.course.id),
     coverMedia: toMedia(row),
     requiredPlan: row.planId ? { id: row.planId, name: row.planName ?? '' } : null,
     modules: modulesByCourse.get(row.course.id) ?? [],
@@ -295,7 +303,8 @@ export async function loadLessonDetail(
     .limit(1)
 
   if (!row) return null
-  if (!lessonAccess(viewer, row.lesson, row.course).allowed) return null
+  const enrolled = await loadEnrolledCourseIds(viewer.id, [row.course.id])
+  if (!lessonAccess(viewer, row.lesson, row.course, enrolled).allowed) return null
 
   const progress = await loadProgress([lessonId], viewer.id)
 

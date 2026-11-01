@@ -286,6 +286,14 @@ export const course = pgTable(
       .default('subscribers'),
     requiredPlanId: text('requiredPlanId').references(() => plan.id),
     published: boolean('published').notNull().default(false),
+    // carimbada na primeira publicação; é com ela que `since-subscription` decide o retroativo
+    publishedAt: timestamp('publishedAt', { mode: 'string' }),
+    // o que a assinatura cobre deste curso — ver `subscriberAccessAllows`
+    subscriberAccess: text('subscriberAccess', {
+      enum: ['included', 'since-subscription', 'none'],
+    })
+      .notNull()
+      .default('included'),
     order: integer('order').notNull().default(0),
     createdAt: timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
   },
@@ -293,6 +301,42 @@ export const course = pgTable(
     uniqueIndex('course_feedOwnerId_slug_uidx').on(table.feedOwnerId, table.slug),
     index('course_feedOwnerId_order_idx').on(table.feedOwnerId, table.order),
     index('course_coverMediaId_idx').on(table.coverMediaId),
+  ],
+)
+
+/**
+ * Matrícula: uma linha por (pessoa, curso), com origem e data. É o que dá acesso ao curso.
+ *
+ * `paymentId` NÃO mora aqui: `payment` é tabela privada e esta é pública. O elo da compra
+ * avulsa vai no outro sentido (Fase 20: `payment.courseId`).
+ */
+export const enrollment = pgTable(
+  'enrollment',
+  {
+    id: text('id').primaryKey(),
+    userId: text('userId')
+      .notNull()
+      .references(() => userPublic.id, { onDelete: 'cascade' }),
+    courseId: text('courseId')
+      .notNull()
+      .references(() => course.id, { onDelete: 'cascade' }),
+    source: text('source', {
+      enum: ['subscription', 'purchase', 'grant', 'free'],
+    }).notNull(),
+    // por onde a revogação encontra o que revogar
+    subscriptionId: text('subscriptionId').references(() => subscription.id, {
+      onDelete: 'set null',
+    }),
+    // userId do admin, quando source = 'grant'
+    grantedBy: text('grantedBy'),
+    createdAt: timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
+    // null = ativa
+    revokedAt: timestamp('revokedAt', { mode: 'string' }),
+  },
+  (table) => [
+    uniqueIndex('enrollment_userId_courseId_uidx').on(table.userId, table.courseId),
+    index('enrollment_courseId_idx').on(table.courseId),
+    index('enrollment_subscriptionId_idx').on(table.subscriptionId),
   ],
 )
 

@@ -134,7 +134,11 @@ export type CourseDTO = {
   visibility: string
   requiredPlanId: string | null
   published: boolean
+  /** o que a assinatura cobre deste curso — o editor lê, a tela do aluno não recalcula nada */
+  subscriberAccess: 'included' | 'since-subscription' | 'none'
   order: number
+  /** matrícula ativa do visitante. `locked` + `lockReason` dizem o que oferecer quando não há */
+  enrolled: boolean
   coverMedia: MediaDTO | null
   requiredPlan: { id: string; name: string } | null
   modules: CourseModuleDTO[]

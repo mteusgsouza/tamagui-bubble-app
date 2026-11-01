@@ -15,6 +15,7 @@ import { isUniqueViolation } from '~/server/api/pgError'
 import { nowIso } from '~/server/api/serialize'
 
 import type { CourseDTO } from './dto'
+import type { SubscriberAccess } from '~/server/access/contentAccess'
 import type { Visibility } from '~/data/enums'
 import type { WriteResult } from './interactions'
 import type { Viewer } from '~/server/access/viewer'
@@ -59,6 +60,8 @@ export type SaveCourseArgs = {
   description?: string | null
   visibility: Visibility
   requiredPlanId?: string | null
+  /** `undefined` deixa como está (o formulário antigo não manda) */
+  subscriberAccess?: SubscriberAccess
   /** `undefined` deixa a capa como está — o formulário não a carrega */
   coverMediaId?: string | null
 }
@@ -90,6 +93,7 @@ export async function saveCourse(
         coverMediaId: args.coverMediaId ?? null,
         visibility: args.visibility,
         requiredPlanId,
+        ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
         published: false,
         order: sql`(select coalesce(max("order"), -1) + 1 from "course" where "feedOwnerId" = ${args.feedOwnerId})`,
         createdAt: nowIso(),
@@ -103,6 +107,7 @@ export async function saveCourse(
           description: args.description ?? null,
           visibility: args.visibility,
           requiredPlanId,
+          ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
           ...(args.coverMediaId !== undefined && { coverMediaId: args.coverMediaId }),
         },
       })
@@ -130,7 +135,12 @@ export async function setCoursePublished(
   const db = getDb()
   const [row] = await db
     .update(course)
-    .set({ published: args.published })
+    .set(
+      // republicar não reescreve a data original — é com ela que `since-subscription` decide
+      args.published
+        ? { published: true, publishedAt: sql`coalesce(${course.publishedAt}, now())` }
+        : { published: false },
+    )
     .where(eq(course.id, args.courseId))
     .returning({ id: course.id })
 

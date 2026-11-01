@@ -17,6 +17,8 @@ import {
 import { courseAccess, lessonAccess, postAccess } from '~/server/access/contentAccess'
 import { nowIso, toEpoch } from '~/server/api/serialize'
 
+import { loadEnrolledCourseIds } from './enrollments'
+
 import type { CommentDTO } from './dto'
 import type { Viewer } from '~/server/access/viewer'
 
@@ -295,13 +297,14 @@ export async function saveProgress(
 
   if (!row) return notFound('Aula não encontrada.')
 
-  const access = lessonAccess(viewer, row.lesson, row.course)
+  const enrolled = await loadEnrolledCourseIds(viewer.id, [row.course.id])
+  const access = lessonAccess(viewer, row.lesson, row.course, enrolled)
   if (!access.allowed) {
     // o curso é quem dita o motivo — a aula não tem tier próprio
-    const reason = courseAccess(viewer, row.course)
+    const reason = courseAccess(viewer, row.course, enrolled)
     return denied(
       reason.allowed ? 'forbidden' : reason.reason,
-      'Assine para acompanhar este curso.',
+      'Você ainda não tem acesso a este curso.',
     )
   }
 

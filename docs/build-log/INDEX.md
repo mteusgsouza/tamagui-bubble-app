@@ -41,7 +41,7 @@ handoff anterior ficou incompleto — registre isso no seu.
 | ⬜ | 16 — Operação do criador (moderação + agendamento) | [plano](./plan/16-operacao-criador.md) | — | — |
 | ⬜ | 17 — Higiene e observabilidade | [plano](./plan/17-higiene.md) | — | — |
 | ✅ | **18 — Editor de aula** | [plano](./plan/18-editor-de-aula.md) | [handoff](./handoffs/18-editor-de-aula.md) | — |
-| ⬜ | **19 — Matrícula e acesso ao curso** | [plano](./plan/19-matricula-e-acesso.md) | — | — |
+| ✅ | **19 — Matrícula e acesso ao curso** | [plano](./plan/19-matricula-e-acesso.md) | [handoff](./handoffs/19-matricula-e-acesso.md) | — |
 | ⬜ | **20 — Curso avulso** | [plano](./plan/20-curso-avulso.md) | — | ⚠️ Stripe (a mesma conta da 11) |
 | ⬜ | **21 — Certificado de conclusão** | [plano](./plan/21-certificado.md) | — | — |
 | ⬜ | **22 — Aviso de conteúdo novo** | [plano](./plan/22-aviso-de-conteudo-novo.md) | — | ⚠️ provedor de e-mail · projeto Firebase (push Android, gratuito) |

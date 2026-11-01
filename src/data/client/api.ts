@@ -79,6 +79,10 @@ export const removeComment = (commentId: string) =>
     commentId,
   })
 
+/** Matricula a pessoa no curso. 422 `needs-purchase` etc. quando a assinatura não cobre. */
+export const enroll = (courseId: string) =>
+  post<{ ok: true; enrollmentId: string; source: string }>('/enroll', { courseId })
+
 export const saveProgress = (args: {
   lessonId: string
   positionSec: number
@@ -104,6 +108,15 @@ export const getAdminCourses = (init?: Init) =>
 
 export const getAdminCourse = (courseId: string, init?: Init) =>
   apiFetch<{ course: CourseDTO }>(`/admin/course/${encodeURIComponent(courseId)}`, init)
+
+export const getAdminEnrollments = (courseId: string, init?: Init) =>
+  apiFetch<{ enrollments: import('~/server/content/enrollments').EnrollmentDTO[] }>(
+    `/admin/enrollments?courseId=${encodeURIComponent(courseId)}`,
+    init,
+  )
+
+export const adminEnrollments = <T = { ok: true }>(body: Record<string, unknown>) =>
+  post<T>('/admin/enrollments', body)
 
 export const getAdminPlans = (init?: Init) =>
   apiFetch<{ plans: PlanDTO[] }>('/admin/plans', init)

@@ -201,6 +201,17 @@ export function useAdminCourse(courseId: string, enabled = true) {
   })
 }
 
+export function useAdminEnrollments(courseId: string) {
+  const { userId, keys } = useKeys()
+
+  return useQuery({
+    queryKey: keys.admin.enrollments(courseId),
+    enabled: Boolean(userId && courseId),
+    staleTime: STALE.admin,
+    queryFn: ({ signal }) => api.getAdminEnrollments(courseId, { signal }),
+  })
+}
+
 export function useAdminPlans() {
   const { userId, keys } = useKeys()
 
