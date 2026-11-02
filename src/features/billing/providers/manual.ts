@@ -12,7 +12,12 @@ export const manualProvider: BillingProvider = {
   id: 'manual',
   label: 'Concessão manual',
 
-  async createCheckout({ userId, creatorId, planId }) {
+  async createCheckout({ userId, creatorId, subject }) {
+    // vender curso exige gateway: conceder curso de graça é o `grantEnrollment` do admin
+    if (subject.kind !== 'plan') {
+      throw new Error('O provider `manual` não vende curso avulso — não há gateway.')
+    }
+    const { planId } = subject
     const result = await grantSubscription({
       userId,
       creatorId,

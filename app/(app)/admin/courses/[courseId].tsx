@@ -7,6 +7,7 @@ import { AdminSection } from '~/features/admin/AdminShell'
 import { CourseCurriculumEditor } from '~/features/admin/CourseCurriculumEditor'
 import { CourseEnrollments } from '~/features/admin/CourseEnrollments'
 import { OptionRow, TextField } from '~/features/admin/fields'
+import { formatPriceInput, parsePriceInput } from '~/features/admin/planForm'
 import { LessonMediaField } from '~/features/admin/LessonMediaField'
 import { adminCourses as adminCoursesApi } from '~/data/client/api'
 import { useAdminCourse, usePlans } from '~/data/client/hooks'
@@ -35,7 +36,7 @@ const SUBSCRIBER_ACCESS_HINT: Record<SubscriberAccess, string> = {
   included: 'Todo assinante ativo pode começar este curso.',
   'since-subscription':
     'Só quem assinou antes da publicação do curso. Quem assinou depois compra à parte.',
-  none: 'A assinatura não abre este curso: só a compra avulsa. ⚠️ Sem preço (Fase 20) ele fica inalcançável para assinantes.',
+  none: 'A assinatura não abre este curso: só a compra avulsa, pelo preço abaixo.',
 }
 
 /** "Aquisição sem Anúncio!" vira "aquisicao-sem-anuncio". */
@@ -68,6 +69,8 @@ export const AdminCourseEditPage = memo(() => {
     visibility: 'subscribers' as Visibility,
     requiredPlanId: null as string | null,
     subscriberAccess: 'included' as SubscriberAccess,
+    // texto do campo, "97,00"; vazio = não vende avulso
+    price: '',
   })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -84,6 +87,7 @@ export const AdminCourseEditPage = memo(() => {
       visibility: row.visibility,
       requiredPlanId: row.requiredPlanId ?? null,
       subscriberAccess: row.subscriberAccess ?? 'included',
+      price: row.priceCents != null ? formatPriceInput(row.priceCents) : '',
     })
     setSlugTouched(true)
     setLoaded(true)
@@ -91,12 +95,18 @@ export const AdminCourseEditPage = memo(() => {
 
   const row = course as any
   const exists = Boolean(row)
+
+  // vazio = sem preço (não vende). Texto que não vira valor positivo é erro, não "sem preço":
+  // salvar `null` em silêncio tiraria o curso de venda sem o criador perceber
+  const priceCents = draft.price.trim() ? parsePriceInput(draft.price) : null
+  const priceInvalid = Boolean(draft.price.trim()) && (priceCents == null || priceCents <= 0)
+  const unreachable = draft.subscriberAccess === 'none' && priceCents == null && !priceInvalid
   const isLoading = !isNew && courseQuery.isPending
 
   const save = async () => {
     if (!courseId || !userId || saving) return
     const slug = draft.slug || toSlug(draft.title)
-    if (!draft.title.trim() || !slug) return
+    if (!draft.title.trim() || !slug || priceInvalid) return
 
     setSaving(true)
     try {
@@ -107,6 +117,7 @@ export const AdminCourseEditPage = memo(() => {
         visibility: draft.visibility,
         requiredPlanId: draft.requiredPlanId ?? undefined,
         subscriberAccess: draft.subscriberAccess,
+        priceCents,
       }
 
       // upsert: `on conflict (id)` decide entre criar e atualizar, e a `order` sai do
@@ -254,6 +265,29 @@ export const AdminCourseEditPage = memo(() => {
               value={draft.subscriberAccess}
               onChange={(subscriberAccess) => setDraft((d) => ({ ...d, subscriberAccess }))}
             />
+          ) : null}
+
+          {draft.visibility === 'subscribers' ? (
+            <YStack gap="$1.5">
+              <TextField
+                label="Preço da compra avulsa (R$)"
+                hint="Deixe vazio para não vender avulso. Depois de mudar o valor, rode scripts/stripe-sync-courses.ts para o Stripe cobrar o novo preço."
+                value={draft.price}
+                onChange={(price) => setDraft((d) => ({ ...d, price }))}
+                placeholder="97,00"
+                testID="course-price"
+              />
+              {priceInvalid ? (
+                <SizableText size="$2" color="$red10" data-testid="course-price-error">
+                  Preço inválido. Use um valor maior que zero.
+                </SizableText>
+              ) : null}
+              {unreachable ? (
+                <SizableText size="$2" color="$orange10" data-testid="course-unreachable">
+                  ⚠️ Venda avulsa sem preço: ninguém além de você consegue abrir este curso.
+                </SizableText>
+              ) : null}
+            </YStack>
           ) : null}
         </YStack>
       </AdminSection>

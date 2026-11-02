@@ -136,6 +136,8 @@ export type CourseDTO = {
   published: boolean
   /** o que a assinatura cobre deste curso — o editor lê, a tela do aluno não recalcula nada */
   subscriberAccess: 'included' | 'since-subscription' | 'none'
+  /** preço da compra avulsa em centavos (BRL); `null` = não vende avulso. É vitrine, não segredo */
+  priceCents: number | null
   order: number
   /** matrícula ativa do visitante. `locked` + `lockReason` dizem o que oferecer quando não há */
   enrolled: boolean

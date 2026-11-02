@@ -62,6 +62,8 @@ export type SaveCourseArgs = {
   requiredPlanId?: string | null
   /** `undefined` deixa como está (o formulário antigo não manda) */
   subscriberAccess?: SubscriberAccess
+  /** centavos da compra avulsa. `null` tira o curso de venda; `undefined` deixa como está */
+  priceCents?: number | null
   /** `undefined` deixa a capa como está — o formulário não a carrega */
   coverMediaId?: string | null
 }
@@ -75,6 +77,10 @@ export async function saveCourse(
   const slug = args.slug.trim()
   if (!slug) {
     return { ok: false, status: 400, code: 'missing-slug', message: 'O curso precisa de um slug.' }
+  }
+
+  if (args.priceCents != null && (!Number.isInteger(args.priceCents) || args.priceCents <= 0)) {
+    return { ok: false, status: 422, code: 'invalid-price', message: 'Preço inválido.' }
   }
 
   const requiredPlanId =
@@ -94,6 +100,7 @@ export async function saveCourse(
         visibility: args.visibility,
         requiredPlanId,
         ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
+        priceCents: args.priceCents ?? null,
         published: false,
         order: sql`(select coalesce(max("order"), -1) + 1 from "course" where "feedOwnerId" = ${args.feedOwnerId})`,
         createdAt: nowIso(),
@@ -108,6 +115,7 @@ export async function saveCourse(
           visibility: args.visibility,
           requiredPlanId,
           ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
+          ...(args.priceCents !== undefined && { priceCents: args.priceCents }),
           ...(args.coverMediaId !== undefined && { coverMediaId: args.coverMediaId }),
         },
       })

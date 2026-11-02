@@ -9,6 +9,7 @@
 
 import { providerById } from '~/features/billing/registry'
 import { WebhookSignatureError } from '~/features/billing/webhookSignature'
+import { recordCoursePurchase } from '~/features/billing/server/courseActions'
 import {
   findSubscription,
   grantSubscription,
@@ -93,6 +94,33 @@ export const POST: Endpoint = async (request) => {
       subscriptionId: granted.subscriptionId,
       action: 'created',
     })
+  }
+
+  // payment.succeeded de **curso**: pagamento + matrícula numa transação, sem assinatura
+  if (event.courseId) {
+    if (!event.userId) {
+      return Response.json({
+        ok: true,
+        ignored: true,
+        reason: 'compra de curso sem userId no metadata',
+      })
+    }
+    const bought = await recordCoursePurchase({
+      userId: event.userId,
+      courseId: event.courseId,
+      provider: provider.id,
+      providerPaymentId: event.providerPaymentId,
+      amountCents: event.amountCents,
+      currency: event.currency,
+      paidAt: event.paidAt,
+    })
+    if ('skipped' in bought) {
+      // 422 como no caso da assinatura: dinheiro recebido que não virou acesso precisa
+      // aparecer como webhook falho no painel do gateway
+      console.error(`[billing] compra de curso não concedida: ${bought.skipped}`)
+      return fail(422, bought.skipped, 'Pagamento recebido, mas a matrícula não pôde ser criada.')
+    }
+    return Response.json({ ok: true, ...bought })
   }
 
   // payment.succeeded

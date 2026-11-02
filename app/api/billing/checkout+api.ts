@@ -1,6 +1,6 @@
 // POST /api/billing/checkout — começa uma assinatura pelo adapter ativo.
 //
-// O corpo diz o plano; **quem assina é sempre a sessão**, nunca um `userId` do corpo —
+// O corpo diz o plano **ou** o curso (`planId` | `courseId`); **quem assina é sempre a sessão**, nunca um `userId` do corpo —
 // senão qualquer pessoa logada assinaria em nome de outra.
 //
 // ⚠️ **O provider `manual` é recusado aqui de propósito.** O `createCheckout` dele
@@ -9,14 +9,19 @@
 // o POST. Concessão manual passa por `/api/admin/people`, que exige admin.
 
 import { getAuthDataFromRequest } from '@take-out/better-auth-utils/server'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 import { MASTER_USER_ID } from '~/constants/creator'
 import { getDb } from '~/database'
-import { plan } from '~/database/schema-public'
+import { course, enrollment, plan } from '~/database/schema-public'
 import { authServer } from '~/features/auth/server/authServer'
 import { activeProvider } from '~/features/billing/registry'
+import { enrollmentSource } from '~/server/access/contentAccess'
+import { loadViewer } from '~/server/access/viewer'
 import { fail } from '~/server/api/respond'
+
+import type { CourseRow } from '~/server/access/contentAccess'
+import type { CheckoutSubject } from '~/features/billing/types'
 
 import type { Endpoint } from 'one'
 
@@ -35,7 +40,7 @@ export const POST: Endpoint = async (request) => {
     )
   }
 
-  let body: { planId?: unknown; returnUrl?: unknown }
+  let body: { planId?: unknown; courseId?: unknown; returnUrl?: unknown }
   try {
     body = (await request.json()) as typeof body
   } catch {
@@ -43,24 +48,57 @@ export const POST: Endpoint = async (request) => {
   }
 
   const planId = typeof body.planId === 'string' ? body.planId : ''
-  if (!planId) return fail(400, 'missing-plan', 'Informe planId.')
+  const courseId = typeof body.courseId === 'string' ? body.courseId : ''
+  if (planId && courseId) {
+    return fail(400, 'ambiguous-subject', 'Informe planId ou courseId, não os dois.')
+  }
+  if (!planId && !courseId) return fail(400, 'missing-plan', 'Informe planId ou courseId.')
 
   const db = getDb()
-  const [row] = await db
-    .select({ id: plan.id, active: plan.active })
-    .from(plan)
-    .where(eq(plan.id, planId))
-    .limit(1)
+  let subject: CheckoutSubject
 
-  if (!row) return fail(404, 'plan-not-found', 'Plano não encontrado.')
-  if (!row.active) return fail(422, 'plan-inactive', 'Esse plano não está mais à venda.')
+  if (courseId) {
+    const [row] = await db.select().from(course).where(eq(course.id, courseId)).limit(1)
+    if (!row || !row.published) return fail(404, 'course-not-found', 'Curso não encontrado.')
+    if (row.priceCents == null || row.priceCents <= 0) {
+      return fail(422, 'course-not-for-sale', 'Este curso não é vendido avulso.')
+    }
+
+    // quem já tem o curso (ou pode simplesmente se matricular) não paga de novo
+    const viewer = await loadViewer(auth)
+    const [active] = await db
+      .select({ id: enrollment.id })
+      .from(enrollment)
+      .where(
+        and(
+          eq(enrollment.userId, viewer.id),
+          eq(enrollment.courseId, row.id),
+          isNull(enrollment.revokedAt),
+        ),
+      )
+      .limit(1)
+    if (active || enrollmentSource(viewer, row as CourseRow)) {
+      return fail(422, 'already-has-access', 'Você já tem acesso a este curso.')
+    }
+    subject = { kind: 'course', courseId: row.id }
+  } else {
+    const [row] = await db
+      .select({ id: plan.id, active: plan.active })
+      .from(plan)
+      .where(eq(plan.id, planId))
+      .limit(1)
+
+    if (!row) return fail(404, 'plan-not-found', 'Plano não encontrado.')
+    if (!row.active) return fail(422, 'plan-inactive', 'Esse plano não está mais à venda.')
+    subject = { kind: 'plan', planId }
+  }
 
   try {
     const result = await provider.createCheckout({
       userId: auth.id,
       // app de um criador só: `plan` não tem dono, todos são do master
       creatorId: MASTER_USER_ID,
-      planId,
+      subject,
       returnUrl: typeof body.returnUrl === 'string' ? body.returnUrl : undefined,
     })
     return Response.json({ provider: provider.id, ...result })

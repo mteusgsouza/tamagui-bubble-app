@@ -1,6 +1,6 @@
 // Smoke do fluxo de cobrança, ponta a ponta contra o servidor de dev.
 //
-//   bun run:dev scripts/billing-smoke.ts [userId] [planId]
+//   bun run:dev scripts/billing-smoke.ts [userId] [planId] [courseId]
 //
 // ⚠️ **`bun run:dev scripts/...`, não `bun run:dev bun scripts/...`** — o segundo vira
 // `bun bun`, o bundler de browser antigo, e quebra em "cannot require Node.js builtin".
@@ -15,7 +15,7 @@ const BASE = process.env.ONE_SERVER_URL || 'http://localhost:8081'
 const SECRET = process.env.BILLING_WEBHOOK_SECRET || ''
 const CRON = process.env.CRON_SECRET || ''
 
-const [, , userId, planId] = process.argv
+const [, , userId, planId, courseId] = process.argv
 
 let failures = 0
 
@@ -151,6 +151,41 @@ async function main() {
     }
   } else {
     console.info('\nℹ️  passe userId e planId para testar também conceder/cobrar.')
+  }
+
+  // --- Fase 20: compra avulsa de curso ---
+  if (userId && courseId) {
+    const courseBody = JSON.stringify({
+      type: 'payment.succeeded',
+      providerPaymentId: `pay-smoke-course-${Date.now()}`,
+      courseId,
+      amountCents: 9700,
+      userId,
+    })
+    const first = await check('compra de curso grava pagamento + matrícula', 200, () =>
+      postWebhook(courseBody, sign(courseBody))
+    )
+    const again = await check('compra de curso reenviada', 200, () =>
+      postWebhook(courseBody, sign(courseBody))
+    )
+    if (!first?.recorded || !first?.enrollmentId || !again?.duplicate) {
+      failures++
+      console.error('❌ compra de curso: esperava recorded+enrollmentId e depois duplicate')
+    } else {
+      console.info('✅ compra de curso idempotente por providerPaymentId')
+    }
+
+    const orphan = JSON.stringify({
+      type: 'payment.succeeded',
+      providerPaymentId: `pay-smoke-course-orphan-${Date.now()}`,
+      courseId: 'curso-que-nao-existe',
+      amountCents: 9700,
+      userId,
+    })
+    // dinheiro recebido que não virou acesso tem que falhar alto (422), não sumir
+    await check('compra de curso inexistente', 422, () => postWebhook(orphan, sign(orphan)))
+  } else {
+    console.info('ℹ️  passe também courseId para testar a compra avulsa de curso.')
   }
 
   console.info(failures === 0 ? '\n✅ tudo certo' : `\n❌ ${failures} falha(s)`)

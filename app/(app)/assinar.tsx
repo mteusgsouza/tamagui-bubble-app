@@ -61,7 +61,7 @@ export const SubscribePage = memo(() => {
     setPending(planId)
     setError(null)
     try {
-      goToGateway(await startCheckout(planId))
+      goToGateway(await startCheckout({ kind: 'plan', planId }))
       // na web o `goToGateway` troca a página, então o `finally` abaixo pode nem rodar —
       // e é por isso que o estado de erro é limpo antes, não depois
     } catch (err) {

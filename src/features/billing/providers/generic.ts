@@ -79,6 +79,7 @@ export const genericProvider: BillingProvider = {
         providerSubscriptionId: body.providerSubscriptionId,
         subscriptionId: body.subscriptionId,
         userId: body.userId,
+        courseId: typeof body.courseId === 'string' ? body.courseId : undefined,
         amountCents: body.amountCents,
         currency: body.currency,
         paidAt: body.paidAt,

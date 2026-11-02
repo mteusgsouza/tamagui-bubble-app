@@ -48,6 +48,8 @@ export type Course = {
   requiredPlanId?: string | null
   published?: boolean
   subscriberAccess?: 'included' | 'since-subscription' | 'none'
+  /** centavos da compra avulsa; `null`/ausente = não vende */
+  priceCents?: number | null
   /** matrícula ativa do visitante — a tela lê, nunca recalcula a regra */
   enrolled?: boolean
   order: number

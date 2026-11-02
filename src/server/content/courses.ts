@@ -251,6 +251,7 @@ export async function loadCourses(
     requiredPlanId: row.course.requiredPlanId,
     published: row.course.published,
     subscriberAccess: row.course.subscriberAccess,
+    priceCents: row.course.priceCents,
     order: row.course.order,
     enrolled: enrolled.has(row.course.id),
     coverMedia: toMedia(row),

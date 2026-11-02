@@ -294,6 +294,8 @@ export const course = pgTable(
     })
       .notNull()
       .default('included'),
+    // preço da compra avulsa, em centavos (moeda BRL). `null` = não vende avulso
+    priceCents: integer('priceCents'),
     order: integer('order').notNull().default(0),
     createdAt: timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
   },

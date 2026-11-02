@@ -78,6 +78,13 @@ export const POST: Endpoint = async (request) => {
           visibility: isVisibility(p.visibility) ? p.visibility : 'subscribers',
           requiredPlanId: orNull(p.requiredPlanId),
           subscriberAccess: isSubscriberAccess(p.subscriberAccess) ? p.subscriberAccess : undefined,
+          // ausente = não mexe; `null` tira o curso de venda
+          priceCents:
+            p.priceCents === undefined
+              ? undefined
+              : typeof p.priceCents === 'number'
+                ? p.priceCents
+                : null,
           // ausente = não mexe na capa; o formulário não a carrega
           coverMediaId: p.coverMediaId === undefined ? undefined : orNull(p.coverMediaId),
         })

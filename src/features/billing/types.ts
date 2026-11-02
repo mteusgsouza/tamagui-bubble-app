@@ -38,6 +38,8 @@ export type BillingEvent =
       providerSubscriptionId?: string
       subscriptionId?: string
       userId?: string
+      /** compra avulsa de curso — o metadata do PaymentIntent traz o `courseId` */
+      courseId?: string
       amountCents: number
       currency?: string
       /** epoch ms */
@@ -45,10 +47,19 @@ export type BillingEvent =
     }
   | { type: 'ignored'; reason: string }
 
+/**
+ * O que está sendo comprado. União marcada, e não `planId?` + `courseId?`: com dois
+ * opcionais existem os estados "nenhum" e "os dois", e alguém teria de decidir em runtime
+ * o que fazer com eles. Assim o compilador decide.
+ */
+export type CheckoutSubject =
+  | { kind: 'plan'; planId: string }
+  | { kind: 'course'; courseId: string }
+
 export type CheckoutRequest = {
   userId: string
   creatorId: string
-  planId: string
+  subject: CheckoutSubject
   /** para onde o gateway devolve o usuário */
   returnUrl?: string
 }

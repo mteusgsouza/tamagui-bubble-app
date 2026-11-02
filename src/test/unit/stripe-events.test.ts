@@ -212,6 +212,76 @@ describe('pagamento', () => {
   })
 })
 
+describe('compra avulsa de curso (Fase 20)', () => {
+  it('payment_intent.succeeded com courseId e sem fatura vira payment.succeeded com curso', () => {
+    const result = mapStripeEvent(
+      event('payment_intent.succeeded', {
+        id: 'pi_curso',
+        amount_received: 9700,
+        currency: 'brl',
+        metadata: { userId: 'u-1', courseId: 'curso-vendas' },
+        created: 1500,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      type: 'payment.succeeded',
+      providerPaymentId: 'pi_curso',
+      userId: 'u-1',
+      courseId: 'curso-vendas',
+      amountCents: 9700,
+    })
+  })
+
+  it('🔴 payment_intent.succeeded COM fatura continua ignorado, mesmo com courseId', () => {
+    // a regra do "não conta duas vezes" não pode ser relaxada por causa do curso
+    const result = mapStripeEvent(
+      event('payment_intent.succeeded', {
+        id: 'pi_x',
+        invoice: 'in_1',
+        amount_received: 9700,
+        currency: 'brl',
+        metadata: { userId: 'u-1', courseId: 'curso-vendas' },
+      }),
+    )
+    expect(result.type).toBe('ignored')
+  })
+
+  it('pagamento de plano não carrega courseId', () => {
+    const result = mapStripeEvent(
+      event('payment_intent.succeeded', {
+        id: 'pi_plano',
+        amount_received: 1000,
+        currency: 'brl',
+        metadata: { userId: 'u-1', planId: 'plan-trial' },
+      }),
+    )
+    expect(result).toMatchObject({ type: 'payment.succeeded' })
+    expect((result as { courseId?: string }).courseId).toBeUndefined()
+  })
+
+  it('checkout.session.completed de curso é ignorado — quem grava é o payment_intent', () => {
+    const result = mapStripeEvent(
+      event('checkout.session.completed', {
+        mode: 'payment',
+        payment_status: 'paid',
+        metadata: { userId: 'u-1', courseId: 'curso-vendas' },
+      }),
+    )
+    // se virasse `subscription.updated` sem planId, o webhook o descartaria em silêncio
+    expect(result.type).toBe('ignored')
+  })
+
+  it('sessão avulsa sem metadata é ignorada, não lança', () => {
+    const run = () =>
+      mapStripeEvent(
+        event('checkout.session.completed', { mode: 'payment', payment_status: 'paid' }),
+      )
+    expect(run).not.toThrow()
+    expect(run().type).toBe('ignored')
+  })
+})
+
 describe('evento não tratado', () => {
   it('vira ignored, e a rota responde 200 para o gateway não reenviar para sempre', () => {
     const result = mapStripeEvent(event('customer.created', { id: 'cus_1' }))

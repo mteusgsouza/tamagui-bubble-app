@@ -9,6 +9,8 @@ import { isWeb } from 'tamagui'
 
 import { apiFetch, ApiError } from '~/helpers/apiFetch'
 
+import type { CheckoutSubject } from '../types'
+
 /**
  * Para onde o gateway devolve o usuário.
  *
@@ -32,6 +34,9 @@ const CHECKOUT_MESSAGES: Record<string, string> = {
   unauthenticated: 'Sua sessão expirou. Entre de novo para assinar.',
   'plan-not-found': 'Esse plano não existe mais.',
   'plan-inactive': 'Esse plano saiu de venda enquanto a tela estava aberta.',
+  'course-not-found': 'Esse curso não existe mais.',
+  'course-not-for-sale': 'Este curso não está à venda no momento.',
+  'already-has-access': 'Você já tem acesso a este curso. Atualize a página.',
   'no-gateway': 'O pagamento ainda não está configurado. Fale com o criador.',
   'checkout-failed': 'Não deu para abrir o pagamento. Tente de novo em instantes.',
 }
@@ -52,13 +57,19 @@ export { apiMessage as billingMessage } from '~/helpers/apiMessage'
  * Não navega sozinho: quem chama decide o momento, porque na web o redirect descarta a
  * tela atual e no nativo abre o navegador do sistema.
  */
-export async function startCheckout(planId: string): Promise<string> {
+export async function startCheckout(subject: CheckoutSubject): Promise<string> {
   // ⚠️ **Sem `/api` aqui.** `API_URL` já é `${SERVER_URL}/api` (`~/constants/urls`), então
   // prefixar de novo produz `/api/api/...` e **404** — que é exatamente o que a tela de
   // assinar mostrou. Os chamadores antigos passam `/media/...` e `/admin/...`.
   const res = await apiFetch<{ url?: string; kind?: string }>('/billing/checkout', {
     method: 'POST',
-    body: JSON.stringify({ planId, returnUrl: returnUrl('/home/feed?checkout=success') }),
+    body: JSON.stringify({
+      ...(subject.kind === 'plan'
+        ? { planId: subject.planId }
+        : { courseId: subject.courseId }),
+      // só a base: o provider acrescenta o caminho de volta (o feed, ou o curso comprado)
+      returnUrl: returnUrl(''),
+    }),
   })
   if (!res.url) {
     throw new ApiError(200, 'no-url', 'O gateway não devolveu a página de pagamento.')

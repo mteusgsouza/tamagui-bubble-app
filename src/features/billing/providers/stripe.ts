@@ -14,10 +14,11 @@ import { and, eq } from 'drizzle-orm'
 import { getDb } from '~/database'
 import {
   billingCustomer,
+  courseProviderPrice,
   planProviderPrice,
   user as userTable,
 } from '~/database/schema-private'
-import { plan } from '~/database/schema-public'
+import { course, plan } from '~/database/schema-public'
 import { BETTER_AUTH_URL, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from '~/server/env-server'
 
 import { WebhookSignatureError } from '../webhookSignature'
@@ -131,6 +132,37 @@ async function resolvePlan(planId: string) {
 }
 
 /**
+ * O preço ativo do curso no Stripe, e o slug para o retorno do checkout.
+ *
+ * Curso avulso é sempre `mode: 'payment'`: não há assinatura nem renovação.
+ */
+async function resolveCourse(courseId: string) {
+  const db = getDb()
+  const [row] = await db
+    .select({
+      providerPriceId: courseProviderPrice.providerPriceId,
+      slug: course.slug,
+    })
+    .from(courseProviderPrice)
+    .innerJoin(course, eq(course.id, courseProviderPrice.courseId))
+    .where(
+      and(
+        eq(courseProviderPrice.courseId, courseId),
+        eq(courseProviderPrice.provider, PROVIDER_ID),
+        eq(courseProviderPrice.active, true),
+      ),
+    )
+    .limit(1)
+
+  if (!row) {
+    throw new Error(
+      `O curso ${courseId} não tem preço no Stripe. Rode: bun run:dev scripts/stripe-sync-courses.ts`,
+    )
+  }
+  return row
+}
+
+/**
  * Prazo de acesso de uma compra avulsa, em epoch ms.
  *
  * Vive aqui, e não no `stripeEvents.ts`, porque depende do banco — e aquele arquivo é
@@ -155,12 +187,30 @@ export const stripeProvider: BillingProvider = {
   id: PROVIDER_ID,
   label: 'Stripe',
 
-  async createCheckout({ userId, planId, returnUrl }) {
+  async createCheckout({ userId, subject, returnUrl }) {
     const customerId = await ensureCustomer(userId)
-    const { providerPriceId: price, interval } = await resolvePlan(planId)
-    // compra avulsa cobra uma vez; `mode: 'subscription'` exigiria um preço recorrente e
-    // o Stripe recusaria a sessão
-    const isOneTime = interval === 'once'
+
+    // Plano e curso caem no **mesmo** `sessions.create`: o que muda é o preço, o
+    // metadata e para onde o cliente volta. Um segundo caminho aqui seria a segunda
+    // implementação que a Fase 20 proíbe.
+    const target =
+      subject.kind === 'plan'
+        ? await resolvePlan(subject.planId).then((row) => ({
+            price: row.providerPriceId,
+            // compra avulsa cobra uma vez; `mode: 'subscription'` exigiria um preço
+            // recorrente e o Stripe recusaria a sessão
+            isOneTime: row.interval === 'once',
+            metadata: { userId, planId: subject.planId },
+            returnPath: '/home/feed',
+          }))
+        : await resolveCourse(subject.courseId).then((row) => ({
+            price: row.providerPriceId,
+            isOneTime: true,
+            metadata: { userId, courseId: subject.courseId },
+            // quem comprou quer entrar no curso, não voltar ao feed
+            returnPath: `/home/courses/${row.slug}`,
+          }))
+    const { price, isOneTime, metadata, returnPath } = target
 
     const base = (returnUrl || BETTER_AUTH_URL || '').replace(/\/$/, '')
     if (!base) {
@@ -186,8 +236,8 @@ export const stripeProvider: BillingProvider = {
       mode: isOneTime ? 'payment' : 'subscription',
       customer: customerId,
       line_items: [{ price, quantity: 1 }],
-      success_url: `${base}/home/feed?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${base}/home/feed?checkout=cancel`,
+      success_url: `${base}${returnPath}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}${returnPath}?checkout=cancel`,
 
       // 🔴 **No recorrente, o metadata vai nos dois lugares, e não é redundância.**
       // A sessão carrega o dela; os eventos `customer.subscription.*` carregam o da
@@ -196,10 +246,11 @@ export const stripeProvider: BillingProvider = {
       //
       // No avulso não existe Subscription do outro lado: o metadata vai na sessão e no
       // PaymentIntent, que são os dois objetos que geram evento.
-      metadata: { userId, planId },
+      // 🔴 Curso: nunca `subscription_data` — compra de curso não cria assinatura.
+      metadata,
       ...(isOneTime
-        ? { payment_intent_data: { metadata: { userId, planId } } }
-        : { subscription_data: { metadata: { userId, planId } } }),
+        ? { payment_intent_data: { metadata } }
+        : { subscription_data: { metadata } }),
     })
 
     if (!session.url) {

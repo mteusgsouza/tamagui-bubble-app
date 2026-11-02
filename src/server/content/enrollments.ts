@@ -18,6 +18,9 @@ import type { WriteResult } from './interactions'
 
 export type EnrollmentSource = (typeof enrollment.$inferSelect)['source']
 
+/** O banco, ou uma transação dele — o `upsert` serve aos dois. */
+type Executor = Pick<ReturnType<typeof getDb>, 'select' | 'insert' | 'update'>
+
 /** Ids dos cursos em que o usuário tem matrícula **ativa**, entre os dados. */
 export async function loadEnrolledCourseIds(
   userId: string,
@@ -47,14 +50,16 @@ const notFound = (message: string) =>
  * Cria a matrícula, ou **reativa** a revogada: o índice único é por (userId, courseId), e
  * o histórico de "já esteve aqui" vale mais que uma linha nova. Idempotente.
  */
-async function upsertEnrollment(args: {
-  userId: string
-  courseId: string
-  source: EnrollmentSource
-  subscriptionId?: string | null
-  grantedBy?: string | null
-}) {
-  const db = getDb()
+async function upsertEnrollment(
+  args: {
+    userId: string
+    courseId: string
+    source: EnrollmentSource
+    subscriptionId?: string | null
+    grantedBy?: string | null
+  },
+  db: Executor = getDb(),
+) {
   const [existing] = await db
     .select()
     .from(enrollment)
@@ -87,6 +92,27 @@ async function upsertEnrollment(args: {
       ...values,
       createdAt: nowIso(),
     })
+    .returning()
+  return row!
+}
+
+/**
+ * Matrícula de **compra**, dentro da transação do pagamento.
+ *
+ * 🔴 Se a pessoa já estava matriculada por assinatura (ou de graça), a origem **sobe** para
+ * `purchase`: do contrário perder a assinatura revogaria um curso que ela pagou. Concessão
+ * à mão fica como está — já é imune à revogação por assinatura.
+ */
+export async function enrollByPurchase(
+  db: Executor,
+  args: { userId: string; courseId: string },
+) {
+  const saved = await upsertEnrollment({ ...args, source: 'purchase' }, db)
+  if (saved.source !== 'subscription' && saved.source !== 'free') return saved
+  const [row] = await db
+    .update(enrollment)
+    .set({ source: 'purchase', subscriptionId: null })
+    .where(eq(enrollment.id, saved.id))
     .returning()
   return row!
 }

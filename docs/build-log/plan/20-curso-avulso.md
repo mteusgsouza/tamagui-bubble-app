@@ -1,6 +1,6 @@
 # Fase 20 — Curso avulso
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** conta Stripe já configurada (a mesma
+**Status:** ✅ entregue (01/11/2026) — [handoff](../handoffs/20-curso-avulso.md) · **Pré-requisito humano:** conta Stripe já configurada (a mesma
 da Fase 11; test mode basta) · **Depende de:** 19 (a compra termina numa matrícula)
 
 ## Objetivo

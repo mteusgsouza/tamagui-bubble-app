@@ -8,9 +8,9 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 19 — Matrícula e acesso ao curso** ([handoff](./handoffs/19-matricula-e-acesso.md)) |
+| Última fase concluída | **Fase 20 — Curso avulso** ([handoff](./handoffs/20-curso-avulso.md)) |
 | Último trabalho entregue | **Composer, mídia e contas de teste** (01/11/2026, commit `6616078`) — prévia do post, ponto focal da foto, admin no celular e 4 contas de teste com atalho no login. [handoff](./handoffs/composer-midia.md) |
-| Próxima fase | **Fase 20 — Curso avulso** ([plano](./plan/20-curso-avulso.md)). Caminho crítico **19 → 20**: o `needs-purchase` já existe como estado e como texto, falta preço e checkout |
+| Próxima fase | **Fase 21 — Certificado** ([plano](./plan/21-certificado.md)). O caminho crítico 18 → 19 → 20 está fechado |
 | Fases novas | **18 a 22** planejadas (a 18 está entregue) em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
 | Validar no navegador | 11–13 nunca foram clicadas. **Ficou mais barato**: há 4 contas de teste (Criador, Admin, Assinante, Visitante) com atalho de um clique na tela de login |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
@@ -21,6 +21,13 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 20:
+
+- ✅ **curso se vende avulso**: `course.priceCents`, `payment.courseId`, `courseProviderPrice`; checkout com `subject` (plano | curso) no mesmo caminho do plano avulso; webhook grava `payment` + matrícula `purchase` numa transação, idempotente
+- ✅ validado no navegador com Stripe test mode: R$ 97,00 → matrícula `purchase`, `subscription` inalterada, aula abre, e revogar a assinatura **não** derruba a compra
+- ⚠️ webhook entregue por `scripts/stripe-deliver-webhook.ts`, não pelo Stripe; mudar o preço exige rodar `stripe-sync-courses.ts`; sem teste automatizado da matrícula de compra
+- 🔴 reembolso segue sem tratamento — agora há dois tipos de compra que o estorno não alcança
 
 Estado real da Fase 19:
 
@@ -33,7 +40,7 @@ Estado real da Fase 19:
   (`revokeEnrollmentsForSubscription`, chamado de `subscriptionActions`); concessão e compra ficam
 - ✅ admin: "Quem tem acesso" e lista de **Inscritos** com conceder (por e-mail) e revogar
 - ✅ **validado** no navegador/Postgres com as contas de teste — ver o handoff
-- ⚠️ `needs-purchase` mostra "Comprar este curso" **desabilitado** até a Fase 20
+- ~~`needs-purchase` mostra "Comprar este curso" desabilitado~~ **Vencido** pela Fase 20
 - ⚠️ conceder/revogar na tela de inscritos foi exercido pela API, não por clique; bytes de aula por
   matrícula não foram exercidos em `/api/media/<id>/play`
 

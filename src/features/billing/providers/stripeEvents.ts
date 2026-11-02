@@ -111,6 +111,17 @@ export function mapStripeEvent(event: Stripe.Event): BillingEvent {
         if (session.payment_status !== 'paid') {
           return { type: 'ignored', reason: `sessão avulsa não paga: ${session.payment_status}` }
         }
+        // Curso: a notícia que vale é o `payment_intent.succeeded`, que grava pagamento e
+        // matrícula juntos. Sem `planId` este evento não tem o que conceder.
+        if (session.metadata?.courseId && !session.metadata?.planId) {
+          return {
+            type: 'ignored',
+            reason: 'compra de curso: tratada no payment_intent.succeeded',
+          }
+        }
+        if (!session.metadata?.planId) {
+          return { type: 'ignored', reason: 'sessão avulsa sem planId nem courseId no metadata' }
+        }
         return {
           type: 'subscription.updated',
           userId: session.metadata?.userId,
@@ -153,6 +164,7 @@ export function mapStripeEvent(event: Stripe.Event): BillingEvent {
         type: 'payment.succeeded',
         providerPaymentId: intent.id,
         userId: intent.metadata?.userId,
+        courseId: intent.metadata?.courseId || undefined,
         amountCents: intent.amount_received,
         currency: intent.currency?.toUpperCase(),
         paidAt: intent.created ? intent.created * 1000 : undefined,

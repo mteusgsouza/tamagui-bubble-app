@@ -1,6 +1,6 @@
 import { index, pgTable, uniqueIndex } from 'drizzle-orm/pg-core'
 
-import { plan, subscription } from './schema-public'
+import { course, plan, subscription } from './schema-public'
 
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -88,6 +88,8 @@ export const payment = pgTable(
     subscriptionId: t
       .text('subscriptionId')
       .references(() => subscription.id, { onDelete: 'set null' }),
+    // compra avulsa de curso. O elo mora aqui e não em `enrollment`: esta tabela é privada
+    courseId: t.text('courseId').references(() => course.id, { onDelete: 'set null' }),
     provider: t.text('provider').notNull().default('manual'),
     providerPaymentId: t.text('providerPaymentId'),
     amountCents: t.integer('amountCents').notNull().default(0),
@@ -99,6 +101,7 @@ export const payment = pgTable(
   (table) => [
     index('payment_userId_idx').on(table.userId),
     index('payment_subscriptionId_idx').on(table.subscriptionId),
+    index('payment_courseId_idx').on(table.courseId),
   ],
 )
 
@@ -164,5 +167,30 @@ export const planProviderPrice = pgTable(
   (table) => [
     uniqueIndex('planProviderPrice_providerPriceId_uidx').on(table.providerPriceId),
     index('planProviderPrice_planId_provider_idx').on(table.planId, table.provider),
+  ],
+)
+
+/**
+ * Preço de um curso no gateway — cópia estrutural de `planProviderPrice`, pelas mesmas três
+ * razões: `course` é público e `providerPriceId` não tem o que fazer nele; o pagamento é
+ * abstraído (decisão 4 do `STATE`); e **Price no Stripe é imutável** — mudar o valor cria
+ * outro, e o antigo fica `active = false` porque quem já comprou aponta para ele.
+ */
+export const courseProviderPrice = pgTable(
+  'courseProviderPrice',
+  (t) => ({
+    id: t.text('id').primaryKey(),
+    courseId: t
+      .text('courseId')
+      .notNull()
+      .references(() => course.id, { onDelete: 'cascade' }),
+    provider: t.text('provider').notNull(),
+    providerPriceId: t.text('providerPriceId').notNull(),
+    active: t.boolean('active').notNull().default(true),
+    createdAt: t.timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
+  }),
+  (table) => [
+    uniqueIndex('courseProviderPrice_providerPriceId_uidx').on(table.providerPriceId),
+    index('courseProviderPrice_courseId_provider_idx').on(table.courseId, table.provider),
   ],
 )

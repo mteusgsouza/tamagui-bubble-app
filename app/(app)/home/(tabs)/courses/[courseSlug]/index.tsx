@@ -1,5 +1,5 @@
 import { Link, useParams, useRouter, createRoute } from 'one'
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
@@ -7,6 +7,9 @@ import { useCourse } from '~/data/client/hooks'
 import { useEnroll } from '~/data/client/mutations'
 import { COURSE_MESSAGES } from '~/data/client/messages'
 import { ApiError } from '~/helpers/apiFetch'
+import { apiMessage } from '~/helpers/apiMessage'
+import { CHECKOUT_MESSAGES, goToGateway, startCheckout } from '~/features/billing/client/billingApi'
+import { formatPrice } from '~/features/billing/formatPrice'
 import { CourseCurriculum } from '~/features/courses/CourseCurriculum'
 import {
   courseStats,
@@ -26,11 +29,11 @@ const route = createRoute<'/(app)/home/(tabs)/courses/[courseSlug]'>()
 export const CourseDetailPage = memo(() => {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { courseSlug } = useParams<{ courseSlug?: string }>()
+  const { courseSlug, checkout } = useParams<{ courseSlug?: string; checkout?: string }>()
 
   // semeado pela lista quando ela já foi carregada, então abrir um curso vindo do
   // catálogo não mostra spinner
-  const { data, isPending } = useCourse(courseSlug || '')
+  const { data, isPending, refetch } = useCourse(courseSlug || '')
 
   const isLoading = isPending
   const typed = data?.course as Course | undefined
@@ -63,7 +66,7 @@ export const CourseDetailPage = memo(() => {
           </SizableText>
         </YStack>
       ) : (
-        <CourseBody course={typed} />
+        <CourseBody course={typed} returning={checkout === 'success'} refetch={refetch} />
       )}
     </YStack>
   )
@@ -84,12 +87,52 @@ export const CourseDetailPage = memo(() => {
   )
 })
 
-const CourseBody = ({ course }: { course: Course }) => {
+const CourseBody = ({
+  course,
+  returning,
+  refetch,
+}: {
+  course: Course
+  /** voltou do checkout (`?checkout=success`) */
+  returning: boolean
+  refetch: () => unknown
+}) => {
   const router = useRouter()
   const stats = courseStats(course)
   const next = nextLesson(course)
   const percent = Math.round(stats.ratio * 100)
   const enroll = useEnroll(course.slug)
+
+  // `pending` é o clique em comprar; `buyError` a frase de falha
+  const [buying, setBuying] = useState(false)
+  const [buyError, setBuyError] = useState<string | null>(null)
+
+  // O webhook pode chegar depois do redirecionamento: o cliente volta pago e o curso ainda
+  // aparece fechado por alguns segundos. Em vez de deixar a pessoa achando que não pagou,
+  // a tela diz que está liberando e pergunta de novo até a matrícula aparecer.
+  const waitingForWebhook = returning && Boolean(course.locked)
+  useEffect(() => {
+    if (!waitingForWebhook) return
+    let tries = 0
+    const timer = setInterval(() => {
+      tries += 1
+      void refetch()
+      if (tries >= 15) clearInterval(timer)
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [waitingForWebhook, refetch])
+
+  const buy = async () => {
+    if (buying) return
+    setBuying(true)
+    setBuyError(null)
+    try {
+      goToGateway(await startCheckout({ kind: 'course', courseId: course.id }))
+    } catch (err) {
+      setBuyError(apiMessage(err, CHECKOUT_MESSAGES))
+      setBuying(false)
+    }
+  }
 
   const start = async () => {
     try {
@@ -147,18 +190,43 @@ const CourseBody = ({ course }: { course: Course }) => {
           </SizableText>
         </Button>
       ) : course.locked && course.lockReason === 'needs-purchase' ? (
-        // a assinatura não cobre este curso. O checkout avulso é da Fase 20: até lá o
-        // estado existe e diz a verdade, sem levar a uma tela de assinatura que não ajuda
+        // a assinatura não cobre este curso: só a compra avulsa
         <YStack gap="$1.5">
-          <Button size="$4" variant="accent" disabled data-testid="buy-course">
-            <SizableText size="$4" fontWeight="600" color="$accentColor">
-              Comprar este curso
+          {waitingForWebhook ? (
+            <SizableText size="$3" color="$accent11" fontWeight="600" data-testid="buy-waiting">
+              Pagamento recebido. Liberando o seu acesso…
             </SizableText>
-          </Button>
+          ) : course.priceCents ? (
+            <Button
+              size="$4"
+              variant="accent"
+              onPress={buy}
+              disabled={buying}
+              data-testid="buy-course"
+            >
+              <SizableText size="$4" fontWeight="600" color="$accentColor">
+                {buying
+                  ? 'Abrindo o pagamento…'
+                  : `Comprar este curso — ${formatPrice(course.priceCents)}`}
+              </SizableText>
+            </Button>
+          ) : (
+            <Button size="$4" variant="accent" disabled data-testid="buy-course">
+              <SizableText size="$4" fontWeight="600" color="$accentColor">
+                Comprar este curso
+              </SizableText>
+            </Button>
+          )}
           <SizableText size="$2" color="$color10">
-            Este curso é vendido à parte — não está incluído na sua assinatura. A compra
-            avulsa chega em breve.
+            {course.priceCents
+              ? 'Compra única, acesso ao curso para sempre. Não está incluído na sua assinatura.'
+              : 'Este curso é vendido à parte, mas ainda não está à venda.'}
           </SizableText>
+          {buyError ? (
+            <SizableText size="$3" color="$red10" data-testid="buy-error">
+              {buyError}
+            </SizableText>
+          ) : null}
         </YStack>
       ) : course.locked ? (
         <Link href="/assinar" style={{ width: '100%' }} asChild>

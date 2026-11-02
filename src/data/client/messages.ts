@@ -27,6 +27,7 @@ export const COURSE_MESSAGES: Record<string, string> = {
   'needs-subscription': 'Assine para abrir este curso.',
   'needs-plan': 'Seu plano não inclui este curso.',
   'needs-purchase': 'Este curso não está incluído na sua assinatura.',
+  'course-not-for-sale': 'Este curso não está à venda no momento.',
   'enroll-failed': 'Não deu para abrir o curso. Tente de novo.',
   'courses-failed': 'Não deu para carregar os cursos.',
 }
@@ -37,7 +38,7 @@ export const ADMIN_MESSAGES: Record<string, string> = {
   'invalid-kind': 'Tipo de post desconhecido.',
   'invalid-visibility': 'Visibilidade desconhecida.',
   'invalid-interval': 'Periodicidade desconhecida.',
-  'invalid-price': 'Preço inválido.',
+  'invalid-price': 'Preço inválido. Use um valor maior que zero, ou deixe vazio para não vender.',
   'missing-fields': 'Faltam campos obrigatórios.',
   'not-found': 'Esse item não existe mais.',
   'ordem-desatualizada': 'O currículo mudou enquanto você editava. Recarregue a página.',
