@@ -3,6 +3,7 @@
 // Módulo puro, sem import de UI — o Zero não expõe agregação, então tudo isso sai das
 // linhas que a query já sincronizou. É também o que torna essas regras testáveis.
 
+import { isCourseComplete } from './completion'
 import { isLessonComplete, lessonProgress } from './types'
 
 import type { Course, CourseLesson } from './types'
@@ -19,6 +20,8 @@ export type CourseStats = {
   totalDurationSec: number
   /** existe alguma aula de amostra, aberta a quem não assina */
   hasFreePreview: boolean
+  /** a regra de conclusão do curso está satisfeita — é `isCourseComplete`, nunca recalculada na tela */
+  complete: boolean
 }
 
 /**
@@ -41,6 +44,13 @@ export function courseStats(course: Course): CourseStats {
     ratio: lessons.length > 0 ? completedCount / lessons.length : 0,
     totalDurationSec: lessons.reduce((sum, l) => sum + (l.durationSec ?? 0), 0),
     hasFreePreview: lessons.some((l) => l.freePreview),
+    complete: isCourseComplete(
+      {
+        completionRule: course.completionRule ?? 'all',
+        minLessons: course.minLessons ?? null,
+      },
+      { completedCount, lessonCount: lessons.length },
+    ),
   }
 }
 

@@ -87,6 +87,7 @@ declare module 'one' {
         | `/admin/lessons/${OneRouter.SingleRoutePart<T>}`
         | `/admin/posts/${OneRouter.SingleRoutePart<T>}`
         | `/auth/signup/${OneRouter.SingleRoutePart<T>}`
+        | `/certificado/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/courses/${OneRouter.SingleRoutePart<T>}/${OneRouter.SingleRoutePart<T>}`
         | `/home/(tabs)/feed/${OneRouter.SingleRoutePart<T>}`
@@ -108,6 +109,7 @@ declare module 'one' {
         | `/admin/lessons/[lessonId]`
         | `/admin/posts/[postId]`
         | `/auth/signup/[method]`
+        | `/certificado/[code]`
         | `/home/(tabs)/courses/[courseSlug]`
         | `/home/(tabs)/courses/[courseSlug]/[lessonId]`
         | `/home/(tabs)/feed/[postId]`
@@ -130,6 +132,7 @@ declare module 'one' {
         '/admin/lessons/[lessonId]': RouteInfo<{ lessonId: string }>
         '/admin/posts/[postId]': RouteInfo<{ postId: string }>
         '/auth/signup/[method]': RouteInfo<{ method: string }>
+        '/certificado/[code]': RouteInfo<{ code: string }>
         '/home/(tabs)/courses/[courseSlug]': RouteInfo<{ courseSlug: string }>
         '/home/(tabs)/courses/[courseSlug]/[lessonId]': RouteInfo<{ courseSlug: string; lessonId: string }>
         '/home/(tabs)/feed/[postId]': RouteInfo<{ postId: string }>

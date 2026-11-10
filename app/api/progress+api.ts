@@ -43,6 +43,7 @@ export const POST: Endpoint = async (request) => {
       lessonId: result.lessonId,
       positionSec: result.positionSec,
       completedAt: result.completedAt,
+      ...(result.certificateCode && { certificateCode: result.certificateCode }),
     })
   } catch (error) {
     console.error('[progress] falhou', error)

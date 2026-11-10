@@ -10,6 +10,7 @@ import { ApiError } from '~/helpers/apiFetch'
 import { apiMessage } from '~/helpers/apiMessage'
 import { CHECKOUT_MESSAGES, goToGateway, startCheckout } from '~/features/billing/client/billingApi'
 import { formatPrice } from '~/features/billing/formatPrice'
+import { CertificateLink } from '~/features/courses/CertificateLink'
 import { CourseCurriculum } from '~/features/courses/CourseCurriculum'
 import {
   courseStats,
@@ -165,7 +166,10 @@ const CourseBody = ({
         </SizableText>
       </YStack>
 
-      {stats.lessonCount > 0 ? (
+      {course.certificate ? (
+        // quem terminou ganha o certificado no lugar da barra parada em 100%
+        <CertificateLink code={course.certificate.code} issuedAt={course.certificate.issuedAt} />
+      ) : stats.lessonCount > 0 ? (
         <YStack gap="$1.5">
           <ProgressBar ratio={stats.ratio} />
           <SizableText size="$1" color="$color10">
@@ -251,7 +255,7 @@ const CourseBody = ({
             {stats.completedCount > 0 ? `Continuar: ${next.title}` : 'Começar o curso'}
           </SizableText>
         </Button>
-      ) : stats.lessonCount > 0 ? (
+      ) : stats.lessonCount > 0 && !course.certificate ? (
         <SizableText size="$3" color="$accent11" fontWeight="600">
           Curso concluído.
         </SizableText>

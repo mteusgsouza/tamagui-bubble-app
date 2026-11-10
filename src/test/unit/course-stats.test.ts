@@ -92,6 +92,22 @@ describe('courseStats', () => {
   })
 })
 
+describe('courseStats.complete', () => {
+  test('sem regra no curso vale `all`', () => {
+    expect(courseStats(course([done('1'), done('2')])).complete).toBe(true)
+    expect(courseStats(course([done('1'), lesson('2')])).complete).toBe(false)
+  })
+
+  test('min-lessons conclui antes de terminar tudo', () => {
+    const rule = { completionRule: 'min-lessons', minLessons: 1 } as const
+    expect(courseStats(course([done('1'), lesson('2')], rule)).complete).toBe(true)
+  })
+
+  test('curso vazio nunca conclui', () => {
+    expect(courseStats(course([])).complete).toBe(false)
+  })
+})
+
 describe('nextLesson', () => {
   test('a primeira NÃO concluída, na ordem do currículo', () => {
     // de propósito não é a mexida por último: quem largou a 2 e espiou a 4 volta pra 2

@@ -145,6 +145,10 @@ export function useSaveProgress(courseSlug?: string) {
       })
 
       if (args.completed) {
+        // certificado novo: a lista e o detalhe do curso passam a mostrá-lo
+        if (result.certificateCode) {
+          void client.invalidateQueries({ queryKey: keys.certificates() })
+        }
         void client.invalidateQueries({ queryKey: keys.courses() })
         if (courseSlug) void client.invalidateQueries({ queryKey: keys.course(courseSlug) })
       }

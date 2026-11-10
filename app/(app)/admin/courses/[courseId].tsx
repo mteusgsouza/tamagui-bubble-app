@@ -13,6 +13,7 @@ import { adminCourses as adminCoursesApi } from '~/data/client/api'
 import { useAdminCourse, usePlans } from '~/data/client/hooks'
 import { useInvalidateAfterAdminWrite } from '~/data/client/mutations'
 import { useAuth } from '~/features/auth/client/authClient'
+import { minLessonsUnreachable } from '~/features/courses/completion'
 import { Button } from '~/interface/buttons/Button'
 
 import type { Visibility } from '~/data/enums'
@@ -71,6 +72,10 @@ export const AdminCourseEditPage = memo(() => {
     subscriberAccess: 'included' as SubscriberAccess,
     // texto do campo, "97,00"; vazio = não vende avulso
     price: '',
+    certificateEnabled: false,
+    completionRule: 'all' as 'all' | 'min-lessons',
+    // texto do campo; vazio = sem mínimo
+    minLessons: '',
   })
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -88,6 +93,9 @@ export const AdminCourseEditPage = memo(() => {
       requiredPlanId: row.requiredPlanId ?? null,
       subscriberAccess: row.subscriberAccess ?? 'included',
       price: row.priceCents != null ? formatPriceInput(row.priceCents) : '',
+      certificateEnabled: Boolean(row.certificateEnabled),
+      completionRule: row.completionRule ?? 'all',
+      minLessons: row.minLessons != null ? String(row.minLessons) : '',
     })
     setSlugTouched(true)
     setLoaded(true)
@@ -101,12 +109,24 @@ export const AdminCourseEditPage = memo(() => {
   const priceCents = draft.price.trim() ? parsePriceInput(draft.price) : null
   const priceInvalid = Boolean(draft.price.trim()) && (priceCents == null || priceCents <= 0)
   const unreachable = draft.subscriberAccess === 'none' && priceCents == null && !priceInvalid
+  // mínimo de aulas: vazio = sem número; texto que não é inteiro positivo é erro
+  const minLessonsValue = draft.minLessons.trim() ? Number(draft.minLessons) : null
+  const minLessonsInvalid =
+    minLessonsValue != null && (!Number.isInteger(minLessonsValue) || minLessonsValue <= 0)
+  const publishedLessons = ((row?.lessons ?? []) as any[]).filter((l) => l.published).length
+  const minLessonsTooHigh =
+    draft.certificateEnabled &&
+    !minLessonsInvalid &&
+    minLessonsUnreachable(
+      { completionRule: draft.completionRule, minLessons: minLessonsValue },
+      publishedLessons,
+    )
   const isLoading = !isNew && courseQuery.isPending
 
   const save = async () => {
     if (!courseId || !userId || saving) return
     const slug = draft.slug || toSlug(draft.title)
-    if (!draft.title.trim() || !slug || priceInvalid) return
+    if (!draft.title.trim() || !slug || priceInvalid || minLessonsInvalid) return
 
     setSaving(true)
     try {
@@ -118,6 +138,9 @@ export const AdminCourseEditPage = memo(() => {
         requiredPlanId: draft.requiredPlanId ?? undefined,
         subscriberAccess: draft.subscriberAccess,
         priceCents,
+        certificateEnabled: draft.certificateEnabled,
+        completionRule: draft.completionRule,
+        minLessons: draft.completionRule === 'min-lessons' ? minLessonsValue : null,
       }
 
       // upsert: `on conflict (id)` decide entre criar e atualizar, e a `order` sai do
@@ -285,6 +308,67 @@ export const AdminCourseEditPage = memo(() => {
               {unreachable ? (
                 <SizableText size="$2" color="$orange10" data-testid="course-unreachable">
                   ⚠️ Venda avulsa sem preço: ninguém além de você consegue abrir este curso.
+                </SizableText>
+              ) : null}
+            </YStack>
+          ) : null}
+        </YStack>
+      </AdminSection>
+
+      <AdminSection title="Certificado" detail={draft.certificateEnabled ? 'Ligado' : 'Desligado'}>
+        <YStack gap="$4" data-testid="course-certificate">
+          <OptionRow
+            label="Emitir certificado"
+            hint="Quem terminar o curso ganha um certificado com página pública de verificação. Você não recebe certificado do próprio curso."
+            options={[
+              { id: 'off', label: 'Não' },
+              { id: 'on', label: 'Sim' },
+            ]}
+            value={draft.certificateEnabled ? 'on' : 'off'}
+            onChange={(id) => setDraft((d) => ({ ...d, certificateEnabled: id === 'on' }))}
+          />
+
+          {draft.certificateEnabled ? (
+            <OptionRow
+              label="Quando conta como concluído"
+              hint={
+                draft.completionRule === 'all'
+                  ? 'Todas as aulas publicadas concluídas.'
+                  : 'Curso sem fim definido: basta um número de aulas concluídas.'
+              }
+              options={[
+                { id: 'all', label: 'Todas as aulas' },
+                { id: 'min-lessons', label: 'Um mínimo de aulas' },
+              ]}
+              value={draft.completionRule}
+              onChange={(completionRule) => setDraft((d) => ({ ...d, completionRule }))}
+            />
+          ) : null}
+
+          {draft.certificateEnabled && draft.completionRule === 'min-lessons' ? (
+            <YStack gap="$1.5">
+              <TextField
+                label="Mínimo de aulas"
+                hint={`O curso tem ${publishedLessons} aula(s) publicada(s). Quem já recebeu o certificado não o perde se você mudar o número.`}
+                value={draft.minLessons}
+                onChange={(minLessons) => setDraft((d) => ({ ...d, minLessons }))}
+                placeholder="10"
+                testID="course-min-lessons"
+              />
+              {minLessonsInvalid ? (
+                <SizableText size="$2" color="$red10" data-testid="course-min-lessons-error">
+                  Use um número inteiro maior que zero.
+                </SizableText>
+              ) : null}
+              {draft.minLessons.trim() === '' ? (
+                <SizableText size="$2" color="$orange10">
+                  Sem número, vale a regra "todas as aulas".
+                </SizableText>
+              ) : null}
+              {minLessonsTooHigh ? (
+                <SizableText size="$2" color="$red10" data-testid="course-min-lessons-warning">
+                  🔴 O mínimo ({minLessonsValue}) passa do total de aulas ({publishedLessons}): ninguém
+                  vai receber o certificado.
                 </SizableText>
               ) : null}
             </YStack>

@@ -138,6 +138,11 @@ export type CourseDTO = {
   subscriberAccess: 'included' | 'since-subscription' | 'none'
   /** preço da compra avulsa em centavos (BRL); `null` = não vende avulso. É vitrine, não segredo */
   priceCents: number | null
+  certificateEnabled: boolean
+  completionRule: 'all' | 'min-lessons'
+  minLessons: number | null
+  /** o certificado **do visitante** neste curso; `null` enquanto não emitiu */
+  certificate: { code: string; issuedAt: number | null } | null
   order: number
   /** matrícula ativa do visitante. `locked` + `lockReason` dizem o que oferecer quando não há */
   enrolled: boolean
@@ -203,3 +208,6 @@ export type MeDTO = {
   subscription: SubscriptionDTO | null
   entitlement: { creators: string[]; plans: string[] }
 }
+
+/** Aviso de conteúdo novo (Fase 22): o que a pessoa quer receber. */
+export type NotificationPrefs = { notifyNewPost: boolean; notifyNewLesson: boolean }

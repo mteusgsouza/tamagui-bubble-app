@@ -27,6 +27,7 @@ import {
 import { courseAccess, lessonAccess } from '~/server/access/contentAccess'
 import { toEpoch } from '~/server/api/serialize'
 
+import { loadCertificates } from './certificates'
 import { loadEnrolledCourseIds } from './enrollments'
 
 import type {
@@ -177,9 +178,10 @@ export async function loadCourses(
   const courseIds = courseRows.map((row) => row.course.id)
   if (!courseIds.length) return []
 
-  const [enrolled, moduleRows, lessonRows] = await Promise.all([
+  const [enrolled, certificates, moduleRows, lessonRows] = await Promise.all([
     // uma query para todos os cursos — a matrícula é o que abre o conteúdo
     loadEnrolledCourseIds(viewer.id, courseIds),
+    loadCertificates(viewer.id, courseIds),
     db
       .select()
       .from(courseModule)
@@ -252,6 +254,10 @@ export async function loadCourses(
     published: row.course.published,
     subscriberAccess: row.course.subscriberAccess,
     priceCents: row.course.priceCents,
+    certificateEnabled: row.course.certificateEnabled,
+    completionRule: row.course.completionRule,
+    minLessons: row.course.minLessons,
+    certificate: certificates.get(row.course.id) ?? null,
     order: row.course.order,
     enrolled: enrolled.has(row.course.id),
     coverMedia: toMedia(row),

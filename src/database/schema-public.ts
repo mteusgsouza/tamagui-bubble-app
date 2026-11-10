@@ -32,6 +32,9 @@ export const userPublic = pgTable(
 export const userState = pgTable('userState', {
   userId: text('userId').primaryKey(),
   darkMode: boolean('darkMode').notNull().default(false),
+  // Fase 22: opt-out do aviso de conteúdo novo. Ligado por padrão, desligável em Ajustes
+  notifyNewPost: boolean('notifyNewPost').notNull().default(true),
+  notifyNewLesson: boolean('notifyNewLesson').notNull().default(true),
 })
 
 // --- subscription ---
@@ -167,6 +170,9 @@ export const post = pgTable(
     requiredPlanId: text('requiredPlanId').references(() => plan.id),
     published: boolean('published').notNull().default(false),
     publishedAt: timestamp('publishedAt', { mode: 'string' }),
+    // Fase 22: carimbada **uma vez** pelo job de aviso (`UPDATE ... WHERE announcedAt IS NULL`).
+    // Despublicar e republicar não limpa — é o que impede avisar o mesmo post duas vezes
+    announcedAt: timestamp('announcedAt', { mode: 'string' }),
     // denormalized counters, maintained by the comment/reaction mutations
     likeCount: integer('likeCount').notNull().default(0),
     commentCount: integer('commentCount').notNull().default(0),
@@ -296,6 +302,13 @@ export const course = pgTable(
       .default('included'),
     // preço da compra avulsa, em centavos (moeda BRL). `null` = não vende avulso
     priceCents: integer('priceCents'),
+    // certificado de conclusão (Fase 21). `completionRule` decide o que é "terminar" —
+    // ver `isCourseComplete`; `minLessons` só vale com 'min-lessons'
+    certificateEnabled: boolean('certificateEnabled').notNull().default(false),
+    completionRule: text('completionRule', { enum: ['all', 'min-lessons'] })
+      .notNull()
+      .default('all'),
+    minLessons: integer('minLessons'),
     order: integer('order').notNull().default(0),
     createdAt: timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
   },
@@ -374,6 +387,8 @@ export const lesson = pgTable(
     published: boolean('published').notNull().default(false),
     // visible without an active subscription, even on a subscribers-only course
     freePreview: boolean('freePreview').notNull().default(false),
+    // Fase 22: ver `post.announcedAt`
+    announcedAt: timestamp('announcedAt', { mode: 'string' }),
     createdAt: timestamp('createdAt', { mode: 'string' }).defaultNow().notNull(),
   },
   (table) => [
@@ -400,5 +415,34 @@ export const lessonProgress = pgTable(
   (table) => [
     uniqueIndex('lessonProgress_userId_lessonId_uidx').on(table.userId, table.lessonId),
     index('lessonProgress_lessonId_idx').on(table.lessonId),
+  ],
+)
+
+/**
+ * Certificado de conclusão. Emitir é **gravar uma linha**, não calcular na hora: o curso
+ * contínuo ganha aula nova toda semana, e um certificado derivado voltaria a "80%
+ * concluído" no dia seguinte. `lessonsTotal` é fotografia do dia da emissão.
+ *
+ * `code` é o que vai na URL pública de verificação — por isso é separado do `id`.
+ */
+export const certificate = pgTable(
+  'certificate',
+  {
+    id: text('id').primaryKey(),
+    userId: text('userId')
+      .notNull()
+      .references(() => userPublic.id, { onDelete: 'cascade' }),
+    courseId: text('courseId')
+      .notNull()
+      .references(() => course.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    issuedAt: timestamp('issuedAt', { mode: 'string' }).defaultNow().notNull(),
+    lessonsCompleted: integer('lessonsCompleted').notNull(),
+    lessonsTotal: integer('lessonsTotal').notNull(),
+  },
+  (table) => [
+    uniqueIndex('certificate_code_uidx').on(table.code),
+    uniqueIndex('certificate_userId_courseId_uidx').on(table.userId, table.courseId),
+    index('certificate_courseId_idx').on(table.courseId),
   ],
 )

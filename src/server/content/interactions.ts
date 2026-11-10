@@ -17,6 +17,7 @@ import {
 import { courseAccess, lessonAccess, postAccess } from '~/server/access/contentAccess'
 import { nowIso, toEpoch } from '~/server/api/serialize'
 
+import { issueCertificateIfComplete } from './certificates'
 import { loadEnrolledCourseIds } from './enrollments'
 
 import type { CommentDTO } from './dto'
@@ -285,7 +286,15 @@ export async function deleteComment(
 export async function saveProgress(
   viewer: Viewer,
   args: { lessonId: string; positionSec: number; completed?: boolean },
-): Promise<WriteResult<{ lessonId: string; positionSec: number; completedAt: number | null }>> {
+): Promise<
+  WriteResult<{
+    lessonId: string
+    positionSec: number
+    completedAt: number | null
+    /** só quando o certificado saiu **agora** — é o que deixa a tela comemorar no instante certo */
+    certificateCode?: string
+  }>
+> {
   const db = getDb()
 
   const [row] = await db
@@ -311,30 +320,43 @@ export async function saveProgress(
   const positionSec = Math.max(0, Math.floor(args.positionSec))
   const now = nowIso()
 
-  const [saved] = await db
-    .insert(lessonProgress)
-    .values({
-      id: crypto.randomUUID(),
-      userId: viewer.id,
-      lessonId: args.lessonId,
-      positionSec,
-      completedAt: args.completed ? now : null,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [lessonProgress.userId, lessonProgress.lessonId],
-      set: {
-        positionSec: sql`excluded."positionSec"`,
-        updatedAt: sql`excluded."updatedAt"`,
-        completedAt: sql`coalesce(${lessonProgress.completedAt}, excluded."completedAt")`,
-      },
-    })
-    .returning({ positionSec: lessonProgress.positionSec, completedAt: lessonProgress.completedAt })
+  // progresso e certificado na mesma transação: a contagem tem que enxergar a aula que
+  // acabou de ser concluída, e a emissão não pode sobreviver a um progresso que falhou
+  const { saved, certificateCode } = await db.transaction(async (tx) => {
+    const [saved] = await tx
+      .insert(lessonProgress)
+      .values({
+        id: crypto.randomUUID(),
+        userId: viewer.id,
+        lessonId: args.lessonId,
+        positionSec,
+        completedAt: args.completed ? now : null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [lessonProgress.userId, lessonProgress.lessonId],
+        set: {
+          positionSec: sql`excluded."positionSec"`,
+          updatedAt: sql`excluded."updatedAt"`,
+          completedAt: sql`coalesce(${lessonProgress.completedAt}, excluded."completedAt")`,
+        },
+      })
+      .returning({ positionSec: lessonProgress.positionSec, completedAt: lessonProgress.completedAt })
+
+    // só quando esta chamada pede a conclusão **e** a aula está concluída
+    const certificateCode =
+      args.completed && saved?.completedAt
+        ? await issueCertificateIfComplete(tx, viewer, row.course)
+        : null
+
+    return { saved, certificateCode }
+  })
 
   return {
     ok: true,
     lessonId: args.lessonId,
     positionSec: saved?.positionSec ?? positionSec,
     completedAt: toEpoch(saved?.completedAt),
+    ...(certificateCode && { certificateCode }),
   }
 }

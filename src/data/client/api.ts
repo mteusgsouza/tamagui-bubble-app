@@ -11,6 +11,7 @@ import type {
   FeedPageDTO,
   LessonDetailDTO,
   MeDTO,
+  NotificationPrefs,
   PlanDTO,
   PostDTO,
 } from '~/server/content/dto'
@@ -79,6 +80,25 @@ export const removeComment = (commentId: string) =>
     commentId,
   })
 
+export const getNotificationPrefs = (init?: Init) =>
+  apiFetch<NotificationPrefs>('/notifications', init)
+
+export const saveNotificationPrefs = (patch: Partial<NotificationPrefs>) =>
+  apiFetch<NotificationPrefs>('/notifications', { method: 'PUT', body: JSON.stringify(patch) })
+
+export const getMyCertificates = (init?: Init) =>
+  apiFetch<{ certificates: import('~/server/content/certificates').MyCertificateDTO[] }>(
+    '/certificates',
+    init,
+  )
+
+/** Verificação pública: **sem sessão**. */
+export const getPublicCertificate = (code: string, init?: Init) =>
+  apiFetch<{ certificate: import('~/server/content/certificates').PublicCertificateDTO }>(
+    `/certificate/${encodeURIComponent(code)}`,
+    init,
+  )
+
 /** Matricula a pessoa no curso. 422 `needs-purchase` etc. quando a assinatura não cobre. */
 export const enroll = (courseId: string) =>
   post<{ ok: true; enrollmentId: string; source: string }>('/enroll', { courseId })
@@ -88,7 +108,12 @@ export const saveProgress = (args: {
   positionSec: number
   completed?: boolean
 }) =>
-  post<{ lessonId: string; positionSec: number; completedAt: number | null }>(
+  post<{
+    lessonId: string
+    positionSec: number
+    completedAt: number | null
+    certificateCode?: string
+  }>(
     '/progress',
     args,
   )

@@ -50,6 +50,11 @@ export type Course = {
   subscriberAccess?: 'included' | 'since-subscription' | 'none'
   /** centavos da compra avulsa; `null`/ausente = não vende */
   priceCents?: number | null
+  certificateEnabled?: boolean
+  completionRule?: 'all' | 'min-lessons'
+  minLessons?: number | null
+  /** o certificado do visitante neste curso, quando já foi emitido */
+  certificate?: { code: string; issuedAt: number | null } | null
   /** matrícula ativa do visitante — a tela lê, nunca recalcula a regra */
   enrolled?: boolean
   order: number

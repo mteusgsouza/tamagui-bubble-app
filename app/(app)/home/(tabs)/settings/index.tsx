@@ -6,6 +6,8 @@ import { APP_NAME_LOWERCASE, APP_VERSION, DOMAIN } from '~/constants/app'
 import { canManage } from '~/features/admin/canManage'
 import { useAuth } from '~/features/auth/client/authClient'
 import { SubscriptionCard } from '~/features/billing/SubscriptionCard'
+import { MyCertificates } from '~/features/courses/MyCertificates'
+import { NotificationSettings } from '~/features/notifications/NotificationSettings'
 import { Avatar } from '~/interface/avatars/Avatar'
 import { useLogout } from '~/features/auth/useLogout'
 import { CaretRightIcon } from '~/interface/icons/phosphor/CaretRightIcon'
@@ -175,6 +177,10 @@ export function ProfileSettingsPage() {
           <YStack pb="$5">
             <SubscriptionCard />
           </YStack>
+
+          <MyCertificates />
+
+          <NotificationSettings />
 
           {/* o seletor de tema morava no header, que deixou de existir */}
           <XStack items="center" justify="space-between" px="$4" pb="$4">

@@ -8,9 +8,9 @@
 
 | | |
 |---|---|
-| Última fase concluída | **Fase 20 — Curso avulso** ([handoff](./handoffs/20-curso-avulso.md)) |
+| Última fase concluída | **Fase 22 — Aviso de conteúdo novo, parte e-mail** ([handoff](./handoffs/22-aviso-de-conteudo-novo.md)) — provada no Postgres; Ajustes validada no navegador, push não feito |
 | Último trabalho entregue | **Composer, mídia e contas de teste** (01/11/2026, commit `6616078`) — prévia do post, ponto focal da foto, admin no celular e 4 contas de teste com atalho no login. [handoff](./handoffs/composer-midia.md) |
-| Próxima fase | **Fase 21 — Certificado** ([plano](./plan/21-certificado.md)). O caminho crítico 18 → 19 → 20 está fechado |
+| Próxima fase | **Fase 14 — E-mail transacional** (o transporte de 22 é mínimo) ou 15/16/17 — ver [`INDEX.md`](./INDEX.md) |
 | Fases novas | **18 a 22** planejadas (a 18 está entregue) em 01/11/2026 — editor de aula, matrícula e acesso, curso avulso, certificado, aviso de conteúdo novo. Caminho crítico **18 → 19 → 20**; ver [`INDEX.md`](./INDEX.md) |
 | Validar no navegador | 11–13 nunca foram clicadas. **Ficou mais barato**: há 4 contas de teste (Criador, Admin, Assinante, Visitante) com atalho de um clique na tela de login |
 | Fase 1 (Repositório) | ⏭️ **pulada por decisão do usuário** — ver "Pendências" |
@@ -21,6 +21,22 @@ contra este arquivo. Caminho crítico: 11 (gateway) → 12 (o post pago passa a 
 quem não assina) → 13 (telas de assinar e de assinatura). **Até o fim da 13 não existe
 como cobrar ninguém.** Ordem, paralelismo e os pré-requisitos humanos estão no
 [`INDEX.md`](./INDEX.md).
+
+Estado real da Fase 22:
+
+- ✅ `announcedAt` em post e aula, reivindicado por `UPDATE ... WHERE announcedAt IS NULL RETURNING`; opt-out em `userState`; migration **com backfill**
+- ✅ regras puras em `announce.ts` (o aviso nem recebe `body`), job + `/api/cron/announce-content`, transporte Resend mínimo
+- ✅ `announce-smoke.ts` 10/10 no Postgres; **252 testes**; tsc limpo
+- 🔴 tela de Ajustes validada no navegador (interruptor de post); nenhum e-mail real; cron sem agendador; push não feito
+
+Estado real da Fase 21:
+
+- ✅ **certificado é linha, não cálculo**: `certificate` (`code` público, único por `(userId, courseId)`, `lessonsTotal` fotografado); `course.certificateEnabled | completionRule | minLessons`
+- ✅ regra pura em `completion.ts` (zero imports), usada pelo servidor e por `courseStats`; emissão na transação do `saveProgress`, idempotente pelo índice único; criador/admin não ganham
+- ✅ provado no Postgres por `scripts/certificate-smoke.ts` (12 verificações); tsc limpo; **238 testes**
+- ✅ página pública `app/certificado/[code].tsx` fora de `(app)`, com `@media print`; API sem sessão devolve só nome, curso, data e aulas
+- ✅ **validado no navegador**: Assinante conclui 5/5 → certificado, página pública sem sessão, bloco do admin e aviso de mínimo 99; `@media print` não exercido
+- ⚠️ sem backfill: quem concluiu antes de ligar o certificado só emite na próxima conclusão de aula
 
 Estado real da Fase 20:
 

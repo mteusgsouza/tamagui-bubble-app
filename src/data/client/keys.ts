@@ -16,6 +16,8 @@ export const qk = (userId: string) => ({
   lesson: (lessonId: string) => ['u', userId, 'lesson', lessonId] as const,
   plans: () => ['u', userId, 'plans'] as const,
   me: () => ['u', userId, 'me'] as const,
+  certificates: () => ['u', userId, 'certificates'] as const,
+  notifications: () => ['u', userId, 'notifications'] as const,
 
   admin: {
     root: () => ['u', userId, 'admin'] as const,
@@ -42,5 +44,7 @@ export const STALE = {
   lesson: 60_000,
   plans: 5 * 60_000,
   me: 60_000,
+  certificates: 60_000,
+  notifications: 60_000,
   admin: 0,
 } as const

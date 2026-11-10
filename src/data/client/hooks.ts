@@ -153,6 +153,30 @@ export function useMe() {
   })
 }
 
+/** A preferência de aviso de conteúdo novo. */
+export function useNotificationPrefs() {
+  const { userId, keys } = useKeys()
+
+  return useQuery({
+    queryKey: keys.notifications(),
+    enabled: Boolean(userId),
+    staleTime: STALE.notifications,
+    queryFn: ({ signal }) => api.getNotificationPrefs({ signal }),
+  })
+}
+
+/** Os certificados de quem está logado. */
+export function useMyCertificates() {
+  const { userId, keys } = useKeys()
+
+  return useQuery({
+    queryKey: keys.certificates(),
+    enabled: Boolean(userId),
+    staleTime: STALE.certificates,
+    queryFn: ({ signal }) => api.getMyCertificates({ signal }),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Admin — `staleTime: 0`, o editor não pode mostrar rascunho velho
 // ---------------------------------------------------------------------------

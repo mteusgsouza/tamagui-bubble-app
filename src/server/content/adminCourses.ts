@@ -66,6 +66,10 @@ export type SaveCourseArgs = {
   priceCents?: number | null
   /** `undefined` deixa a capa como está — o formulário não a carrega */
   coverMediaId?: string | null
+  /** certificado de conclusão; `undefined` deixa como está */
+  certificateEnabled?: boolean
+  completionRule?: 'all' | 'min-lessons'
+  minLessons?: number | null
 }
 
 export async function saveCourse(
@@ -81,6 +85,15 @@ export async function saveCourse(
 
   if (args.priceCents != null && (!Number.isInteger(args.priceCents) || args.priceCents <= 0)) {
     return { ok: false, status: 422, code: 'invalid-price', message: 'Preço inválido.' }
+  }
+
+  if (args.minLessons != null && (!Number.isInteger(args.minLessons) || args.minLessons <= 0)) {
+    return {
+      ok: false,
+      status: 422,
+      code: 'invalid-min-lessons',
+      message: 'O mínimo de aulas tem que ser um número maior que zero.',
+    }
   }
 
   const requiredPlanId =
@@ -101,6 +114,11 @@ export async function saveCourse(
         requiredPlanId,
         ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
         priceCents: args.priceCents ?? null,
+        ...(args.certificateEnabled !== undefined && {
+          certificateEnabled: args.certificateEnabled,
+        }),
+        ...(args.completionRule && { completionRule: args.completionRule }),
+        minLessons: args.minLessons ?? null,
         published: false,
         order: sql`(select coalesce(max("order"), -1) + 1 from "course" where "feedOwnerId" = ${args.feedOwnerId})`,
         createdAt: nowIso(),
@@ -116,6 +134,11 @@ export async function saveCourse(
           requiredPlanId,
           ...(args.subscriberAccess && { subscriberAccess: args.subscriberAccess }),
           ...(args.priceCents !== undefined && { priceCents: args.priceCents }),
+          ...(args.certificateEnabled !== undefined && {
+            certificateEnabled: args.certificateEnabled,
+          }),
+          ...(args.completionRule && { completionRule: args.completionRule }),
+          ...(args.minLessons !== undefined && { minLessons: args.minLessons }),
           ...(args.coverMediaId !== undefined && { coverMediaId: args.coverMediaId }),
         },
       })

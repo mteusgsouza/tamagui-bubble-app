@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { isWeb, ScrollView, SizableText, Spinner, XStack, YStack } from 'tamagui'
 
 import { useCourse, useLesson } from '~/data/client/hooks'
+import { CertificateLink } from '~/features/courses/CertificateLink'
 import { lessonAfter, lessonPosition, resumeAt } from '~/features/courses/courseStats'
 import { isLessonComplete } from '~/features/courses/types'
 import { useLessonProgress } from '~/features/courses/useLessonProgress'
@@ -181,6 +182,10 @@ const LessonBody = ({
         >
           {done ? 'Aula concluída' : 'Marcar como concluída'}
         </Button>
+      ) : null}
+
+      {course?.certificate ? (
+        <CertificateLink code={course.certificate.code} issuedAt={course.certificate.issuedAt} />
       ) : null}
 
       {lesson.body ? (

@@ -85,6 +85,18 @@ export const POST: Endpoint = async (request) => {
               : typeof p.priceCents === 'number'
                 ? p.priceCents
                 : null,
+          certificateEnabled: bool(p.certificateEnabled),
+          completionRule:
+            p.completionRule === 'all' || p.completionRule === 'min-lessons'
+              ? p.completionRule
+              : undefined,
+          // ausente = não mexe; `null` limpa o mínimo
+          minLessons:
+            p.minLessons === undefined
+              ? undefined
+              : typeof p.minLessons === 'number'
+                ? p.minLessons
+                : null,
           // ausente = não mexe na capa; o formulário não a carrega
           coverMediaId: p.coverMediaId === undefined ? undefined : orNull(p.coverMediaId),
         })

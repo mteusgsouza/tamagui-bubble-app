@@ -1,6 +1,6 @@
 # Fase 21 — Certificado de conclusão
 
-**Status:** ⬜ pendente · **Pré-requisito humano:** — · **Depende de:** 19 (só quem está
+**Status:** ✅ entregue ([handoff](../handoffs/21-certificado.md)) — validado no navegador, exceto a impressão · **Pré-requisito humano:** — · **Depende de:** 19 (só quem está
 matriculado conclui) e 18 (aula com conteúdo para concluir)
 
 ## Objetivo
