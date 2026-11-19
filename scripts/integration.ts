@@ -7,7 +7,7 @@
  */
 
 import { Socket } from 'node:net'
-import { getTestEnv } from './helpers/get-test-env'
+import { getTestEnv, TEST_CREATOR_ID, TEST_DATABASE_URL } from './helpers/get-test-env'
 
 // --- config ---
 const FRONTEND_PORT = 8081
@@ -24,11 +24,15 @@ const processes: Bun.Subprocess[] = []
 
 // --- helpers ---
 
-async function $(cmd: string, opts?: { silent?: boolean; timeout?: number }) {
+async function $(
+  cmd: string,
+  opts?: { silent?: boolean; timeout?: number; env?: Record<string, string> },
+) {
   if (!opts?.silent) console.info(`$ ${cmd}`)
   const proc = Bun.spawn(['bash', '-c', cmd], {
     stdout: 'inherit',
     stderr: 'inherit',
+    ...(opts?.env && { env: { ...process.env, ...opts.env } }),
   })
   processes.push(proc)
 
@@ -156,13 +160,24 @@ async function main() {
     await spawn('docker compose up --remove-orphans')
     await waitForMigrations()
 
+    // seed — sem isto o banco nasce só com as migrations, e os testes de feed, curso e
+    // editor de aula pulavam no CI: nunca testaram nada lá. A ordem importa: o post
+    // `p-cac` referencia o `plan-anual`, que nasce no seed de cursos
+    console.info('\nseeding...')
+    await $('bun scripts/seed-courses.ts && bun scripts/seed-posts.ts', {
+      env: { DATABASE_URL: TEST_DATABASE_URL, VITE_MASTER_USER_ID: TEST_CREATOR_ID },
+    })
+
     // install playwright
     console.info('\ninstalling playwright...')
     await $('bunx playwright install chromium', { timeout: BUILD_TIMEOUT })
 
-    // build
+    // build — com o Criador embutido: ver `TEST_CREATOR_ID`
     console.info('\nbuilding...')
-    await $('bun run build', { timeout: BUILD_TIMEOUT })
+    await $('bun run build', {
+      timeout: BUILD_TIMEOUT,
+      env: { VITE_MASTER_USER_ID: TEST_CREATOR_ID },
+    })
 
     // start frontend
     console.info('\nstarting frontend...')
