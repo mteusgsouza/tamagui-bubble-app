@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { SizableText, Switch, XStack, YStack } from 'tamagui'
+import { SizableText, XStack, YStack } from 'tamagui'
 
 import { useKeys, useNotificationPrefs } from '~/data/client/hooks'
 import * as api from '~/data/client/api'
+import { Switch } from '~/interface/forms/Switch'
 
 import type { NotificationPrefs } from '~/server/content/dto'
 

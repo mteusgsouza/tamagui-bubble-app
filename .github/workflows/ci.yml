@@ -27,10 +27,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# 🔴 `runs-on` fixo em `ubuntu-24.04`, nunca `ubuntu-latest`.
+#
+# O `latest` passou a resolver para o Ubuntu 26.04, e o Playwright do projeto (1.59) não
+# tem Chromium para ele: `bunx playwright install chromium` morre com "Playwright does not
+# support chromium on ubuntu26.04-x64" antes de um teste rodar. Subir a imagem é decisão
+# junto com subir o Playwright, não algo que o GitHub decide por nós no meio de um deploy.
 jobs:
   check:
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -44,7 +50,7 @@ jobs:
 
   integration:
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
