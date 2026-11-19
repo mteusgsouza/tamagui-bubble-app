@@ -799,6 +799,22 @@ Três provedores, porque cada peça tem uma exigência diferente:
     primeira versão deixava `update-user` e `revoke-sessions` passarem pelo app nativo.
   - Corte de emergência sem mexer no servidor: banir a conta em Admin → Pessoas.
   - Não é o *Entrar como demonstração* do `VITE_DEMO_MODE=1`, que entra como o Criador.
+- 🔴 **O CI não faz deploy.** Ele só roda lint, tipos e testes. Publicar é
+  `bash scripts/deploy.sh`: `migrate:build` + build na WSL → imagem no Docker Hub → na
+  Lightsail, `pull` → `backup.sh` → `run --rm migrate` → `up -d app` → confere o digest.
+  A regra (perguntar do deploy depois de todo push) está no CLAUDE.md.
+- 🔴 **19/11/2026: deploy sem migration derrubou o feed.** O script trocava só o app; o
+  banco estava em `20260923115502_publishedat_backfill`, 5 migrations atrás das Fases
+  18–22, e feed e cursos respondiam erro (`announcedAt`, `certificate`, `notifyNewPost`
+  inexistentes) para todos. Resolvido com backup (`bubble-2026-11-19-0222.dump`, no R2) +
+  `docker compose run --rm migrate`. A conta demo nasceu pela metade nesse intervalo (sem
+  `userPublic`/`userState`); foi completada à mão, e o `signInDemo` passou a chamar o
+  `afterCreateUser` (idempotente) a cada entrada.
+- **CI de integração com seed.** `scripts/integration.ts` roda `seed-courses` e
+  `seed-posts` depois das migrations e passa `VITE_MASTER_USER_ID=demo-user-id`
+  (`TEST_CREATOR_ID`) ao `bun run build`. Antes, feed, cursos e editor de aula pulavam
+  no CI: sem dado nenhum, e sem o id do criador no build (o build de produção só lê
+  `.env`/`.env.production`), o feed procurava posts do dono `''`.
 
 ## Decisões acumuladas
 

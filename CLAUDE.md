@@ -16,6 +16,27 @@ entregou e por quê. Este arquivo é só o essencial que se repete; o detalhe es
 `deploy/` — produção. `fly-app.toml` (referência), `aws/` (banco, app e proxy). Topologia e as
 armadilhas de deploy estão em **`STATE.md` → Produção**.
 
+## Push e deploy — o CI não publica
+
+Push na `main` só roda o CI (lint, tipos, testes). **Produção só muda com
+`bash scripts/deploy.sh`.** CI verde não quer dizer site atualizado.
+
+🔴 **Regra: depois de todo push, pergunte se é para fazer deploy.** Se sim, o caminho é o
+script, **nunca passos soltos à mão** (`docker push` + `up -d app`). Ele faz, em ordem:
+1. `migrate:build` + build com as `VITE_*` de produção;
+2. imagem + push para o Docker Hub. Exige `docker login`: `authorization failed` é falta de
+   login, não rede;
+3. no servidor: `pull` → `backup.sh` → `docker compose run --rm migrate` → `up -d app`. Se a
+   migration falhar, o app novo não sobe;
+4. confere se a Lightsail roda o digest enviado.
+
+Se o procedimento mudar (um serviço novo, um passo que hoje é manual), **atualize o script
+em vez de fazer o passo à mão**: passo que só existe na conversa some no deploy seguinte.
+Variável nova de runtime vai no `app.env` do servidor (com backup antes), não no script.
+
+Por quê: em 19/11/2026 um deploy trocou só o app. O banco ficou 5 migrations atrás, e o
+feed e os cursos quebraram **para todos** até a migration rodar à mão.
+
 ## Ambiente
 
 O projeto vive em `F:\apps\bubble-app\mobile-bubble-app` e **roda da WSL**

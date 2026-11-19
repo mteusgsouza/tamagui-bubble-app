@@ -2,6 +2,7 @@ import { APIError, createAuthEndpoint } from 'better-auth/api'
 import { setSessionCookie } from 'better-auth/cookies'
 
 import { DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_NAME } from '../demoAccount'
+import { afterCreateUser } from './afterCreateUser'
 
 import type { BetterAuthPlugin, User } from 'better-auth'
 
@@ -86,6 +87,14 @@ export const demoLogin = () =>
             message: 'Não foi possível preparar a conta de demonstração.',
           })
         }
+
+        // 🔴 Completa a conta a cada entrada, não só quando ela nasce. Em 19/11/2026 o
+        // `afterCreateUser` do primeiro clique em produção falhou (o banco estava sem as
+        // colunas novas do `userState`): a linha de `user` ficou, a de `userPublic` não,
+        // o clique deu erro e o segundo entrou numa conta pela metade — sem `userPublic`,
+        // toda FK de conteúdo (comentário, matrícula) quebra. Ele é idempotente: com a
+        // conta inteira são duas leituras e sai.
+        await afterCreateUser(user)
 
         const session = await ctx.context.internalAdapter.createSession(user.id)
         if (!session) {
