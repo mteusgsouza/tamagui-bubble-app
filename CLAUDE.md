@@ -67,6 +67,14 @@ scripts/seed-dev-accounts.ts` faz o Admin nascer com `role = 'admin'` e o Assina
 assinatura ativa. Os botões criam a conta que faltar, então funcionam logo depois de um
 `backend:clean` — só a role e a assinatura é que dependem do seed.
 
+**Conta demo pública (produção): outra coisa.** `DEMO_LOGIN_ENABLED=1` no servidor mostra
+*Entrar com a conta demo* — `conta-demo@bubble.local`, visitante sem assinatura, para quem
+testa sem cadastro. Não tem senha (entra só por `/api/auth/sign-in/demo`, plugin
+`src/features/auth/server/demoLogin.ts`), e o servidor recusa para ela checkout, troca de
+nome e listar/derrubar sessões. O botão pergunta ao servidor se aparece, então desligar
+não exige rebuild. 🔴 Não confundir com o *Entrar como demonstração* do `VITE_DEMO_MODE=1`:
+aquele entra como o **Criador** — nunca ligar em produção.
+
 O Criador é `demo@takeout.tamagui.dev` (id `demo-user-id`, o `VITE_MASTER_USER_ID`), e a
 role dele no banco é `user`: quem abre o `/admin` para ele é o `MASTER_USER_ID`
 (`canManage`), e é por isso que as abas **Planos e Pessoas não aparecem** — elas exigem

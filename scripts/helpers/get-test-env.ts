@@ -17,6 +17,8 @@ export async function getTestEnv() {
     ONE_SERVER_URL: 'http://localhost:8081',
     POSTMARK_SERVER_TOKEN: process.env.POSTMARK_SERVER_TOKEN || 'test-token',
     VITE_DEMO_MODE: '1',
+    // liga o botão "Entrar com a conta demo" (`demo-account.test.ts`)
+    DEMO_LOGIN_ENABLED: '1',
     VITE_ZERO_HOSTNAME: '',
     VITE_WEB_HOSTNAME: '',
     DATABASE_URL: `${dockerDbBase}/postgres`,

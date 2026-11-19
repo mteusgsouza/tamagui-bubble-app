@@ -1,17 +1,32 @@
+import { getAuthDataFromRequest } from '@take-out/better-auth-utils/server'
 import { prettyPrintResponse } from '@take-out/helpers'
 
 import { ADMIN_WHITELIST } from '~/server/constants-server'
 
+import { isDemoAccountEmail } from '../demoAccount'
 import { authServer } from './authServer'
+import { BLOCKED_FOR_DEMO } from './demoLogin'
 
 export function authAPIHandler(method: 'GET' | 'POST') {
   return async (req: Request) => {
     try {
       const url = new URL(req.url)
 
+      const refused = await refuseForDemoAccount(req, url)
+      if (refused) return refused
+
       if (url.pathname.includes('/api/auth/sign-up/email')) {
         const clonedReq = req.clone()
         const body = await clonedReq.json()
+
+        // o e-mail da conta demo é reservado: cadastrá-lo pelo formulário antes do primeiro
+        // clique no botão criaria a conta **com senha** — de quem cadastrou
+        if (isDemoAccountEmail(body?.email)) {
+          return Response.json(
+            { message: 'Este e-mail é reservado.', code: 'DEMO_ACCOUNT' },
+            { status: 403 },
+          )
+        }
 
         const res = await authServer.handler(req)
 
@@ -70,6 +85,29 @@ export function authAPIHandler(method: 'GET' | 'POST') {
       })
     }
   }
+}
+
+/**
+ * Recusa, para a conta demo pública, as rotas de `BLOCKED_FOR_DEMO` (o porquê de cada uma
+ * está lá, em `demoLogin.ts`).
+ *
+ * Fica nesta camada porque aqui a sessão se resolve pelo mesmo `getAuthDataFromRequest`
+ * que todas as rotas do app usam — cookie **e** `Authorization: Bearer`. Dentro de um hook
+ * do Better Auth o bearer ainda não virou cookie, e a checagem passava em branco.
+ *
+ * Só custa uma leitura de sessão nas rotas da lista; o resto do auth não paga nada.
+ */
+async function refuseForDemoAccount(req: Request, url: URL): Promise<Response | null> {
+  const path = url.pathname.replace(/^\/api\/auth/, '')
+  if (!BLOCKED_FOR_DEMO.has(path)) return null
+
+  const auth = await getAuthDataFromRequest(authServer, req).catch(() => null)
+  if (!isDemoAccountEmail(auth?.email)) return null
+
+  return Response.json(
+    { message: 'A conta de demonstração não pode alterar isso.', code: 'DEMO_ACCOUNT' },
+    { status: 403 },
+  )
 }
 
 async function handleAuthCallback(req: Request, res: Response): Promise<Response> {

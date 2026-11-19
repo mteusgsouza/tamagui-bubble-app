@@ -14,6 +14,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { MASTER_USER_ID } from '~/constants/creator'
 import { getDb } from '~/database'
 import { course, enrollment, plan } from '~/database/schema-public'
+import { isDemoAccountEmail } from '~/features/auth/demoAccount'
 import { authServer } from '~/features/auth/server/authServer'
 import { activeProvider } from '~/features/billing/registry'
 import { enrollmentSource } from '~/server/access/contentAccess'
@@ -29,6 +30,18 @@ import type { Endpoint } from 'one'
 export const POST: Endpoint = async (request) => {
   const auth = await getAuthDataFromRequest(authServer, request)
   if (!auth?.id) return fail(401, 'unauthenticated', 'Faça login para assinar.')
+
+  // A conta demo é compartilhada por todos os testadores: um pagamento nela viraria
+  // assinatura para todo mundo que entrar depois — e ela existe justamente para mostrar o
+  // app **sem** assinatura. Também impede alguém de pagar de verdade numa conta que não é
+  // dele. Ver `~/features/auth/demoAccount.ts`.
+  if (isDemoAccountEmail(auth.email)) {
+    return fail(
+      403,
+      'demo-account',
+      'A conta de demonstração não assina. Crie sua conta para assinar.',
+    )
+  }
 
   const provider = activeProvider()
 

@@ -785,6 +785,20 @@ Três provedores, porque cada peça tem uma exigência diferente:
 - Migrations contra o Neon: `bun migrate` **não funciona** (`import.meta.glob is not a
   function`). Use `bun migrate:build` e depois, de `src/database`,
   `RUN=1 ALLOW_MISSING_ENV=1 node migrate-dist.js`.
+- **Acesso de teste: `DEMO_LOGIN_ENABLED="1"` no `app.env`** mostra *Entrar com a conta
+  demo* no login. Entra como `conta-demo@bubble.local`: visitante, sem assinatura, sem
+  admin. A conta nasce no primeiro clique e **não tem senha** — só entra pelo plugin
+  `demoLogin` (`/api/auth/sign-in/demo`), então ninguém a tranca trocando a senha. O
+  `apiHandler.ts` recusa para ela `update-user`, `link-social`, `list-sessions` e
+  `revoke-session(s)`, o checkout recusa com `demo-account`, o cadastro recusa o e-mail,
+  e o `announceJob` não manda aviso para ela.
+  - Lida em **runtime**: desligar é apagar a variável e reiniciar o container. O botão
+    pergunta `/api/auth/demo-login/status`, então some também do APK instalado.
+  - 🔴 A recusa mora no `apiHandler.ts`, **não** num `hooks.before` do plugin. O Better
+    Auth entrega a cada hook o contexto original, sem o bearer convertido em cookie: a
+    primeira versão deixava `update-user` e `revoke-sessions` passarem pelo app nativo.
+  - Corte de emergência sem mexer no servidor: banir a conta em Admin → Pessoas.
+  - Não é o *Entrar como demonstração* do `VITE_DEMO_MODE=1`, que entra como o Criador.
 
 ## Decisões acumuladas
 

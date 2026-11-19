@@ -38,6 +38,7 @@ const CHECKOUT_MESSAGES: Record<string, string> = {
   'course-not-for-sale': 'Este curso não está à venda no momento.',
   'already-has-access': 'Você já tem acesso a este curso. Atualize a página.',
   'no-gateway': 'O pagamento ainda não está configurado. Fale com o criador.',
+  'demo-account': 'A conta de demonstração não assina. Crie sua conta para assinar.',
   'checkout-failed': 'Não deu para abrir o pagamento. Tente de novo em instantes.',
 }
 

@@ -15,6 +15,7 @@ import {
 
 import { APP_SCHEME } from '../constants'
 import { afterCreateUser } from './afterCreateUser'
+import { demoLogin } from './demoLogin'
 
 console.info(`[better-auth] server`, BETTER_AUTH_SECRET.slice(0, 3), BETTER_AUTH_URL)
 
@@ -105,6 +106,9 @@ export const authServer = betterAuth({
     }),
 
     admin(),
+
+    // botão "Entrar com a conta demo" — desligado até `DEMO_LOGIN_ENABLED=1` no servidor
+    demoLogin(),
   ],
 
   logger: {

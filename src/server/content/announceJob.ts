@@ -16,6 +16,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { APP_NAME } from '~/constants/app'
 import { getDb } from '~/database'
 import { user } from '~/database/schema-private'
+import { isDemoAccountEmail } from '~/features/auth/demoAccount'
 import {
   course,
   enrollment,
@@ -71,15 +72,21 @@ async function loadCandidates(userIds: string[]): Promise<Candidate[]> {
     .leftJoin(userState, eq(userState.userId, user.id))
     .where(inArray(user.id, userIds))
 
-  return rows.map((r) => ({
-    userId: r.userId,
-    email: r.email,
-    name: r.name,
-    banned: r.banned,
-    // quem nunca teve linha de preferência recebe o padrão (ligado)
-    notifyNewPost: r.notifyNewPost ?? true,
-    notifyNewLesson: r.notifyNewLesson ?? true,
-  }))
+  return (
+    rows
+      // a conta demo pública pode se matricular num curso gratuito e ligar os avisos, mas
+      // o e-mail dela é `@bubble.local`: cada envio seria um bounce no provedor
+      .filter((r) => !isDemoAccountEmail(r.email))
+      .map((r) => ({
+        userId: r.userId,
+        email: r.email,
+        name: r.name,
+        banned: r.banned,
+        // quem nunca teve linha de preferência recebe o padrão (ligado)
+        notifyNewPost: r.notifyNewPost ?? true,
+        notifyNewLesson: r.notifyNewLesson ?? true,
+      }))
+  )
 }
 
 async function deliver(

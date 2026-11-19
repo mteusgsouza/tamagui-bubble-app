@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { router } from 'one'
 import { useState } from 'react'
 import { Separator, SizableText, Spinner, XStack, YStack } from 'tamagui'
@@ -37,6 +38,41 @@ export const LoginPage = () => {
   const [socialLoading, setSocialLoading] = useState<boolean>(false)
   /** e-mail da conta de teste que está entrando — só uma gira por vez */
   const [devLoading, setDevLoading] = useState<string | null>(null)
+  const [demoAccountLoading, setDemoAccountLoading] = useState<boolean>(false)
+
+  /**
+   * O botão da conta demo pública aparece quando **o servidor** diz que está ligada
+   * (`DEMO_LOGIN_ENABLED=1`), não por uma flag de build: assim desligar o acesso de teste
+   * não exige republicar a imagem nem um APK novo. Enquanto a resposta não chega, ou se
+   * ela falha, o botão simplesmente não aparece — nada de spinner para um extra.
+   */
+  const demoAccount = useQuery({
+    queryKey: ['public', 'demo-login-status'],
+    queryFn: async () => {
+      const { data } = await authClient.demoLogin.status()
+      return Boolean(data?.enabled)
+    },
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+
+  const enterAsDemoAccount = async () => {
+    if (demoAccountLoading) return
+    setDemoAccountLoading(true)
+    const { error } = await authClient.signIn.demo()
+    setDemoAccountLoading(false)
+
+    if (error) {
+      showToast(
+        error.status === 404
+          ? 'O acesso de demonstração foi desligado.'
+          : 'Não foi possível entrar com a conta demo. Tente de novo.',
+        { type: 'error' },
+      )
+      return
+    }
+    router.replace('/home/feed')
+  }
 
   const enterAs = async (account: DevAccount) => {
     if (devLoading) return
@@ -153,6 +189,31 @@ export const LoginPage = () => {
           >
             Continuar com Apple
           </Button>
+
+          {/*
+            Conta demo pública — para quem testa o app em produção sem criar conta. Entra
+            como visitante: logado, sem assinatura, vendo o paywall como quem chega de
+            fora. Não é o "Entrar como demonstração" logo abaixo, que entra como o Criador.
+            Ver `~/features/auth/demoAccount.ts`.
+          */}
+          {demoAccount.data ? (
+            <YStack gap="$1.5">
+              <Button
+                size="$5"
+                variant="outlined"
+                onPress={() => void enterAsDemoAccount()}
+                disabled={demoAccountLoading}
+                pressStyle={{ scale: 0.98 }}
+                transition="quick"
+                data-testid="login-demo-account"
+              >
+                {demoAccountLoading ? <Spinner size="small" /> : 'Entrar com a conta demo'}
+              </Button>
+              <SizableText size="$2" color="$color10" text="center">
+                Sem cadastro — você vê o app como quem ainda não assina.
+              </SizableText>
+            </YStack>
+          ) : null}
 
           {/*
             Modo DEMO — ligado em dev ou com `VITE_DEMO_MODE=1`. Em desenvolvimento ele
