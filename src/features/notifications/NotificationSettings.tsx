@@ -53,7 +53,6 @@ export const NotificationSettings = () => {
             </SizableText>
           </YStack>
           <Switch
-            size="$3"
             checked={prefs[row.key]}
             onCheckedChange={(checked) => save.mutate({ [row.key]: checked })}
             data-testid={`switch-${row.key}`}
