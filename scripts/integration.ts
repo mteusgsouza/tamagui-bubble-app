@@ -13,7 +13,11 @@ import { getTestEnv } from './helpers/get-test-env'
 const FRONTEND_PORT = 8081
 const DOCKER_TIMEOUT = 120_000 // 2 min
 const BUILD_TIMEOUT = 300_000 // 5 min
-const TEST_TIMEOUT = 120_000 // 2 min
+// 🔴 Era 2 min e a suíte já passava disso: cada teste que pula por falta de seed ainda
+// faz login e espera o conteúdo (~18 s), e a nova tentativa do CI dobra o que falha. O
+// corte mata o Playwright antes do resumo, e o log fica sem dizer qual teste quebrou.
+// O teto de verdade é o `timeout-minutes` do job no ci.yml.
+const TEST_TIMEOUT = 600_000 // 10 min
 
 // --- state ---
 const processes: Bun.Subprocess[] = []
